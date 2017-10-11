@@ -11,7 +11,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-package de.hhu.bsinfo.dxnet.nio;
+package de.hhu.bsinfo.dxnet.loopback;
 
 import java.nio.ByteBuffer;
 
@@ -23,12 +23,12 @@ import de.hhu.bsinfo.utils.UnsafeMemory;
 /**
  * Created by nothaas on 7/17/17.
  */
-class NIOOutgoingRingBuffer extends OutgoingRingBuffer {
+class LoopbackOutgoingRingBuffer extends OutgoingRingBuffer {
 
     private ByteBuffer m_sendByteBuffer;
     private long m_bufferAddr;
 
-    NIOOutgoingRingBuffer(final int p_osBufferSize, final AbstractExporterPool p_exporterPool) {
+    LoopbackOutgoingRingBuffer(final int p_osBufferSize, final AbstractExporterPool p_exporterPool) {
         super(p_exporterPool);
 
         m_sendByteBuffer = ByteBuffer.allocateDirect(p_osBufferSize);
@@ -50,7 +50,7 @@ class NIOOutgoingRingBuffer extends OutgoingRingBuffer {
         posBackRelative = (int) (tmp >> 32 & 0x7FFFFFFF);
         posFrontRelative = (int) (tmp & 0x7FFFFFFF);
 
-        if (posBackRelative == posFrontRelative) {
+        if (posFrontRelative == posBackRelative) {
             return null;
         }
 

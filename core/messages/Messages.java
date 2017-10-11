@@ -11,21 +11,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-package de.hhu.bsinfo.dxnet;
-
-import de.hhu.bsinfo.dxnet.core.Message;
+package de.hhu.bsinfo.dxnet.core.messages;
 
 /**
- * Methods for reacting on incoming Messages
+ * Message types reserved for the network subsystem
  *
- * @author Florian Klein, florian.klein@hhu.de, 09.03.2012
+ * @author Stefan Nothaas, stefan.nothaas@hhu.de, 05.07.2017
  */
-public interface MessageReceiver {
+public final class Messages {
+    public static final byte DEFAULT_MESSAGES_TYPE = 0;
+
+    public static final byte SUBTYPE_INVALID_MESSAGE = 0;
+    public static final byte SUBTYPE_DEFAULT_MESSAGE = 1;
+    public static final byte SUBTYPE_BENCHMARK_MESSAGE = 2;
+
     /**
-     * Handles an incoming Message
-     *
-     * @param p_message
-     *         the Message
+     * Hidden constructor
      */
-    void onIncomingMessage(Message p_message);
+    private Messages() {
+    }
 }

@@ -11,7 +11,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-package de.hhu.bsinfo.dxnet.nio;
+package de.hhu.bsinfo.dxnet.loopback;
+
+import java.nio.ByteBuffer;
 
 import de.hhu.bsinfo.dxnet.core.AbstractFlowControl;
 import de.hhu.bsinfo.dxnet.core.NetworkException;
@@ -19,21 +21,30 @@ import de.hhu.bsinfo.dxnet.core.NetworkException;
 /**
  * Created by nothaas on 6/12/17.
  */
-public class NIOFlowControl extends AbstractFlowControl {
+public class LoopbackFlowControl extends AbstractFlowControl {
 
-    private final NIOSelector m_nioSelector;
-    private final ChangeOperationsRequest m_flowControlOperation;
+    private final LoopbackSendThread m_loopbackSendThread;
+    private LoopbackConnection m_connection;
 
-    NIOFlowControl(final short p_destinationNodeId, final int p_flowControlWindowSize, final float p_flowControlWindowThreshold,
-            final NIOSelector p_nioSelector, final NIOConnection p_connection) {
+    private final ByteBuffer m_flowControlBytes;
+
+    LoopbackFlowControl(final short p_destinationNodeId, final int p_flowControlWindowSize, final float p_flowControlWindowThreshold,
+            final LoopbackSendThread p_loopbackSendThread, final LoopbackConnection p_connection) {
         super(p_destinationNodeId, p_flowControlWindowSize, p_flowControlWindowThreshold);
 
-        m_nioSelector = p_nioSelector;
-        m_flowControlOperation = new ChangeOperationsRequest(p_connection, NIOSelector.FLOW_CONTROL);
+        m_loopbackSendThread = p_loopbackSendThread;
+        m_connection = p_connection;
+
+        m_flowControlBytes = ByteBuffer.allocateDirect(Integer.BYTES);
     }
 
     @Override
     public void flowControlWrite() throws NetworkException {
-        m_nioSelector.changeOperationInterestAsync(m_flowControlOperation);
+        m_flowControlBytes.rewind();
+        m_flowControlBytes.putInt(super.getAndResetFlowControlData());
+        m_flowControlBytes.rewind();
+
+        ByteBuffer buffer = m_connection.getPipeIn().readFlowControlData(m_flowControlBytes);
+        handleFlowControlData(buffer.getInt(0));
     }
 }

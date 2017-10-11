@@ -11,7 +11,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-package de.hhu.bsinfo.dxnet.nio;
+package de.hhu.bsinfo.dxnet.loopback;
 
 import com.google.gson.annotations.Expose;
 
@@ -19,13 +19,11 @@ import de.hhu.bsinfo.utils.unit.StorageUnit;
 import de.hhu.bsinfo.utils.unit.TimeUnit;
 
 /**
- * Dedicated configuration values for NIO
+ * Dedicated configuration values for loopback
  *
- * @author Stefan Nothaas, stefan.nothaas@hhu.de, 28.07.2017
+ * @author Kevin Beineke, kevin.beineke@hhu.de, 21.09.2017
  */
-public class NIOConfig {
-    @Expose
-    private int m_maxConnections = 100;
+public class LoopbackConfig {
 
     @Expose
     private TimeUnit m_requestTimeOut = new TimeUnit(333, TimeUnit.MS);
@@ -45,15 +43,8 @@ public class NIOConfig {
     /**
      * Default constructor
      */
-    public NIOConfig() {
+    public LoopbackConfig() {
 
-    }
-
-    /**
-     * Max number of connections to keep before dismissing existing connections (for new ones)
-     */
-    public int getMaxConnections() {
-        return m_maxConnections;
     }
 
     /**
@@ -89,5 +80,10 @@ public class NIOConfig {
      */
     public StorageUnit getOugoingRingBufferSize() {
         return m_outgoingRingBufferSize;
+    }
+
+    public boolean verify() {
+        // TODO
+        return true;
     }
 }
