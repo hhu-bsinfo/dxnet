@@ -24,6 +24,7 @@ import java.net.SocketException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Enumeration;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 
@@ -75,6 +76,7 @@ public final class DXNetMain implements MessageReceiver {
     }
 
     public static void main(final String[] p_arguments) {
+        Locale.setDefault(new Locale("en", "US"));
 
         // Parse command line arguments
         if (p_arguments.length < 7) {
