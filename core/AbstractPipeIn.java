@@ -397,6 +397,9 @@ public abstract class AbstractPipeIn {
             request = m_requestMap.remove(response.getRequestID());
 
             if (request != null) {
+                // Not surrounded by statistics strings as this should always be registered
+                // Must be executed prior to fulfill()!
+                SOP_REQ_RESP_RTT.record(timeReceiveResponse - request.getSendReceiveTimestamp());
 
                 // #ifdef STATISTICS
                 SOP_FULFILL.enter();
@@ -407,9 +410,6 @@ public abstract class AbstractPipeIn {
                 // #ifdef STATISTICS
                 SOP_FULFILL.leave();
                 // #endif /* STATISTICS */
-
-                // Not surrounded by statistics strings as this should always be registered
-                SOP_REQ_RESP_RTT.record(timeReceiveResponse - request.getSendReceiveTimestamp());
             }
 
             return null;
