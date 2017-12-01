@@ -23,6 +23,7 @@ import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicLong;
@@ -43,78 +44,183 @@ import de.hhu.bsinfo.dxnet.core.messages.BenchmarkResponse;
 import de.hhu.bsinfo.dxnet.core.messages.Messages;
 import de.hhu.bsinfo.dxutils.StorageUnitGsonSerializer;
 import de.hhu.bsinfo.dxutils.TimeUnitGsonSerializer;
-import de.hhu.bsinfo.dxutils.UnsafeHandler;
 import de.hhu.bsinfo.dxutils.serialization.ObjectSizeUtil;
-import de.hhu.bsinfo.dxutils.stats.ExportStatistics;
 import de.hhu.bsinfo.dxutils.stats.PrintStatistics;
 import de.hhu.bsinfo.dxutils.unit.StorageUnit;
 import de.hhu.bsinfo.dxutils.unit.TimeUnit;
 
 /**
- * Execution: java -Dlog4j.configurationFile=config/log4j.xml -cp lib/gson-2.7.jar:lib/log4j-api-2.7.jar:lib/log4j-core-2.7.jar:dxram.jar de.hhu.bsinfo.dxnet.DXNetMain config/dxnet.json Loopback 127.0.0.1
+ * Execution: java -Dlog4j.configurationFile=config/log4j.xml -cp lib/gson-2.7.jar:lib/log4j-api-2.7.jar:lib/log4j-core-2.7.jar:dxram.jar de.hhu.bsinfo.dxnet.DXNetMain config/dxram.json Loopback 127.0.0.1
  */
 public final class DXNetMain implements MessageReceiver {
     private static final Logger LOGGER = LogManager.getFormatterLogger(DXNetMain.class.getSimpleName());
 
-    private static final boolean POOLING = true;
-    private static final boolean EXPORT_STATISTICS = true;
-
     private static DXNet ms_dxnet;
 
-    private static boolean ms_isServer = false;
-    private static long ms_messageCount;
-    private static int ms_messageSize;
-    private static BenchmarkResponse[] ms_responses;
+    private static int ms_workload = 0;
+    private static long ms_count = 10000;
+    private static int ms_size = 64;
+    private static int ms_threads = 1;
+    private static short ms_ownNodeId;
+    private static ArrayList<Short> ms_targetNodeIds = new ArrayList<>();
 
-    private static boolean ms_serverStart = false;
+    private static DXNetContext ms_context;
+
+    private static DXNetNodeMap ms_nodeMap;
+
+    private static long ms_totalMessages;
+    private static BenchmarkResponse[] ms_responses;
+    private static boolean ms_objectPooling;
     private static volatile boolean ms_remoteFinished = false;
 
-    private long m_timeStart;
-
-    private DXNetMain() {
-        m_timeStart = System.nanoTime();
-    }
+    private static volatile long ms_timeEndReceiver;
+    private static AtomicLong m_messages = new AtomicLong(0);
 
     public static void main(final String[] p_arguments) {
         Locale.setDefault(new Locale("en", "US"));
 
-        // Parse command line arguments
-        if (p_arguments.length < 7) {
-            System.out.println("Usage: config_file mode own_ip role num_messages message_size num_threads [server_ip|client_ip]");
-            System.exit(-1);
-        }
-        String configPath = p_arguments[0];
-        String mode = p_arguments[1].toLowerCase();
-        if (!"messages".equals(mode) && !"requests".equals(mode)) {
-            System.out.println("Mode must be Messages or Requests (case insensitive).");
-            System.exit(-1);
-        }
-        String ownIP = p_arguments[2];
-        String role = p_arguments[3].toLowerCase();
-        if (!"server".equals(role) && !"client".equals(role)) {
-            System.out.println("Role must be Server or Client (case insensitive)." +
-                    " Start one server first and then one client (for Loopback starting one client (without a server) is enough).");
-            System.exit(-1);
-        }
-        if (p_arguments.length == 7) {
-            if ("server".equals(role)) {
-                System.out.println("When starting the server the client_ip must be set (Loopback: 0 or any other number).");
-            } else {
-                System.out.println("When starting the client the server_ip must be set and the server must be running (Loopback: 0 or any other number).");
-            }
-            System.exit(-1);
-        }
-        ms_messageCount = Long.parseLong(p_arguments[4]);
-        ms_messageSize = Integer.parseInt(p_arguments[5]);
-        int threads = Integer.parseInt(p_arguments[6]);
+        processArgs(p_arguments);
+        setupNodeMappings();
+        deviceLoadAndCheck();
 
-        // Load configuration file for network related parameters
-        LOGGER.info("Loading configuration '%s'...", configPath);
-        DXNetContext context = new DXNetContext();
-        File file = new File(configPath);
+        AbstractWorkload[] workloads = new AbstractWorkload[] {new WorkloadA(), new WorkloadB(), new WorkloadC(), new WorkloadD()};
+
+        // first workload, to configure remaining parameters
+        AbstractWorkload workload = workloads[ms_workload];
+        ms_objectPooling = workload.objectPooling();
+
+        // now setup DXNet which already opens receiving
+        setupDXNet();
+
+        try {
+            Thread.sleep(3000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        LOGGER.info("Starting workload (%d threads)", ms_threads);
+        Thread[] threadArray = new Thread[ms_threads];
+
+        for (int i = 0; i < ms_threads; i++) {
+            threadArray[i] = new Thread(workload);
+            threadArray[i].setName(String.valueOf(i));
+        }
+
+        long timeStart = System.nanoTime();
+
+        for (int i = 0; i < ms_threads; i++) {
+            threadArray[i].start();
+        }
+
+        for (int i = 0; i < ms_threads; i++) {
+            try {
+                threadArray[i].join();
+            } catch (InterruptedException ignore) {
+            }
+        }
+
+        LOGGER.info("Workload finished for sender.");
+
+        if (workload.isWithRequests()) {
+            // Printing statistics
+            while (!ms_dxnet.isRequestMapEmpty()) {
+                LockSupport.parkNanos(100);
+            }
+        }
+
+        long timeEndSender = System.nanoTime();
+
+        while (!ms_remoteFinished) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        PrintStatistics.printStatisticsToOutput(System.out);
+        printResults("Sender", timeEndSender - timeStart);
+        printResults("Receiver", ms_timeEndReceiver - timeStart);
+
+        try {
+            Thread.sleep(3000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        ms_dxnet.close();
+
+        System.exit(0);
+    }
+
+    @Override
+    public void onIncomingMessage(final Message p_message) {
+        if (p_message.getSubtype() == Messages.SUBTYPE_BENCHMARK_REQUEST) {
+            BenchmarkResponse response;
+            if (ms_objectPooling) {
+                response = ms_responses[Integer.parseInt(Thread.currentThread().getName().substring(24)) - 1];
+                response.reuse((BenchmarkRequest) p_message, Messages.SUBTYPE_BENCHMARK_RESPONSE);
+                response.setDestination(p_message.getSource());
+            } else {
+                response = new BenchmarkResponse((BenchmarkRequest) p_message);
+            }
+
+            try {
+                ms_dxnet.sendMessage(response);
+            } catch (NetworkException e) {
+                e.printStackTrace();
+            }
+        }
+
+        if (m_messages.incrementAndGet() == ms_totalMessages) {
+            ms_timeEndReceiver = System.nanoTime();
+            ms_remoteFinished = true;
+        }
+    }
+
+    private static void processArgs(final String[] p_args) {
+        // Parse command line arguments
+        if (p_args.length < 1) {
+            System.out.println("To generate a default configuration file:");
+            System.out.println("Args: <config_file>");
+            System.exit(-1);
+        }
+
+        loadConfiguration(p_args[0]);
+
+        if (p_args.length < 7) {
+            System.out.println("To execute benchmarks with a valid configuration file:");
+            System.out.println("Args: <config_file> <workload> <count> <size> <send/app threads> <node id> [send target node ids ...]");
+            System.exit(-1);
+        }
+
+        ms_workload = Integer.parseInt(p_args[1]);
+        if (ms_workload < 0 || ms_workload > 3) {
+            System.out.println("Invalid workload " + ms_workload + " specified");
+            System.exit(-1);
+        }
+
+        ms_count = Long.parseLong(p_args[2]);
+        ms_size = Integer.parseInt(p_args[3]);
+        ms_threads = Integer.parseInt(p_args[4]);
+        ms_ownNodeId = Short.parseShort(p_args[5]);
+
+        for (int i = 6; i < p_args.length; i++) {
+            ms_targetNodeIds.add(Short.parseShort(p_args[i]));
+        }
+
+        ms_totalMessages = ms_count * ms_targetNodeIds.size();
+    }
+
+    private static void loadConfiguration(final String p_configPath) {
+        LOGGER.info("Loading configuration '%s'...", p_configPath);
+        ms_context = new DXNetContext();
+        File file = new File(p_configPath);
+
         Gson gson = new GsonBuilder().setPrettyPrinting().excludeFieldsWithoutExposeAnnotation()
                 .registerTypeAdapter(StorageUnit.class, new StorageUnitGsonSerializer()).registerTypeAdapter(TimeUnit.class, new TimeUnitGsonSerializer())
                 .create();
+
         if (!file.exists()) {
             try {
                 if (!file.createNewFile()) {
@@ -126,7 +232,7 @@ public final class DXNetMain implements MessageReceiver {
                 System.exit(-1);
             }
 
-            String jsonString = gson.toJson(context);
+            String jsonString = gson.toJson(ms_context);
             try {
                 PrintWriter writer = new PrintWriter(file);
                 writer.print(jsonString);
@@ -134,116 +240,140 @@ public final class DXNetMain implements MessageReceiver {
             } catch (final FileNotFoundException e) {
                 // we can ignored this here, already checked that
             }
+
+            LOGGER.info("New configuration file created: %s", file);
         }
 
         JsonElement element = null;
         try {
-            element = gson.fromJson(new String(Files.readAllBytes(Paths.get(configPath))), JsonElement.class);
+            element = gson.fromJson(new String(Files.readAllBytes(Paths.get(p_configPath))), JsonElement.class);
         } catch (final Exception e) {
-            LOGGER.error("Could not load configuration '%s': %s", configPath, e.getMessage());
+            LOGGER.error("Could not load configuration '%s': %s", p_configPath, e.getMessage());
             System.exit(-1);
         }
 
         if (element == null) {
-            LOGGER.error("Could not load configuration '%s': empty configuration file", configPath);
+            LOGGER.error("Could not load configuration '%s': empty configuration file", p_configPath);
             System.exit(-1);
         }
 
         try {
-            context = gson.fromJson(element, DXNetContext.class);
+            ms_context = gson.fromJson(element, DXNetContext.class);
         } catch (final Exception e) {
-            LOGGER.error("Loading configuration '%s' failed: %s", configPath, e.getMessage());
+            LOGGER.error("Loading configuration '%s' failed: %s", p_configPath, e.getMessage());
             System.exit(-1);
         }
 
-        if (context == null) {
-            LOGGER.error("Loading configuration '%s' failed: context null", configPath);
+        if (ms_context == null) {
+            LOGGER.error("Loading configuration '%s' failed: context null", p_configPath);
             System.exit(-1);
         }
 
         // Verify configuration values
-        if (!context.verify()) {
+        if (!ms_context.verify()) {
+            System.exit(-1);
+        }
+    }
+
+    private static void setupNodeMappings() {
+        // Set own node ID and register all participating nodes
+        ms_context.getCoreConfig().setOwnNodeId(ms_ownNodeId);
+        ms_nodeMap = new DXNetNodeMap(ms_context.getCoreConfig().getOwnNodeId());
+
+        // search for own node id mapping
+        boolean found = false;
+        for (DXNetContext.NodeEntry entry : ms_context.getNodeList()) {
+            if (entry.getNodeId() == ms_ownNodeId) {
+                ms_nodeMap.addNode(entry.getNodeId(), new InetSocketAddress(entry.getAddress().getIP(), entry.getAddress().getPort()));
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            LOGGER.error("Could not find node mapping for own node id: 0x%X (%d)", ms_ownNodeId, ms_ownNodeId);
             System.exit(-1);
         }
 
-        if ("Ethernet".equals(context.getCoreConfig().getDevice())) {
+        found = false;
+        for (Short targetNodeId : ms_targetNodeIds) {
+
+            // find in node config
+            for (DXNetContext.NodeEntry entry : ms_context.getNodeList()) {
+                if (entry.getNodeId() == targetNodeId) {
+                    ms_nodeMap.addNode(entry.getNodeId(), new InetSocketAddress(entry.getAddress().getIP(), entry.getAddress().getPort()));
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                LOGGER.warn("Could not find node mapping for target node id: 0x%X (%d), target node ignored", targetNodeId, targetNodeId);
+                ms_targetNodeIds.remove(targetNodeId);
+            }
+        }
+    }
+
+    private static void deviceLoadAndCheck() {
+        // init by network device
+        if ("Ethernet".equals(ms_context.getCoreConfig().getDevice())) {
             LOGGER.debug("Loading ethernet...");
 
-            // Check if given ip address is bound to one of this node's network interfaces
-            boolean found = false;
-            InetSocketAddress socketAddress = new InetSocketAddress(ownIP, 0xFFFF);
-            InetAddress myAddress = socketAddress.getAddress();
-            try {
-                Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
-                outerloop:
-                while (networkInterfaces.hasMoreElements()) {
-                    NetworkInterface currentNetworkInterface = networkInterfaces.nextElement();
-                    Enumeration<InetAddress> addresses = currentNetworkInterface.getInetAddresses();
-                    while (addresses.hasMoreElements()) {
-                        InetAddress currentAddress = addresses.nextElement();
-                        if (myAddress.equals(currentAddress)) {
-                            System.out.printf("%s is bound to %s\n", myAddress.getHostAddress(), currentNetworkInterface.getDisplayName());
-                            found = true;
-                            break outerloop;
-                        }
-                    }
-                }
-            } catch (final SocketException e1) {
-                System.out.printf("Could not get network interfaces for ip confirmation\n");
-            } finally {
-                if (!found) {
-                    System.out.printf("Could not find network interface with address %s\n", myAddress.getHostAddress());
-                    System.exit(-1);
-                }
-            }
-        } else if ("Infiniband".equals(context.getCoreConfig().getDevice())) {
+            ethernetCheckSocketBound();
+        } else if ("Infiniband".equals(ms_context.getCoreConfig().getDevice())) {
             LOGGER.debug("Loading infiniband...");
 
-            System.load(System.getProperty("user.dir") + "/jni/libJNIIbdxnet.so");
-        } else if ("Loopback".equals(context.getCoreConfig().getDevice())) {
-            if ("server".equals(role)) {
-                System.out.println("Server role is not allowed for loopback device");
-                System.exit(-1);
-            }
+            File jniPath = new File(ms_context.getJNIPath());
+            File[] files = jniPath.listFiles();
 
+            if (files != null) {
+                for (File file : files) {
+                    LOGGER.debug("Loading jni file %s...", file);
+                    System.load(file.getAbsolutePath());
+                }
+            }
+        } else if ("Loopback".equals(ms_context.getCoreConfig().getDevice())) {
             LOGGER.debug("Loading loopback...");
         } else {
             // #if LOGGER >= ERROR
-            LOGGER.error("Unknown device %s. Valid options: Ethernet, Infiniband or Loopback.", context.getCoreConfig().getDevice());
+            LOGGER.error("Unknown device %s. Valid options: Ethernet, Infiniband or Loopback.", ms_context.getCoreConfig().getDevice());
             // #endif /* LOGGER >= ERROR */
             System.exit(-1);
         }
+    }
 
-        // Set own node ID and register all participating nodes
-        short destinationNID;
-        NodeMap nodeMap;
-        if ("Loopback".equals(context.getCoreConfig().getDevice())) {
-            // With loopback device one instance is started, only
-            context.getCoreConfig().setOwnNodeId((short) 6);
-            nodeMap = new DXNetNodeMap(context.getCoreConfig().getOwnNodeId());
-            destinationNID = (short) 7;
-            ms_isServer = false;
-        } else {
-            // Server has NodeID 7 (and port 22222 when using Ethernet), client NodeID 6 (and port 22223 when using Ethernet)
-            if ("server".equals(role)) {
-                context.getCoreConfig().setOwnNodeId((short) 7);
-                nodeMap = new DXNetNodeMap(context.getCoreConfig().getOwnNodeId());
-                ((DXNetNodeMap) nodeMap).addNode((short) 7, new InetSocketAddress(ownIP, 22222));
-                ((DXNetNodeMap) nodeMap).addNode((short) 6, new InetSocketAddress(p_arguments[7], 22223));
-                destinationNID = (short) 6;
-                ms_isServer = true;
-            } else {
-                context.getCoreConfig().setOwnNodeId((short) 6);
-                nodeMap = new DXNetNodeMap(context.getCoreConfig().getOwnNodeId());
-                ((DXNetNodeMap) nodeMap).addNode((short) 6, new InetSocketAddress(ownIP, 22223));
-                ((DXNetNodeMap) nodeMap).addNode((short) 7, new InetSocketAddress(p_arguments[7], 22222));
-                destinationNID = (short) 7;
-                ms_isServer = false;
+    private static void ethernetCheckSocketBound() {
+        // Check if given ip address is bound to one of this node's network interfaces
+        boolean found = false;
+        InetSocketAddress socketAddress = ms_nodeMap.getAddress(ms_ownNodeId);
+        InetAddress myAddress = socketAddress.getAddress();
+        try {
+            Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
+            outerloop:
+            while (networkInterfaces.hasMoreElements()) {
+                NetworkInterface currentNetworkInterface = networkInterfaces.nextElement();
+                Enumeration<InetAddress> addresses = currentNetworkInterface.getInetAddresses();
+                while (addresses.hasMoreElements()) {
+                    InetAddress currentAddress = addresses.nextElement();
+                    if (myAddress.equals(currentAddress)) {
+                        System.out.printf("%s is bound to %s\n", myAddress.getHostAddress(), currentNetworkInterface.getDisplayName());
+                        found = true;
+                        break outerloop;
+                    }
+                }
+            }
+        } catch (final SocketException e1) {
+            System.out.printf("Could not get network interfaces for ip confirmation\n");
+        } finally {
+            if (!found) {
+                System.out.printf("Could not find network interface with address %s\n", myAddress.getHostAddress());
+                System.exit(-1);
             }
         }
+    }
 
-        // Initialize DXNet
-        ms_dxnet = new DXNet(context.getCoreConfig(), context.getNIOConfig(), context.getIBConfig(), context.getLoopbackConfig(), nodeMap);
+    private static void setupDXNet() {
+        ms_dxnet = new DXNet(ms_context.getCoreConfig(), ms_context.getNIOConfig(), ms_context.getIBConfig(), ms_context.getLoopbackConfig(), ms_nodeMap);
 
         // Register benchmark message in DXNet
         ms_dxnet.registerMessageType(Messages.DEFAULT_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_MESSAGE, BenchmarkMessage.class);
@@ -252,205 +382,165 @@ public final class DXNetMain implements MessageReceiver {
         ms_dxnet.register(Messages.DEFAULT_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_MESSAGE, new DXNetMain());
         ms_dxnet.register(Messages.DEFAULT_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_REQUEST, new DXNetMain());
         ms_dxnet.register(Messages.DEFAULT_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_RESPONSE, new DXNetMain());
-
-        // Workload
-        Runnable task;
-        if ("messages".equals(mode)) {
-            if (POOLING) {
-                task = () -> {
-                    long messageCount = ms_messageCount / threads;
-                    if (Integer.parseInt(Thread.currentThread().getName()) == threads - 1) {
-                        messageCount += ms_messageCount % threads;
-                    }
-
-                    BenchmarkMessage message = new BenchmarkMessage(destinationNID, ms_messageSize);
-                    for (int i = 0; i < messageCount; i++) {
-                        try {
-                            ms_dxnet.sendMessage(message);
-                        } catch (NetworkException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                };
-            } else {
-                task = () -> {
-                    long messageCount = ms_messageCount / threads;
-                    if (Integer.parseInt(Thread.currentThread().getName()) == threads - 1) {
-                        messageCount += ms_messageCount % threads;
-                    }
-
-                    for (int i = 0; i < messageCount; i++) {
-                        try {
-                            BenchmarkMessage message = new BenchmarkMessage(destinationNID, ms_messageSize);
-                            ms_dxnet.sendMessage(message);
-                        } catch (NetworkException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                };
-            }
-        } else {
-            if (POOLING) {
-                int numberOfMessageHandler = context.getCoreConfig().getNumMessageHandlerThreads();
-                ms_responses = new BenchmarkResponse[numberOfMessageHandler];
-                for (int i = 0; i < numberOfMessageHandler; i++) {
-                    ms_responses[i] = new BenchmarkResponse();
-                }
-
-                task = () -> {
-                    long messageCount = ms_messageCount / threads;
-                    if (Integer.parseInt(Thread.currentThread().getName()) == threads - 1) {
-                        messageCount += ms_messageCount % threads;
-                    }
-
-                    BenchmarkRequest request = new BenchmarkRequest(destinationNID, ms_messageSize);
-                    for (int i = 0; i < messageCount; i++) {
-                        try {
-                            request.reuse();
-                            ms_dxnet.sendSync(request, -1, true);
-                        } catch (NetworkException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                };
-            } else {
-                task = () -> {
-                    long messageCount = ms_messageCount / threads;
-                    if (Integer.parseInt(Thread.currentThread().getName()) == threads - 1) {
-                        messageCount += ms_messageCount % threads;
-                    }
-
-                    for (int i = 0; i < messageCount; i++) {
-                        try {
-                            BenchmarkRequest request = new BenchmarkRequest(destinationNID, ms_messageSize);
-                            ms_dxnet.sendSync(request, -1, true);
-                        } catch (NetworkException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                };
-            }
-        }
-
-        if ("server".equals(role)) {
-            // Server answers requests, only -> let main thread wait
-            while (!ms_serverStart) {
-                try {
-                    Thread.sleep(1);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                UnsafeHandler.getInstance().getUnsafe().loadFence();
-            }
-        }
-
-        long timeStart = System.nanoTime();
-        LOGGER.info("Starting workload...");
-        Thread[] threadArray = new Thread[threads];
-        for (int i = 0; i < threads; i++) {
-            threadArray[i] = new Thread(task);
-            threadArray[i].setName(String.valueOf(i));
-            threadArray[i].start();
-        }
-
-        for (int i = 0; i < threads; i++) {
-            try {
-                threadArray[i].join();
-            } catch (InterruptedException ignore) {
-            }
-        }
-        LOGGER.info("Workload finished on sender.");
-
-        if ("requests".equals(mode)) {
-            // Printing statistics
-            while (!ms_dxnet.isRequestMapEmpty()) {
-                LockSupport.parkNanos(100);
-            }
-
-            if (EXPORT_STATISTICS) {
-                ExportStatistics.writeStatisticsToFile(System.getProperty("user.dir") + "/stats/DXNetMain/" + role + '/');
-            } else {
-                PrintStatistics.printStatisticsToOutput(System.out);
-            }
-
-            long timeDiff = System.nanoTime() - timeStart;
-            LOGGER.info("Runtime: %d ms", timeDiff / 1000 / 1000);
-            LOGGER.info("Time per message: %d ns", timeDiff / ms_messageCount);
-            LOGGER.info("Throughput: %f MB/s", (double) ms_messageCount * ms_messageSize / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000));
-            LOGGER.info("Throughput (with overhead): %f MB/s",
-                    (double) ms_messageCount * (ms_messageSize + ObjectSizeUtil.sizeofCompactedNumber(ms_messageSize) + 10) / 1024 / 1024 /
-                            ((double) timeDiff / 1000 / 1000 / 1000));
-        }
-
-        while (!ms_remoteFinished) {
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-        try {
-            Thread.sleep(3000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        System.exit(0);
     }
 
-    private AtomicLong m_messages = new AtomicLong(0);
+    private static void printResults(final String p_name, final long p_timeDiffNs) {
+        LOGGER.info("%s results:\n" + "Workload: %d\n" + "Runtime: %d ms\n" + "Time per message: %d ns\n" + "Throughput: %f MB/s\n" +
+                        "Throughput (with overhead): %f MB/s\n", p_name, ms_workload, p_timeDiffNs / 1000 / 1000, p_timeDiffNs / ms_count,
+                (double) ms_count * ms_size / 1024 / 1024 / ((double) p_timeDiffNs / 1000 / 1000 / 1000),
+                (double) ms_count * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
+                        ((double) p_timeDiffNs / 1000 / 1000 / 1000));
+    }
 
-    @Override
-    public void onIncomingMessage(Message p_message) {
-        short destinationNID;
+    private static abstract class AbstractWorkload implements Runnable {
+        private boolean m_withRequests;
+        private boolean m_objectPooling;
 
-        if (ms_isServer) {
-            if (!ms_serverStart) {
-                ms_serverStart = true;
-                UnsafeHandler.getInstance().getUnsafe().storeFence();
-            }
-            destinationNID = (short) 6;
-        } else {
-            destinationNID = (short) 7;
+        AbstractWorkload(final boolean p_withRequests, final boolean p_objectPooling) {
+            m_withRequests = p_withRequests;
+            m_objectPooling = p_objectPooling;
         }
 
-        if (p_message.getSubtype() == Messages.SUBTYPE_BENCHMARK_REQUEST) {
-            BenchmarkResponse response;
-            if (POOLING) {
-                response = ms_responses[Integer.parseInt(Thread.currentThread().getName().substring(24)) - 1];
-                response.reuse((BenchmarkRequest) p_message, Messages.SUBTYPE_BENCHMARK_RESPONSE);
-            } else {
-                response = new BenchmarkResponse((BenchmarkRequest) p_message);
-            }
-            response.setDestination(destinationNID);
+        boolean isWithRequests() {
+            return m_withRequests;
+        }
 
-            try {
-                ms_dxnet.sendMessage(response);
-            } catch (NetworkException e) {
-                e.printStackTrace();
+        boolean objectPooling() {
+            return m_objectPooling;
+        }
+    }
+
+    // msg + pooling = a
+    private static class WorkloadA extends AbstractWorkload {
+
+        WorkloadA() {
+            super(false, true);
+        }
+
+        @Override
+        public void run() {
+            long messageCount = ms_count / ms_threads;
+            if (Integer.parseInt(Thread.currentThread().getName()) == ms_threads - 1) {
+                messageCount += ms_count % ms_threads;
             }
 
-            if (m_messages.incrementAndGet() == ms_messageCount) {
-                ms_remoteFinished = true;
+            BenchmarkMessage[] messages = new BenchmarkMessage[ms_targetNodeIds.size()];
+            for (int i = 0; i < messages.length; i++) {
+                messages[i] = new BenchmarkMessage(ms_targetNodeIds.get(i), ms_size);
             }
-        } else {
-            if (m_messages.incrementAndGet() == ms_messageCount) {
-                LOGGER.info("Workload finished on receiver.");
 
-                if (EXPORT_STATISTICS) {
-                    ExportStatistics.writeStatisticsToFile(System.getProperty("user.dir") + "/stats/DXNetMain/client/");
-                } else {
-                    PrintStatistics.printStatisticsToOutput(System.out);
+            for (int i = 0; i < messageCount; i++) {
+                for (int j = 0; j < ms_targetNodeIds.size(); j++) {
+                    try {
+                        ms_dxnet.sendMessage(messages[j]);
+                    } catch (NetworkException e) {
+                        e.printStackTrace();
+                        // repeat until successful
+                        --j;
+                        LockSupport.parkNanos(100);
+                    }
                 }
+            }
+        }
+    }
 
-                long timeDiff = System.nanoTime() - m_timeStart;
-                LOGGER.info("Runtime: %d ms", timeDiff / 1000 / 1000);
-                LOGGER.info("Time per message: %d ns", timeDiff / ms_messageCount);
-                LOGGER.info("Throughput: %f MB/s", (double) ms_messageCount * ms_messageSize / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000));
-                LOGGER.info("Throughput (with overhead): %f MB/s",
-                        (double) ms_messageCount * (ms_messageSize + ObjectSizeUtil.sizeofCompactedNumber(ms_messageSize) + 10) / 1024 / 1024 /
-                                ((double) timeDiff / 1000 / 1000 / 1000));
+    // msg + no pooling = b
+    private static class WorkloadB extends AbstractWorkload {
 
-                ms_remoteFinished = true;
+        WorkloadB() {
+            super(false, false);
+        }
+
+        @Override
+        public void run() {
+            long messageCount = ms_count / ms_threads;
+            if (Integer.parseInt(Thread.currentThread().getName()) == ms_threads - 1) {
+                messageCount += ms_count % ms_threads;
+            }
+
+            for (int i = 0; i < messageCount; i++) {
+                for (int j = 0; j < ms_targetNodeIds.size(); j++) {
+                    try {
+                        BenchmarkMessage message = new BenchmarkMessage(ms_targetNodeIds.get(j), ms_size);
+                        ms_dxnet.sendMessage(message);
+                    } catch (NetworkException e) {
+                        e.printStackTrace();
+                        // repeat until successful
+                        --j;
+                        LockSupport.parkNanos(100);
+                    }
+                }
+            }
+        }
+    }
+
+    // req + pooling = c
+    private static class WorkloadC extends AbstractWorkload {
+
+        WorkloadC() {
+            super(true, true);
+
+            int numberOfMessageHandler = ms_context.getCoreConfig().getNumMessageHandlerThreads();
+            ms_responses = new BenchmarkResponse[numberOfMessageHandler];
+            for (int i = 0; i < numberOfMessageHandler; i++) {
+                ms_responses[i] = new BenchmarkResponse();
+            }
+        }
+
+        @Override
+        public void run() {
+            long messageCount = ms_count / ms_threads;
+            if (Integer.parseInt(Thread.currentThread().getName()) == ms_threads - 1) {
+                messageCount += ms_count % ms_threads;
+            }
+
+            BenchmarkRequest[] requests = new BenchmarkRequest[ms_targetNodeIds.size()];
+            for (int i = 0; i < requests.length; i++) {
+                requests[i] = new BenchmarkRequest(ms_targetNodeIds.get(i), ms_size);
+            }
+
+            for (int i = 0; i < messageCount; i++) {
+                for (int j = 0; j < ms_targetNodeIds.size(); j++) {
+                    try {
+                        requests[j].reuse();
+                        ms_dxnet.sendSync(requests[j], -1, true);
+                    } catch (NetworkException e) {
+                        e.printStackTrace();
+                        // repeat until successful
+                        --j;
+                        LockSupport.parkNanos(100);
+                    }
+                }
+            }
+        }
+    }
+
+    // req + no pooling = d
+    private static class WorkloadD extends AbstractWorkload {
+
+        WorkloadD() {
+            super(true, false);
+        }
+
+        @Override
+        public void run() {
+            long messageCount = ms_count / ms_threads;
+            if (Integer.parseInt(Thread.currentThread().getName()) == ms_threads - 1) {
+                messageCount += ms_count % ms_threads;
+            }
+
+            for (int i = 0; i < messageCount; i++) {
+                for (int j = 0; j < ms_targetNodeIds.size(); j++) {
+                    try {
+                        BenchmarkRequest request = new BenchmarkRequest(ms_targetNodeIds.get(j), ms_size);
+                        ms_dxnet.sendSync(request, -1, true);
+                    } catch (NetworkException e) {
+                        e.printStackTrace();
+                        // repeat until successful
+                        --j;
+                        LockSupport.parkNanos(100);
+                    }
+                }
             }
         }
     }

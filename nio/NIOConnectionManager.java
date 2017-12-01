@@ -440,7 +440,9 @@ public class NIOConnectionManager extends AbstractConnectionManager {
                     m_connectionCreationLock.unlock();
 
                     // Trigger failure handling for remote node over faulty connection
-                    m_listener.connectionLost(connection.getDestinationNodeID());
+                    if (m_listener != null) {
+                        m_listener.connectionLost(connection.getDestinationNodeID());
+                    }
                 }
             }
         }

@@ -219,7 +219,9 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
         m_connectionCreationLock.unlock();
 
         // Trigger failure handling for remote node over faulty connection
-        m_listener.connectionLost(p_connection.getDestinationNodeID());
+        if (m_listener != null) {
+            m_listener.connectionLost(p_connection.getDestinationNodeID());
+        }
     }
 
     @Override

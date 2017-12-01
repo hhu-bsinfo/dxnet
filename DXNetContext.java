@@ -13,6 +13,9 @@
 
 package de.hhu.bsinfo.dxnet;
 
+import java.io.File;
+import java.util.ArrayList;
+
 import com.google.gson.annotations.Expose;
 
 import org.apache.logging.log4j.LogManager;
@@ -22,6 +25,7 @@ import de.hhu.bsinfo.dxnet.core.CoreConfig;
 import de.hhu.bsinfo.dxnet.ib.IBConfig;
 import de.hhu.bsinfo.dxnet.loopback.LoopbackConfig;
 import de.hhu.bsinfo.dxnet.nio.NIOConfig;
+import de.hhu.bsinfo.dxutils.unit.IPV4Unit;
 
 /**
  * Context object with settings for DXNet
@@ -34,6 +38,18 @@ public class DXNetContext {
     /**
      * DXNet specific settings
      */
+    @Expose
+    private String m_jniPath = "jni";
+
+    @Expose
+    private ArrayList<NodeEntry> m_nodesConfig = new ArrayList<NodeEntry>() {
+        {
+            // default values for local testing
+            add(new NodeEntry((short) 0, new IPV4Unit("127.0.0.1", 22221)));
+            add(new NodeEntry((short) 1, new IPV4Unit("127.0.0.1", 22222)));
+        }
+    };
+
     @Expose
     private CoreConfig m_coreConfig = new CoreConfig();
 
@@ -51,6 +67,24 @@ public class DXNetContext {
      */
     DXNetContext() {
 
+    }
+
+    /**
+     * Get the path to the jni folder (e.g. IB jni lib)
+     *
+     * @return Path to folder with jni libs
+     */
+    String getJNIPath() {
+        return m_jniPath;
+    }
+
+    /**
+     * Get the nodes list
+     *
+     * @return Array with node entries
+     */
+    ArrayList<NodeEntry> getNodeList() {
+        return m_nodesConfig;
     }
 
     /**
@@ -93,6 +127,20 @@ public class DXNetContext {
      * @return
      */
     protected boolean verify() {
+        if (!new File(m_jniPath).exists()) {
+            // #if LOGGER >= ERROR
+            LOGGER.error("Path for JNI libs %s does not exist", m_jniPath);
+            // #endif /* LOGGER >= ERROR */
+            return false;
+        }
+
+        if (m_nodesConfig.size() < 2) {
+            // #if LOGGER >= ERROR
+            LOGGER.error("Less than two nodes found in nodes config. At least two nodes required");
+            // #endif /* LOGGER >= ERROR */
+            return false;
+        }
+
         if (m_coreConfig.getRequestMapSize() <= (int) Math.pow(2, 15)) {
             // #if LOGGER >= WARN
             LOGGER.warn("Request map entry count is rather small. Requests might be discarded!");
@@ -164,4 +212,66 @@ public class DXNetContext {
         return true;
     }
 
+    /**
+     * Describes a nodes configuration entry
+     *
+     * @author Stefan Nothaas, stefan.nothaas@hhu.de, 29.11.2017
+     */
+    static final class NodeEntry {
+
+        /**
+         * Node id of the instance
+         */
+        @Expose
+        private short m_nodeId = -1;
+
+        /**
+         * Address and port of the instance
+         */
+        @Expose
+        private IPV4Unit m_address = new IPV4Unit("127.0.0.1", 22222);
+
+        /**
+         * Creates an instance of NodeEntry
+         */
+        NodeEntry() {
+
+        }
+
+        /**
+         * Creates an instance of NodeEntry
+         *
+         * @param p_nodeId
+         *         node id of the node
+         * @param p_address
+         *         address of the node
+         */
+        NodeEntry(final short p_nodeId, final IPV4Unit p_address) {
+            m_nodeId = p_nodeId;
+            m_address = p_address;
+        }
+
+        /**
+         * Get the node id of the node
+         *
+         * @return node id
+         */
+        public short getNodeId() {
+            return m_nodeId;
+        }
+
+        /**
+         * Gets the address of the node
+         *
+         * @return the address of the node
+         */
+        public IPV4Unit getAddress() {
+            return m_address;
+        }
+
+        @Override
+        public String toString() {
+            return "NodeEntry [m_nodeId=" + m_nodeId + "m_address=" + m_address + ']';
+        }
+    }
 }

@@ -232,11 +232,11 @@ public final class DXNet {
      * Closes the network
      */
     public void close() {
-        m_messageHandlers.close();
+        m_connectionManager.close();
 
         m_messageCreationCoordinator.shutdown();
 
-        m_connectionManager.close();
+        m_messageHandlers.close();
     }
 
     /**
