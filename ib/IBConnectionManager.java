@@ -276,7 +276,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
                 prevConnection.getPipeOut().dataProcessed(p_prevDataWrittenLen);
             } catch (final NetworkException e) {
                 // #if LOGGER >= ERROR
-                LOGGER.trace("Getting connection 0x%X for previous data written failed", p_prevNodeIdWritten);
+                LOGGER.error("Getting connection 0x%X for previous data written failed", p_prevNodeIdWritten);
                 // #endif /* LOGGER >= ERROR */
             }
         }
@@ -306,6 +306,12 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
         m_sendThreadRetArgs.clear();
 
         long interests = m_writeInterestManager.consumeInterests(nodeId);
+
+        if (interests == 0) {
+            // #if LOGGER >= ERROR
+            LOGGER.error("No interests available but interest manager has write interest set, probably a bug");
+            // #endif /* LOGGER >= ERROR */
+        }
 
         // process data interests
         if ((int) interests > 0) {
