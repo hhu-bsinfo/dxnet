@@ -17,6 +17,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import de.hhu.bsinfo.dxutils.NodeID;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Manager for write interests of all connections
@@ -65,7 +66,7 @@ class IBWriteInterestManager {
      */
     void pushBackFcInterest(final short p_nodeId) {
         // #if LOGGER == TRACE
-        LOGGER.trace("pushBackDataInterest: 0x%X", p_nodeId);
+        LOGGER.trace("pushBackFCInterest: 0x%X", p_nodeId);
         // #endif /* LOGGER == TRACE */
 
         if (m_writeInterests[p_nodeId & 0xFFFF].addFcInterest()) {
@@ -83,13 +84,7 @@ class IBWriteInterestManager {
      * @return Node id with at least a single write interest available
      */
     short getNextInterests() {
-        short nodeId = m_interestQueue.popFront();
-
-        if (nodeId == NodeID.INVALID_ID) {
-            return NodeID.INVALID_ID;
-        }
-
-        return nodeId;
+        return m_interestQueue.popFront();
     }
 
     /**

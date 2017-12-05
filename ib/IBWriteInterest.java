@@ -15,9 +15,6 @@ package de.hhu.bsinfo.dxnet.ib;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import de.hhu.bsinfo.dxutils.NodeID;
 
 /**
@@ -44,7 +41,7 @@ class IBWriteInterest {
     @Override
     public String toString() {
         long tmp = m_interestsAvailable.get();
-        return NodeID.toHexString(m_nodeId) + ", " + (tmp & 0x7FFFFFFF) + ", " + (tmp >> 32);
+        return NodeID.toHexString(m_nodeId) + ", " + (tmp & 0x7FFFFFFF) + ", " + ((tmp >> 32) & 0x7FFFFFFF);
     }
 
     /**
