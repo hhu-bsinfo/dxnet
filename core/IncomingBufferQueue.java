@@ -14,6 +14,7 @@
 package de.hhu.bsinfo.dxnet.core;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 
 import org.apache.logging.log4j.LogManager;
@@ -53,6 +54,8 @@ public class IncomingBufferQueue {
     private int m_posBack; // 31 bits used (see incrementation)
     private int m_posFront; // 31 bits used (see incrementation)
 
+    private AtomicLong m_queueFullCounter;
+
     /**
      * Creates an instance of IncomingBufferQueue
      *
@@ -76,6 +79,8 @@ public class IncomingBufferQueue {
         m_posFront = 0;
 
         m_incomingBuffer = new IncomingBuffer();
+
+        m_queueFullCounter = new AtomicLong(0);
     }
 
     /**
@@ -135,9 +140,12 @@ public class IncomingBufferQueue {
         if (m_currentBytes.get() >= m_maxBytes || (m_posBack + SIZE & 0x7FFFFFFF) == m_posFront) {
             // Avoid congestion by not allowing more than a predefined number of buffers to be cached for importing
 
-            // #if LOGGER == WARN
-            LOGGER.warn("IBQ is full!");
-            // #endif /* LOGGER == WARN */
+            // avoid flooding the log
+            if (m_queueFullCounter.getAndIncrement() % 100000 == 0) {
+                // #if LOGGER == WARN
+                LOGGER.warn("IBQ is full, count: %d", m_queueFullCounter.get());
+                // #endif /* LOGGER == WARN */
+            }
 
             // #ifdef STATISTICS
             SOP_WAIT_PUSH.enter();
