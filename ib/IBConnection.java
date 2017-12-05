@@ -13,6 +13,7 @@
 
 package de.hhu.bsinfo.dxnet.ib;
 
+import de.hhu.bsinfo.dxnet.NetworkDestinationUnreachableException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -60,13 +61,13 @@ class IBConnection extends AbstractConnection<IBPipeIn, IBPipeOut> {
     IBConnection(final short p_ownNodeId, final short p_destinationNodeId, final int p_outBufferSize, final int p_flowControlWindowSize,
             final float p_flowControlWindowThreshold, final MessageHeaderPool p_messageHeaderPool, final MessageDirectory p_messageDirectory,
             final RequestMap p_requestMap, final AbstractExporterPool p_exporterPool, final MessageHandlers p_messageHandlers,
-            final IBWriteInterestManager p_writeInterestManager) {
+            final IBWriteInterestManager p_writeInterestManager) throws NetworkDestinationUnreachableException {
         super(p_ownNodeId);
 
         long sendBufferAddr = JNIIbdxnet.getSendBufferAddress(p_destinationNodeId);
         if (sendBufferAddr == -1) {
             // might happen on disconnect or if connection is not established in the ibnet subsystem
-            throw new IllegalStateException();
+            throw new NetworkDestinationUnreachableException(p_destinationNodeId);
         }
 
         IBFlowControl flowControl = new IBFlowControl(p_destinationNodeId, p_flowControlWindowSize, p_flowControlWindowThreshold, p_writeInterestManager);

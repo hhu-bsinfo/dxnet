@@ -177,7 +177,6 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
             throw new NetworkDestinationUnreachableException(p_destination);
         }
 
-        m_connectionCreationLock.lock();
         // FIXME see fixme on AbstractConnectionManager
         if (m_openConnections == m_config.getMaxConnections()) {
             // dismissRandomConnection();
@@ -191,8 +190,6 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
                     m_requestMap, m_exporterPool, m_messageHandlers, m_writeInterestManager);
             m_openConnections++;
         }
-
-        m_connectionCreationLock.unlock();
 
         connection.setPipeInConnected(true);
         connection.setPipeOutConnected(true);
@@ -209,14 +206,12 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
         p_connection.setPipeInConnected(false);
         p_connection.setPipeOutConnected(false);
 
-        m_connectionCreationLock.lock();
         AbstractConnection tmp = m_connections[p_connection.getDestinationNodeID() & 0xFFFF];
         if (p_connection.equals(tmp)) {
             p_connection.close(p_removeConnection);
             m_connections[p_connection.getDestinationNodeID() & 0xFFFF] = null;
             m_openConnections--;
         }
-        m_connectionCreationLock.unlock();
 
         // Trigger failure handling for remote node over faulty connection
         if (m_listener != null) {
