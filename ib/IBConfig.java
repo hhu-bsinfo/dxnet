@@ -43,16 +43,16 @@ public class IBConfig {
     private StorageUnit m_outgoingRingBufferSize = new StorageUnit(1, StorageUnit.MB);
 
     @Expose
-    private StorageUnit m_incomingBufferSize = new StorageUnit(1, StorageUnit.MB);
+    private StorageUnit m_incomingBufferSize = new StorageUnit(8, StorageUnit.KB);
 
     @Expose
-    private StorageUnit m_incomingBufferPoolTotalSize = new StorageUnit(2, StorageUnit.GB);
+    private StorageUnit m_incomingBufferPoolTotalSize = new StorageUnit(512, StorageUnit.MB);
 
     @Expose
     private int m_maxSendReqs = 10;
 
     @Expose
-    private int m_maxRecvReqs = 200;
+    private int m_maxRecvReqs = 100;
 
     @Expose
     private int m_flowControlMaxRecvReqs = 100;
