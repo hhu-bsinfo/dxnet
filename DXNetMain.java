@@ -73,8 +73,10 @@ public final class DXNetMain implements MessageReceiver {
     private static boolean ms_objectPooling;
     private static volatile boolean ms_remoteFinished = false;
 
+    private static volatile long ms_timeStart;
     private static volatile long ms_timeEndReceiver;
-    private static AtomicLong m_messages = new AtomicLong(0);
+    private static AtomicLong ms_messagesRecived = new AtomicLong(0);
+    private static AtomicLong ms_messagesSent = new AtomicLong(0);
 
     public static void main(final String[] p_arguments) {
         Locale.setDefault(new Locale("en", "US"));
@@ -100,13 +102,16 @@ public final class DXNetMain implements MessageReceiver {
 
         LOGGER.info("Starting workload (%d threads)", ms_threads);
         Thread[] threadArray = new Thread[ms_threads];
+        ProgressThread progressThread = new ProgressThread(1000);
+
+        progressThread.start();
 
         for (int i = 0; i < ms_threads; i++) {
             threadArray[i] = new Thread(workload);
             threadArray[i].setName(String.valueOf(i));
         }
 
-        long timeStart = System.nanoTime();
+        ms_timeStart = System.nanoTime();
 
         for (int i = 0; i < ms_threads; i++) {
             threadArray[i].start();
@@ -138,9 +143,11 @@ public final class DXNetMain implements MessageReceiver {
             }
         }
 
+        progressThread.shutdown();
+
         PrintStatistics.printStatisticsToOutput(System.out);
-        printResults("Sender", timeEndSender - timeStart);
-        printResults("Receiver", ms_timeEndReceiver - timeStart);
+        printResults("Sender", timeEndSender - ms_timeStart);
+        printResults("Receiver", ms_timeEndReceiver - ms_timeStart);
 
         try {
             Thread.sleep(3000);
@@ -172,7 +179,7 @@ public final class DXNetMain implements MessageReceiver {
             }
         }
 
-        if (m_messages.incrementAndGet() == ms_totalMessages) {
+        if (ms_messagesRecived.incrementAndGet() == ms_totalMessages) {
             ms_timeEndReceiver = System.nanoTime();
             ms_remoteFinished = true;
         }
@@ -204,6 +211,9 @@ public final class DXNetMain implements MessageReceiver {
         ms_size = Integer.parseInt(p_args[3]);
         ms_threads = Integer.parseInt(p_args[4]);
         ms_ownNodeId = Short.parseShort(p_args[5]);
+
+        System.out.printf("Parameters: workload %d, count %d, size %d, threads %d, own node id 0x%X\n", ms_workload, ms_count, ms_size,
+            ms_threads, ms_ownNodeId);
 
         for (int i = 6; i < p_args.length; i++) {
             ms_targetNodeIds.add(Short.parseShort(p_args[i]));
@@ -439,6 +449,8 @@ public final class DXNetMain implements MessageReceiver {
                         --j;
                         LockSupport.parkNanos(100);
                     }
+
+                    ms_messagesSent.incrementAndGet();
                 }
             }
         }
@@ -469,6 +481,8 @@ public final class DXNetMain implements MessageReceiver {
                         --j;
                         LockSupport.parkNanos(100);
                     }
+
+                    ms_messagesSent.incrementAndGet();
                 }
             }
         }
@@ -510,6 +524,8 @@ public final class DXNetMain implements MessageReceiver {
                         --j;
                         LockSupport.parkNanos(100);
                     }
+
+                    ms_messagesSent.incrementAndGet();
                 }
             }
         }
@@ -540,7 +556,52 @@ public final class DXNetMain implements MessageReceiver {
                         --j;
                         LockSupport.parkNanos(100);
                     }
+
+                    ms_messagesSent.incrementAndGet();
                 }
+            }
+        }
+    }
+
+    private static class ProgressThread extends Thread {
+        private volatile boolean m_run = true;
+        private int m_intervalMs;
+
+        public ProgressThread(final int p_intervalMs) {
+            m_intervalMs = p_intervalMs;
+        }
+
+        public void shutdown() {
+            m_run = false;
+
+            try {
+                join();
+            } catch (InterruptedException ignored) {
+
+            }
+        }
+
+        @Override
+        public void run() {
+            while (m_run) {
+                try {
+                    Thread.sleep(m_intervalMs);
+                } catch (InterruptedException ignored) {
+
+                }
+
+                long messagesSent = ms_messagesSent.get();
+                long messagesRecv = ms_messagesRecived.get();
+
+                long timeDiff = System.nanoTime() - ms_timeStart;
+                System.out.printf("[Progress] %d sec: Sent %d%% (%d), Recv %d%% (%d), TX %f, RX %f, TXO %f, RXO %f\n", timeDiff / 1000 / 1000 / 1000,
+                    (int) ((float) messagesSent / ms_count * 100), messagesSent, (int) ((float) messagesRecv / ms_count * 100), messagesRecv,
+                    (double) messagesSent * ms_size / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000),
+                    (double) messagesRecv * ms_size / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000),
+                    (double) messagesSent * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
+                        ((double) timeDiff / 1000 / 1000 / 1000),
+                    (double) messagesRecv * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
+                        ((double) timeDiff / 1000 / 1000 / 1000));
             }
         }
     }
