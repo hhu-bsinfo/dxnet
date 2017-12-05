@@ -305,8 +305,11 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
         // assemble arguments for struct to pass back to jni
         m_sendThreadRetArgs.clear();
 
+        boolean noDataAvailable = true;
         long interests = m_writeInterestManager.consumeInterests(nodeId);
 
+        // interest queue and interest count MUST stay on sync. otherwise, something's not right with the
+        // interest manager (bug)
         if (interests == 0) {
             // #if LOGGER >= ERROR
             LOGGER.error("No interests available but interest manager has write interest set, probably a bug");
@@ -319,19 +322,28 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
             int relPosBackRel = (int) (pos >> 32 & 0x7FFFFFFF);
             int relPosFrontRel = (int) (pos & 0x7FFFFFFF);
 
-            // relative position of data start in buffer
-            m_sendThreadRetArgs.putInt(relPosFrontRel);
-            // relative position of data end in buffer
-            m_sendThreadRetArgs.putInt(relPosBackRel);
+            if (relPosBackRel != relPosFrontRel) {
+                // relative position of data start in buffer
+                m_sendThreadRetArgs.putInt(relPosFrontRel);
+                // relative position of data end in buffer
+                m_sendThreadRetArgs.putInt(relPosBackRel);
 
-            // #if LOGGER >= TRACE
-            LOGGER.trace("Next data write on node 0x%X, posFrontRelative %d, posBackRelative %d", nodeId, relPosFrontRel, relPosBackRel);
-            // #endif /* LOGGER >= TRACE */
+                // #if LOGGER >= TRACE
+                LOGGER.trace("Next data write on node 0x%X, posFrontRelative %d, posBackRelative %d", nodeId, relPosFrontRel, relPosBackRel);
+                // #endif /* LOGGER >= TRACE */
 
-            // check if outgoing is empty or if we got the first part of a wrap around
-            // if wrap around -> push back a new interest to not forget the wrap around
-            if (!connection.getPipeOut().isOutgoingQueueEmpty()) {
-                m_writeInterestManager.pushBackDataInterest(nodeId);
+                // check if outgoing is empty or if we got the first part of a wrap around
+                // if wrap around -> push back a new interest to not forget the wrap around
+                if (!connection.getPipeOut().isOutgoingQueueEmpty()) {
+                    m_writeInterestManager.pushBackDataInterest(nodeId);
+                }
+
+                noDataAvailable = false;
+            } else {
+                // we got an interest but no data is available because the data was already sent with the previous
+                // interest (non harmful data race between ORB and interest manager)
+                m_sendThreadRetArgs.putInt(0);
+                m_sendThreadRetArgs.putInt(0);
             }
         } else {
             // no data to write, fc only
@@ -343,14 +355,30 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
         if (interests >> 32 > 0) {
             int fcData = connection.getPipeOut().getFlowControlToWrite();
 
-            m_sendThreadRetArgs.putInt(fcData);
+            if (fcData != 0) {
+                m_sendThreadRetArgs.putInt(fcData);
 
-            // #if LOGGER >= TRACE
-            LOGGER.trace("Next flow control write on node 0x%X, fc data %d", nodeId, fcData);
-            // #endif /* LOGGER >= TRACE */
+                // #if LOGGER >= TRACE
+                LOGGER.trace("Next flow control write on node 0x%X, fc data %d", nodeId, fcData);
+                // #endif /* LOGGER >= TRACE */
+
+                noDataAvailable = false;
+            } else {
+                // and again, we got an interest but no FC data is available because the FC data was already sent with the previous
+                // interest (non harmful data race between ORB/flow control and interest manager)
+                m_sendThreadRetArgs.putInt(0);
+            }
         } else {
             // data only, no fc
             m_sendThreadRetArgs.putInt(0);
+        }
+
+        // due to the non harmful data race, we might end up getting interests from the manager but have no data to send
+        // because the previous interest already consumed more data than initially supposed to which is good because
+        // we aggregated more data on a single send call
+        // however, return null data to put the send thread back to sleep
+        if (noDataAvailable) {
+            return 0;
         }
 
         // node id
