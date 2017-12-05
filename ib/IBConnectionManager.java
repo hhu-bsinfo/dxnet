@@ -387,40 +387,52 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
     }
 
     @Override
-    public void receivedBuffer(final short p_sourceNodeId, final long p_bufferHandle, final long p_addr, final int p_length) {
+    public void received(final short p_fcSourceNodeId, final int p_fcBytes, final short p_dataSourceNodeId,
+            final long p_dataBufferHandle, final long p_dataAddr, final int p_dataLength) {
         // #if LOGGER >= TRACE
-        LOGGER.trace("Received buffer (0x%X, %d) from 0x%X", p_addr, p_length, p_sourceNodeId);
+        LOGGER.trace("Received, FC (0x%X, %d), data (0x%X, 0x%X 0x%X %d)", p_fcSourceNodeId, p_fcBytes, p_dataSourceNodeId,
+            p_dataBufferHandle, p_dataAddr, p_dataLength);
         // #endif /* LOGGER >= TRACE */
 
-        IBConnection connection;
-        try {
-            connection = (IBConnection) getConnection(p_sourceNodeId);
-        } catch (final NetworkException e) {
-            // #if LOGGER >= ERROR
-            LOGGER.error("Getting connection for recv buffer of node 0x%X failed", p_sourceNodeId, e);
-            // #endif /* LOGGER >= ERROR */
-            return;
+        IBConnection connection = null;
+
+        if (p_fcBytes != 0) {
+            try {
+                connection = (IBConnection) getConnection(p_fcSourceNodeId);
+            } catch (final NetworkException e) {
+                // #if LOGGER >= ERROR
+                LOGGER.error("Getting connection for FC recv of node 0x%X failed, leaking FC data", p_fcSourceNodeId, e);
+                // #endif /* LOGGER >= ERROR */
+
+                // if that happens we lose data which is quite bad...I don't see any proper fix for this atm
+                return;
+            }
+
+            connection.getPipeIn().handleFlowControlData(p_fcBytes);
         }
 
-        m_incomingBufferQueue.pushBuffer(connection, null, p_bufferHandle, p_addr, p_length);
-    }
+        if (p_dataBufferHandle != 0) {
+            if (p_fcSourceNodeId != p_dataSourceNodeId) {
+                try {
+                    connection = (IBConnection) getConnection(p_dataSourceNodeId);
+                } catch (final NetworkException e) {
+                    // #if LOGGER >= ERROR
+                    LOGGER.error("Getting connection for data recv of node 0x%X failed, leaking buffers",
+                        p_dataSourceNodeId, e);
+                    // #endif /* LOGGER >= ERROR */
 
-    @Override
-    public void receivedFlowControlData(final short p_sourceNodeId, final int p_bytes) {
-        // #if LOGGER >= TRACE
-        LOGGER.trace("Received flow control data (%d) from 0x%X", p_bytes, p_sourceNodeId);
-        // #endif /* LOGGER >= TRACE */
+                    // if that happens we lose data/buffers which is quite bad...I don't see any proper fix for this atm
+                    return;
+                }
+            }
 
-        IBConnection connection;
-        try {
-            connection = (IBConnection) getConnection(p_sourceNodeId);
-        } catch (final NetworkException e) {
-            // #if LOGGER >= ERROR
-            LOGGER.error("Getting connection for recv flow control data of node 0x%X failed", p_sourceNodeId, e);
-            // #endif /* LOGGER >= ERROR */
-            return;
+            m_incomingBufferQueue.pushBuffer(connection, null, p_dataBufferHandle, p_dataAddr, p_dataLength);
         }
 
-        connection.getPipeIn().handleFlowControlData(p_bytes);
+        if (connection == null) {
+            // #if LOGGER >= ERROR
+            LOGGER.error("No FC or buffer data available, probably a bug");
+            // #endif /* LOGGER >= ERROR */
+        }
     }
 }
