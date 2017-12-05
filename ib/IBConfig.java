@@ -43,7 +43,7 @@ public class IBConfig {
     private StorageUnit m_outgoingRingBufferSize = new StorageUnit(1, StorageUnit.MB);
 
     @Expose
-    private StorageUnit m_incomingBufferSize = new StorageUnit(8, StorageUnit.KB);
+    private StorageUnit m_incomingBufferSize = new StorageUnit(32, StorageUnit.KB);
 
     @Expose
     private StorageUnit m_incomingBufferPoolTotalSize = new StorageUnit(512, StorageUnit.MB);
