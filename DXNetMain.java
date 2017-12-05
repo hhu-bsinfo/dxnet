@@ -146,8 +146,8 @@ public final class DXNetMain implements MessageReceiver {
         progressThread.shutdown();
 
         PrintStatistics.printStatisticsToOutput(System.out);
-        printResults("Sender", timeEndSender - ms_timeStart);
-        printResults("Receiver", ms_timeEndReceiver - ms_timeStart);
+        printResults("SEND", timeEndSender - ms_timeStart);
+        printResults("RECV", ms_timeEndReceiver - ms_timeStart);
 
         try {
             Thread.sleep(3000);
@@ -395,10 +395,10 @@ public final class DXNetMain implements MessageReceiver {
     }
 
     private static void printResults(final String p_name, final long p_timeDiffNs) {
-        LOGGER.info("%s results:\n" + "Workload: %d\n" + "Runtime: %d ms\n" + "Time per message: %d ns\n" + "Throughput: %f MB/s\n" +
-                        "Throughput (with overhead): %f MB/s\n", p_name, ms_workload, p_timeDiffNs / 1000 / 1000, p_timeDiffNs / ms_count,
-                (double) ms_count * ms_size / 1024 / 1024 / ((double) p_timeDiffNs / 1000 / 1000 / 1000),
-                (double) ms_count * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
+        System.out.printf("[%s RESULTS]\n" + "[%s WORKLOAD] %d\n" + "[%s RUNTIME] %d ms\n" + "[%s TIME PER MESSAGE] %d ns\n" + "[%s THROUGHPUT] %f MB/s\n" +
+                        "[%s THROUGHPUT OVERHEAD] %f MB/s\n", p_name, p_name, ms_workload, p_name, p_timeDiffNs / 1000 / 1000, p_name, p_timeDiffNs / ms_count,
+                p_name, (double) ms_count * ms_size / 1024 / 1024 / ((double) p_timeDiffNs / 1000 / 1000 / 1000),
+                p_name, (double) ms_count * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
                         ((double) p_timeDiffNs / 1000 / 1000 / 1000));
     }
 
@@ -594,8 +594,8 @@ public final class DXNetMain implements MessageReceiver {
                 long messagesRecv = ms_messagesRecived.get();
 
                 long timeDiff = System.nanoTime() - ms_timeStart;
-                System.out.printf("[Progress] %d sec: Sent %d%% (%d), Recv %d%% (%d), TX %f, RX %f, TXO %f, RXO %f\n", timeDiff / 1000 / 1000 / 1000,
-                    (int) ((float) messagesSent / ms_count * 100), messagesSent, (int) ((float) messagesRecv / ms_count * 100), messagesRecv,
+                System.out.printf("[PROGRESS] %d sec: Sent %d%% (%d), Recv %d%% (%d), TX %f, RX %f, TXO %f, RXO %f\n", timeDiff / 1000 / 1000 / 1000,
+                    (int) (((float) messagesSent / ms_count) * 100), messagesSent, (int) (((float) messagesRecv / ms_count) * 100), messagesRecv,
                     (double) messagesSent * ms_size / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000),
                     (double) messagesRecv * ms_size / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000),
                     (double) messagesSent * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
