@@ -143,7 +143,8 @@ public class IncomingBufferQueue {
             // avoid flooding the log
             if (m_queueFullCounter.getAndIncrement() % 100000 == 0) {
                 // #if LOGGER == WARN
-                LOGGER.warn("IBQ is full, count: %d", m_queueFullCounter.get());
+                LOGGER.warn("IBQ is full, count: %d. If this message appears often (with a high counter) you should consider increasing the number of " +
+                        "message handlers to avoid performance penalties", m_queueFullCounter.get());
                 // #endif /* LOGGER == WARN */
             }
 
