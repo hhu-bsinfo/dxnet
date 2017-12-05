@@ -27,8 +27,6 @@ import de.hhu.bsinfo.dxutils.NodeID;
  * @author Stefan Nothaas, stefan.nothaas@hhu.de, 02.08.2017
  */
 class IBWriteInterest {
-    private static final Logger LOGGER = LogManager.getFormatterLogger(IBWriteInterest.class.getSimpleName());
-
     private final short m_nodeId;
     private AtomicLong m_interestsAvailable;
 

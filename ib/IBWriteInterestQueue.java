@@ -13,31 +13,34 @@
 
 package de.hhu.bsinfo.dxnet.ib;
 
-import java.util.concurrent.locks.ReentrantLock;
-
 import de.hhu.bsinfo.dxutils.NodeID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Queue to keep track of nodes with available interests. The caller has to ensure
+ * N:1 Queue to keep track of nodes with available interests. The caller has to ensure
  * to not add a single node id multiple times (see interest manager) to ensure
  * connections are processed in a round robin fashion
  *
  * @author Stefan Nothaas, stefan.nothaas@hhu.de, 02.08.2017
  */
 class IBWriteInterestQueue {
-    private final ReentrantLock m_lock;
     private final short[] m_queue;
-    private int m_front;
-    private int m_back;
+    private volatile int m_front;
+    private AtomicInteger m_backReserved;
+    private AtomicInteger m_back;
 
     /**
      * Constructor
      */
     IBWriteInterestQueue() {
-        m_lock = new ReentrantLock(false);
         m_queue = new short[NodeID.MAX_ID];
         m_front = 0;
-        m_back = 0;
+        m_backReserved = new AtomicInteger(0);
+        m_back = new AtomicInteger(0);
+
+        if ((m_queue.length & (m_queue.length - 1)) == 0) {
+            throw new IllegalStateException("Queue length must be power of two");
+        }
     }
 
     /**
@@ -52,17 +55,31 @@ class IBWriteInterestQueue {
             throw new IllegalStateException("Invalid node id is not allowed on interest queue");
         }
 
-        m_lock.lock();
+        int backRes;
 
-        if ((m_back + 1) % m_queue.length == m_front % m_queue.length) {
-            m_lock.unlock();
-            return false;
+        // reserve a slot to write to
+        while (true) {
+            backRes = m_backReserved.get() & 0x7FFFFFFF;
+
+            if ((backRes + 1) % m_queue.length == (m_front & 0x7FFFFFFF) % m_queue.length) {
+                return false;
+            }
+
+            if (m_backReserved.compareAndSet(backRes, backRes + 1)) {
+                break;
+            }
         }
 
-        m_queue[m_back % m_queue.length] = p_nodeId;
-        m_back++;
+        // write to reserved slot
+        m_queue[backRes % m_queue.length] = p_nodeId;
 
-        m_lock.unlock();
+        // update actual back pointer to allow front to consume the element
+        // other threads might do this concurrently, so wait until the back pointer has moved
+        // up to our reserved position
+        while (!m_back.compareAndSet(backRes, backRes + 1)) {
+            Thread.yield();
+        }
+
         return true;
     }
 
@@ -72,17 +89,14 @@ class IBWriteInterestQueue {
      * @return Valid node id if available, -1 if queue empty
      */
     public short popFront() {
-        m_lock.lock();
+        int frontPos = (m_front & 0x7FFFFFFF) % m_queue.length;
 
-        if (m_back % m_queue.length == m_front % m_queue.length) {
-            m_lock.unlock();
+        if ((m_back.get() & 0x7FFFFFFF) % m_queue.length == frontPos) {
             return NodeID.INVALID_ID;
         }
 
-        short elem = m_queue[m_front % m_queue.length];
+        short elem = m_queue[frontPos];
         m_front++;
-
-        m_lock.unlock();
 
         return elem;
     }
