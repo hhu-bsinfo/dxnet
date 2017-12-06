@@ -129,9 +129,15 @@ public class NIOConnectionManager extends AbstractConnectionManager {
         cond = condLock.newCondition();
 
         if (p_existingConnection == null) {
+            if (m_openConnections == m_maxConnections) {
+                dismissRandomConnection();
+            }
+
             ret = new NIOConnection(m_coreConfig.getOwnNodeId(), p_destination, (int) m_config.getOugoingRingBufferSize().getBytes(),
                     (int) m_config.getFlowControlWindow().getBytes(), m_config.getFlowControlWindowThreshold(), m_incomingBufferQueue, m_messageHeaderPool,
                     m_messageDirectory, m_requestMap, m_messageHandlers, m_bufferPool, m_exporterPool, m_nioSelector, m_nodeMap, condLock, cond);
+
+            m_openConnections++;
         } else {
             ret = (NIOConnection) p_existingConnection;
         }
@@ -411,15 +417,16 @@ public class NIOConnectionManager extends AbstractConnectionManager {
                     SocketChannel channel = creationJob.getSocketChannel();
 
                     m_connectionCreationLock.lock();
-                    if (m_openConnections == m_config.getMaxConnections()) {
-                        dismissRandomConnection();
-                    }
-
                     connection = m_connections[destination & 0xFFFF];
 
                     if (connection == null) {
+                        if (m_openConnections == m_config.getMaxConnections()) {
+                            dismissRandomConnection();
+                        }
+
                         connection = createConnection(destination, channel);
                         m_connections[destination & 0xFFFF] = connection;
+
                         m_openConnections++;
                     } else {
                         bindIncomingChannel(channel, connection);

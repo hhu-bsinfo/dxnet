@@ -177,22 +177,18 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
             throw new NetworkDestinationUnreachableException(p_destination);
         }
 
-        // FIXME see fixme on AbstractConnectionManager
-        if (m_openConnections == m_config.getMaxConnections()) {
-            // dismissRandomConnection();
+        if (m_openConnections == m_maxConnections) {
+            dismissRandomConnection();
         }
 
-        connection = (IBConnection) m_connections[p_destination & 0xFFFF];
-
-        if (connection == null) {
-            connection = new IBConnection(m_coreConfig.getOwnNodeId(), p_destination, (int) m_config.getOugoingRingBufferSize().getBytes(),
-                    (int) m_config.getFlowControlWindow().getBytes(), m_config.getFlowControlWindowThreshold(), m_messageHeaderPool, m_messageDirectory,
-                    m_requestMap, m_exporterPool, m_messageHandlers, m_writeInterestManager);
-            m_openConnections++;
-        }
+        connection = new IBConnection(m_coreConfig.getOwnNodeId(), p_destination, (int) m_config.getOugoingRingBufferSize().getBytes(),
+                (int) m_config.getFlowControlWindow().getBytes(), m_config.getFlowControlWindowThreshold(), m_messageHeaderPool, m_messageDirectory,
+                m_requestMap, m_exporterPool, m_messageHandlers, m_writeInterestManager);
 
         connection.setPipeInConnected(true);
         connection.setPipeOutConnected(true);
+
+        m_openConnections++;
 
         return connection;
     }
@@ -250,7 +246,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
         LOGGER.debug("Node disconnected 0x%X", p_nodeId);
         // #endif /* LOGGER >= DEBUG */
 
-        closeConnection(m_connections[p_nodeId], true);
+        closeConnection(m_connections[p_nodeId & 0xFFFF], true);
     }
 
     @Override
@@ -387,11 +383,11 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
     }
 
     @Override
-    public void received(final short p_fcSourceNodeId, final int p_fcBytes, final short p_dataSourceNodeId,
-            final long p_dataBufferHandle, final long p_dataAddr, final int p_dataLength) {
+    public void received(final short p_fcSourceNodeId, final int p_fcBytes, final short p_dataSourceNodeId, final long p_dataBufferHandle,
+            final long p_dataAddr, final int p_dataLength) {
         // #if LOGGER >= TRACE
-        LOGGER.trace("Received, FC (0x%X, %d), data (0x%X, 0x%X 0x%X %d)", p_fcSourceNodeId, p_fcBytes, p_dataSourceNodeId,
-            p_dataBufferHandle, p_dataAddr, p_dataLength);
+        LOGGER.trace("Received, FC (0x%X, %d), data (0x%X, 0x%X 0x%X %d)", p_fcSourceNodeId, p_fcBytes, p_dataSourceNodeId, p_dataBufferHandle, p_dataAddr,
+                p_dataLength);
         // #endif /* LOGGER >= TRACE */
 
         IBConnection connection = null;
@@ -417,8 +413,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
                     connection = (IBConnection) getConnection(p_dataSourceNodeId);
                 } catch (final NetworkException e) {
                     // #if LOGGER >= ERROR
-                    LOGGER.error("Getting connection for data recv of node 0x%X failed, leaking buffers",
-                        p_dataSourceNodeId, e);
+                    LOGGER.error("Getting connection for data recv of node 0x%X failed, leaking buffers", p_dataSourceNodeId, e);
                     // #endif /* LOGGER >= ERROR */
 
                     // if that happens we lose data/buffers which is quite bad...I don't see any proper fix for this atm

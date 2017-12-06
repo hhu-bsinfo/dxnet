@@ -36,13 +36,12 @@ public abstract class AbstractConnectionManager {
     protected final AbstractConnection[] m_connections;
     protected final ReentrantLock m_connectionCreationLock;
 
-    protected int m_openConnections;
-
     protected ConnectionManagerListener m_listener;
 
-    protected volatile boolean m_overprovisioning;
+    protected final int m_maxConnections;
+    protected int m_openConnections;
 
-    private final int m_maxConnections;
+    private volatile boolean m_overprovisioning;
 
     /**
      * Constructor
@@ -112,15 +111,6 @@ public abstract class AbstractConnectionManager {
 
             ret = m_connections[p_destination & 0xFFFF];
             if (ret == null || !ret.getPipeOut().isConnected()) {
-
-                // FIXME for some reason, connections are dismissed when we haven't
-                // exceeded the actual max, e.g. hilbert 1 superpeer 64 peers
-                // and max connections = 100 (maybe connected with FIXME issue
-                // further below?)
-                //                if (m_openConnections == m_maxConnections) {
-                //                    dismissRandomConnection();
-                //                }
-
                 try {
                     ret = createConnection(p_destination, ret);
                 } catch (final NetworkException e) {
@@ -135,8 +125,6 @@ public abstract class AbstractConnectionManager {
                     // #endif /* LOGGER >= DEBUG */
 
                     m_connections[p_destination & 0xFFFF] = ret;
-                    // FIXME for NIO this needs to be doubled (see hilbert tests with many nodes)
-                    m_openConnections++;
                 } else {
                     // #if LOGGER >= ERROR
                     LOGGER.warn("Connection creation was aborted!");

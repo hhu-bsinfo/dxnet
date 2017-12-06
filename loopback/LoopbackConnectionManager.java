@@ -95,7 +95,7 @@ public class LoopbackConnectionManager extends AbstractConnectionManager {
 
     @Override
     public void setOverprovisioning() {
-        m_overprovisioning = true;
+        super.setOverprovisioning();
         m_loopbackSendThread.activateParking();
     }
 
