@@ -33,6 +33,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 
+import de.hhu.bsinfo.dxutils.stats.ExportStatistics;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -146,6 +147,7 @@ public final class DXNetMain implements MessageReceiver {
         progressThread.shutdown();
 
         PrintStatistics.printStatisticsToOutput(System.out);
+        ExportStatistics.writeStatisticsTablesToStdout();
         printResults("SEND", timeEndSender - ms_timeStart);
         printResults("RECV", ms_timeEndReceiver - ms_timeStart);
 
@@ -449,7 +451,7 @@ public final class DXNetMain implements MessageReceiver {
                     try {
                         ms_dxnet.sendMessage(messages[j]);
                     } catch (NetworkException e) {
-                        e.printStackTrace();
+                        // e.printStackTrace();
                         // repeat until successful
                         --j;
                         LockSupport.parkNanos(100);
@@ -481,7 +483,7 @@ public final class DXNetMain implements MessageReceiver {
                         BenchmarkMessage message = new BenchmarkMessage(ms_targetNodeIds.get(j), ms_size);
                         ms_dxnet.sendMessage(message);
                     } catch (NetworkException e) {
-                        e.printStackTrace();
+                        // e.printStackTrace();
                         // repeat until successful
                         --j;
                         LockSupport.parkNanos(100);
@@ -524,7 +526,7 @@ public final class DXNetMain implements MessageReceiver {
                         requests[j].reuse();
                         ms_dxnet.sendSync(requests[j], -1, true);
                     } catch (NetworkException e) {
-                        e.printStackTrace();
+                        // e.printStackTrace();
                         // repeat until successful
                         --j;
                         LockSupport.parkNanos(100);
@@ -556,7 +558,7 @@ public final class DXNetMain implements MessageReceiver {
                         BenchmarkRequest request = new BenchmarkRequest(ms_targetNodeIds.get(j), ms_size);
                         ms_dxnet.sendSync(request, -1, true);
                     } catch (NetworkException e) {
-                        e.printStackTrace();
+                        // e.printStackTrace();
                         // repeat until successful
                         --j;
                         LockSupport.parkNanos(100);
