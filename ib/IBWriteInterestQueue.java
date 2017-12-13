@@ -13,8 +13,9 @@
 
 package de.hhu.bsinfo.dxnet.ib;
 
-import de.hhu.bsinfo.dxutils.NodeID;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import de.hhu.bsinfo.dxutils.NodeID;
 
 /**
  * N:1 Queue to keep track of nodes with available interests. The caller has to ensure
@@ -37,10 +38,6 @@ class IBWriteInterestQueue {
         m_front = 0;
         m_backReserved = new AtomicInteger(0);
         m_back = new AtomicInteger(0);
-
-        if ((m_queue.length & (m_queue.length - 1)) == 0) {
-            throw new IllegalStateException("Queue length must be power of two");
-        }
     }
 
     /**
@@ -48,9 +45,8 @@ class IBWriteInterestQueue {
      *
      * @param p_nodeId
      *         Node id to push back
-     * @return True if successful, false if queue full
      */
-    public boolean pushBack(final short p_nodeId) {
+    public void pushBack(final short p_nodeId) {
         if (p_nodeId == NodeID.INVALID_ID) {
             throw new IllegalStateException("Invalid node id is not allowed on interest queue");
         }
@@ -62,7 +58,7 @@ class IBWriteInterestQueue {
             backRes = m_backReserved.get() & 0x7FFFFFFF;
 
             if ((backRes + 1) % m_queue.length == (m_front & 0x7FFFFFFF) % m_queue.length) {
-                return false;
+                throw new IllegalStateException("Interest queue cannot be full");
             }
 
             if (m_backReserved.compareAndSet(backRes, backRes + 1)) {
@@ -79,8 +75,6 @@ class IBWriteInterestQueue {
         while (!m_back.compareAndSet(backRes, backRes + 1)) {
             Thread.yield();
         }
-
-        return true;
     }
 
     /**

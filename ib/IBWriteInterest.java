@@ -57,7 +57,13 @@ class IBWriteInterest {
      * @return True if no interest was available before adding this one, false otherwise
      */
     boolean addDataInterest() {
-        return m_interestsAvailable.getAndAdd(1) == 0;
+        int tmp = (int) m_interestsAvailable.getAndAdd(1);
+
+        if (tmp < 0) {
+            throw new IllegalStateException();
+        }
+
+        return tmp == 0;
     }
 
     /**
@@ -66,7 +72,13 @@ class IBWriteInterest {
      * @return True if no interest was available before adding this one, false otherwise
      */
     boolean addFcInterest() {
-        return m_interestsAvailable.getAndAdd(1L << 32) == 0;
+        long tmp = m_interestsAvailable.getAndAdd(1L << 32);
+
+        if ((int) (tmp >> 32) < 0) {
+            throw new IllegalStateException();
+        }
+
+        return tmp == 0;
     }
 
     /**
