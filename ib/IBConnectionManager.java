@@ -307,8 +307,11 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
             // #endif /* LOGGER >= ERROR */
         }
 
+        int dataInterests = (int) interests;
+        int fcInterests = (int) (interests >> 32L);
+
         // process data interests
-        if ((int) interests > 0) {
+        if (dataInterests > 0) {
             long pos = connection.getPipeOut().getNextBuffer();
             int relPosBackRel = (int) (pos >> 32 & 0x7FFFFFFF);
             int relPosFrontRel = (int) (pos & 0x7FFFFFFF);
@@ -343,7 +346,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
         }
 
         // process flow control interests
-        if (interests >> 32 > 0) {
+        if (fcInterests > 0) {
             int fcData = connection.getPipeOut().getFlowControlToWrite();
 
             if (fcData != 0) {

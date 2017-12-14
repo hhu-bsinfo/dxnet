@@ -51,17 +51,21 @@ class IBWriteInterestQueue {
             throw new IllegalStateException("Invalid node id is not allowed on interest queue");
         }
 
+        int backResSigned;
         int backRes;
+        int front;
 
         // reserve a slot to write to
         while (true) {
-            backRes = m_backReserved.get() & 0x7FFFFFFF;
+            backResSigned = m_backReserved.get();
+            backRes = backResSigned & 0x7FFFFFFF;
+            front = m_front & 0x7FFFFFFF;
 
-            if ((backRes + 1) % m_queue.length == (m_front & 0x7FFFFFFF) % m_queue.length) {
-                throw new IllegalStateException("Interest queue cannot be full");
+            if ((backRes + 1 & 0x7FFFFFFF) % m_queue.length == front % m_queue.length) {
+                throw new IllegalStateException("Interest queue cannot be full: m_back " + m_back.get() + ", backRes " + backRes + ", front " + front);
             }
 
-            if (m_backReserved.compareAndSet(backRes, backRes + 1)) {
+            if (m_backReserved.compareAndSet(backResSigned, backResSigned + 1)) {
                 break;
             }
         }
@@ -72,7 +76,7 @@ class IBWriteInterestQueue {
         // update actual back pointer to allow front to consume the element
         // other threads might do this concurrently, so wait until the back pointer has moved
         // up to our reserved position
-        while (!m_back.compareAndSet(backRes, backRes + 1)) {
+        while (!m_back.compareAndSet(backResSigned, backResSigned + 1)) {
             Thread.yield();
         }
     }
@@ -93,5 +97,10 @@ class IBWriteInterestQueue {
         m_front++;
 
         return elem;
+    }
+
+    @Override
+    public String toString() {
+        return "m_front " + m_front + ", m_backReserved " + m_backReserved.get() + ", m_back " + m_back.get();
     }
 }
