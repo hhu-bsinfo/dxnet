@@ -56,18 +56,12 @@ class IBWriteInterestQueue {
         int front;
 
         // reserve a slot to write to
-        while (true) {
-            backResSigned = m_backReserved.get();
-            backRes = backResSigned & 0x7FFFFFFF;
-            front = m_front & 0x7FFFFFFF;
+        backResSigned = m_backReserved.getAndIncrement();
+        backRes = backResSigned & 0x7FFFFFFF;
+        front = m_front & 0x7FFFFFFF;
 
-            if ((backRes + 1 & 0x7FFFFFFF) % m_queue.length == front % m_queue.length) {
-                throw new IllegalStateException("Interest queue cannot be full: m_back " + m_back.get() + ", backRes " + backRes + ", front " + front);
-            }
-
-            if (m_backReserved.compareAndSet(backResSigned, backResSigned + 1)) {
-                break;
-            }
+        if ((backRes + 1 & 0x7FFFFFFF) % m_queue.length == front % m_queue.length) {
+            throw new IllegalStateException("Interest queue cannot be full: m_back " + m_back.get() + ", backRes " + backRes + ", front " + front);
         }
 
         // write to reserved slot
@@ -88,8 +82,9 @@ class IBWriteInterestQueue {
      */
     public short popFront() {
         int frontPos = (m_front & 0x7FFFFFFF) % m_queue.length;
+        int backPos = m_back.get() & 0x7FFFFFFF;
 
-        if ((m_back.get() & 0x7FFFFFFF) % m_queue.length == frontPos) {
+        if (backPos % m_queue.length == frontPos) {
             return NodeID.INVALID_ID;
         }
 
