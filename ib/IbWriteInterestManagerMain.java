@@ -19,8 +19,8 @@ public final class IbWriteInterestManagerMain {
     }
 
     public static void main(final String[] p_args) {
-        final int numProducers = 4;
-        final int timeMs = 10000;
+        final int numProducers = 12;
+        final int timeMs = 60000;
 
         IBWriteInterestManager writeInterestManager = new IBWriteInterestManager();
 

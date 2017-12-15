@@ -519,9 +519,8 @@ public abstract class AbstractPipeIn {
                 builder.append(' ');
             }
 
-            throw new NetworkException(
-                    "Invalid message type 0, subtype 0, most likely corrupted message/buffer. Buffer section (first index is start of message header): " +
-                            builder + "\nImporterCollectionState:\n" + p_importerCollection);
+            throw new NetworkException("Invalid message type 0, subtype 0, most likely corrupted message/buffer. Current message header: " + p_header +
+                    "\nBuffer section (first index is start of message header): " + builder + "\nImporterCollectionState:\n" + p_importerCollection);
         }
 
         try {
@@ -539,9 +538,10 @@ public abstract class AbstractPipeIn {
                 builder.append(' ');
             }
 
-            throw new NetworkException("Unable to create message of type " + type + ", subtype " + subtype +
-                    ". Type is missing in message directory. Buffer section (first index is start of message header): " + builder +
-                    "\nImporterCollectionState:\n" + p_importerCollection, e);
+            throw new NetworkException(
+                    "Unable to create message of type " + type + ", subtype " + subtype + ". Type is missing in message directory. Current message header " +
+                            p_header + "\nBuffer section (first index is start of message header): " + builder + "\nImporterCollectionState:\n" +
+                            p_importerCollection, e);
         }
 
         ret.initialize(p_header, m_ownNodeID, m_destinationNodeID);
