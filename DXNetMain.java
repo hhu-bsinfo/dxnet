@@ -491,10 +491,8 @@ public final class DXNetMain implements MessageReceiver {
                     try {
                         ms_dxnet.sendMessage(messages[j]);
                     } catch (NetworkException e) {
-                        // e.printStackTrace();
                         // repeat until successful
                         --j;
-                        LockSupport.parkNanos(100);
                     }
 
                     ms_messagesSent.incrementAndGet();
@@ -523,10 +521,8 @@ public final class DXNetMain implements MessageReceiver {
                         BenchmarkMessage message = new BenchmarkMessage(ms_targetNodeIds.get(j), ms_size);
                         ms_dxnet.sendMessage(message);
                     } catch (NetworkException e) {
-                        // e.printStackTrace();
                         // repeat until successful
                         --j;
-                        LockSupport.parkNanos(100);
                     }
 
                     ms_messagesSent.incrementAndGet();
@@ -580,10 +576,8 @@ public final class DXNetMain implements MessageReceiver {
                             m_rttMinNs = delta;
                         }
                     } catch (NetworkException e) {
-                        // e.printStackTrace();
                         // repeat until successful
                         --j;
-                        LockSupport.parkNanos(100);
                     }
 
                     ms_messagesSent.incrementAndGet();
@@ -626,10 +620,8 @@ public final class DXNetMain implements MessageReceiver {
                             m_rttMinNs = delta;
                         }
                     } catch (NetworkException e) {
-                        // e.printStackTrace();
                         // repeat until successful
                         --j;
-                        LockSupport.parkNanos(100);
                     }
 
                     ms_messagesSent.incrementAndGet();
