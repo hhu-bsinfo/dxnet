@@ -433,9 +433,9 @@ public final class DXNet {
             SOP_SEND_SYNC.leave();
             // #endif /* STATISTICS */
 
-            // #if LOGGER >= ERROR
-            LOGGER.error("Sending sync, waiting for responses to %s failed, timeout: %d ms", p_request, timeout);
-            // #endif /* LOGGER >= ERROR */
+            // #if LOGGER >= WARN
+            LOGGER.warn("Sending sync, waiting for responses to %s failed, timeout: %d ms", p_request, timeout);
+            // #endif /* LOGGER >= WARN */
 
             m_requestMap.remove(p_request.getRequestID());
 
@@ -449,9 +449,9 @@ public final class DXNet {
             SOP_SEND_SYNC.leave();
             // #endif /* STATISTICS */
 
-            // #if LOGGER >= TRACE
-            LOGGER.trace("Sending sync, waiting for responses to %s failed, cancelled: %d ms", p_request, timeout);
-            // #endif /* LOGGER >= TRACE */
+            // #if LOGGER >= WARN
+            LOGGER.warn("Sending sync, waiting for responses to %s failed, cancelled: %d ms", p_request, timeout);
+            // #endif /* LOGGER >= WARN */
 
             throw e;
         }
