@@ -28,12 +28,12 @@ import java.util.Enumeration;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
+import java.util.function.Supplier;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 
-import de.hhu.bsinfo.dxutils.stats.ExportStatistics;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -46,6 +46,7 @@ import de.hhu.bsinfo.dxnet.core.messages.Messages;
 import de.hhu.bsinfo.dxutils.StorageUnitGsonSerializer;
 import de.hhu.bsinfo.dxutils.TimeUnitGsonSerializer;
 import de.hhu.bsinfo.dxutils.serialization.ObjectSizeUtil;
+import de.hhu.bsinfo.dxutils.stats.ExportStatistics;
 import de.hhu.bsinfo.dxutils.stats.PrintStatistics;
 import de.hhu.bsinfo.dxutils.unit.StorageUnit;
 import de.hhu.bsinfo.dxutils.unit.TimeUnit;
@@ -78,6 +79,7 @@ public final class DXNetMain implements MessageReceiver {
     private static volatile long ms_timeEndReceiver;
     private static AtomicLong ms_messagesRecived = new AtomicLong(0);
     private static AtomicLong ms_messagesSent = new AtomicLong(0);
+    private static AtomicLong ms_reqRespRTTSumNs = new AtomicLong(0);
 
     public static void main(final String[] p_arguments) {
         Locale.setDefault(new Locale("en", "US"));
@@ -86,11 +88,15 @@ public final class DXNetMain implements MessageReceiver {
         setupNodeMappings();
         deviceLoadAndCheck();
 
-        AbstractWorkload[] workloads = new AbstractWorkload[] {new WorkloadA(), new WorkloadB(), new WorkloadC(), new WorkloadD()};
-
         // first workload, to configure remaining parameters
-        AbstractWorkload workload = workloads[ms_workload];
-        ms_objectPooling = workload.objectPooling();
+        Supplier[] workloads = new Supplier[] {WorkloadA::new, WorkloadB::new, WorkloadC::new, WorkloadD::new};
+
+        AbstractWorkload[] threadArray = new AbstractWorkload[ms_threads];
+        for (int i = 0; i < ms_threads; i++) {
+            threadArray[i] = (AbstractWorkload) workloads[ms_workload].get();
+            threadArray[i].setName(String.valueOf(i));
+            ms_objectPooling = threadArray[i].objectPooling();
+        }
 
         // now setup DXNet which already opens receiving
         setupDXNet();
@@ -102,15 +108,9 @@ public final class DXNetMain implements MessageReceiver {
         }
 
         LOGGER.info("Starting workload (%d threads)", ms_threads);
-        Thread[] threadArray = new Thread[ms_threads];
         ProgressThread progressThread = new ProgressThread(1000);
 
         progressThread.start();
-
-        for (int i = 0; i < ms_threads; i++) {
-            threadArray[i] = new Thread(workload);
-            threadArray[i].setName(String.valueOf(i));
-        }
 
         ms_timeStart = System.nanoTime();
 
@@ -127,8 +127,8 @@ public final class DXNetMain implements MessageReceiver {
 
         LOGGER.info("Workload finished for sender.");
 
-        if (workload.isWithRequests()) {
-            // Printing statistics
+        if (threadArray[0].isWithRequests()) {
+            // Wait for all requests to be fulfilled
             while (!ms_dxnet.isRequestMapEmpty()) {
                 LockSupport.parkNanos(100);
             }
@@ -146,10 +146,25 @@ public final class DXNetMain implements MessageReceiver {
 
         progressThread.shutdown();
 
+        long minRttNs = Long.MAX_VALUE;
+        long maxRttNs = 0;
+
+        if (threadArray[0].isWithRequests()) {
+            for (int i = 0; i < ms_threads; i++) {
+                if (threadArray[i].getRttMaxNs() > maxRttNs) {
+                    maxRttNs = threadArray[i].getRttMaxNs();
+                }
+
+                if (threadArray[i].getRttMinNs() < minRttNs) {
+                    minRttNs = threadArray[i].getRttMinNs();
+                }
+            }
+        }
+
         PrintStatistics.printStatisticsToOutput(System.out);
         ExportStatistics.writeStatisticsTablesToStdout();
-        printResults("SEND", timeEndSender - ms_timeStart);
-        printResults("RECV", ms_timeEndReceiver - ms_timeStart);
+        printResults("SEND", timeEndSender - ms_timeStart, minRttNs, maxRttNs);
+        printResults("RECV", ms_timeEndReceiver - ms_timeStart, 0, 0);
 
         try {
             Thread.sleep(3000);
@@ -399,23 +414,48 @@ public final class DXNetMain implements MessageReceiver {
         ms_dxnet.register(Messages.DEFAULT_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_RESPONSE, new DXNetMain());
     }
 
-    private static void printResults(final String p_name, final long p_timeDiffNs) {
-        System.out.printf("[%s RESULTS]\n" + "[%s WORKLOAD] %d\n" + "[%s MSG SIZE] %d\n" + "[%s THREADS] %d\n" + "[%s MSG HANDLERS] %d\n" +
-                        "[%s RUNTIME] %d ms\n" + "[%s TIME PER MESSAGE] %d ns\n" + "[%s THROUGHPUT] %f MB/s\n" + "[%s THROUGHPUT OVERHEAD] %f MB/s\n", p_name, p_name,
-                ms_workload, p_name, ms_size, p_name, ms_threads, p_name, ms_context.getCoreConfig().getNumMessageHandlerThreads(), p_name,
-                p_timeDiffNs / 1000 / 1000, p_name, p_timeDiffNs / ms_totalMessages, p_name,
-                (double) ms_totalMessages * ms_size / 1024 / 1024 / ((double) p_timeDiffNs / 1000 / 1000 / 1000), p_name,
-                (double) ms_totalMessages * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
-                        ((double) p_timeDiffNs / 1000 / 1000 / 1000));
+    private static void printResults(final String p_name, final long p_timeDiffNs, final long p_minRttNs, final long p_maxRttNs) {
+        if (p_minRttNs != 0 && p_maxRttNs != 0) {
+            System.out.printf("[%s RESULTS]\n" + "[%s WORKLOAD] %d\n" + "[%s MSG SIZE] %d\n" + "[%s THREADS] %d\n" + "[%s MSG HANDLERS] %d\n" +
+                            "[%s RUNTIME] %d ms\n" + "[%s TIME PER MESSAGE] %d ns\n" + "[%s THROUGHPUT] %f MB/s\n" + "[%s THROUGHPUT OVERHEAD] %f MB/s\n" +
+                            "[RTT REQ-RESP AVG] %d us\n" + "[RTT REQ-RESP MIN] %d us\n" + "[RTT REQ-RESP MAX] %d us\n", p_name, p_name, ms_workload, p_name, ms_size,
+                    p_name, ms_threads, p_name, ms_context.getCoreConfig().getNumMessageHandlerThreads(), p_name, p_timeDiffNs / 1000 / 1000, p_name,
+                    p_timeDiffNs / ms_totalMessages, p_name, (double) ms_totalMessages * ms_size / 1024 / 1024 / ((double) p_timeDiffNs / 1000 / 1000 / 1000),
+                    p_name, (double) ms_totalMessages * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
+                            ((double) p_timeDiffNs / 1000 / 1000 / 1000), ms_reqRespRTTSumNs.get() / ms_messagesSent.get() / 1000, p_minRttNs / 1000,
+                    p_maxRttNs / 1000);
+        } else {
+            System.out.printf("[%s RESULTS]\n" + "[%s WORKLOAD] %d\n" + "[%s MSG SIZE] %d\n" + "[%s THREADS] %d\n" + "[%s MSG HANDLERS] %d\n" +
+                            "[%s RUNTIME] %d ms\n" + "[%s TIME PER MESSAGE] %d ns\n" + "[%s THROUGHPUT] %f MB/s\n" + "[%s THROUGHPUT OVERHEAD] %f MB/s\n", p_name,
+                    p_name, ms_workload, p_name, ms_size, p_name, ms_threads, p_name, ms_context.getCoreConfig().getNumMessageHandlerThreads(), p_name,
+                    p_timeDiffNs / 1000 / 1000, p_name, p_timeDiffNs / ms_totalMessages, p_name,
+                    (double) ms_totalMessages * ms_size / 1024 / 1024 / ((double) p_timeDiffNs / 1000 / 1000 / 1000), p_name,
+                    (double) ms_totalMessages * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
+                            ((double) p_timeDiffNs / 1000 / 1000 / 1000));
+        }
     }
 
-    private static abstract class AbstractWorkload implements Runnable {
+    private abstract static class AbstractWorkload extends Thread {
         private boolean m_withRequests;
         private boolean m_objectPooling;
+
+        long m_rttMinNs;
+        long m_rttMaxNs;
 
         AbstractWorkload(final boolean p_withRequests, final boolean p_objectPooling) {
             m_withRequests = p_withRequests;
             m_objectPooling = p_objectPooling;
+
+            m_rttMinNs = Long.MAX_VALUE;
+            m_rttMaxNs = 0;
+        }
+
+        long getRttMinNs() {
+            return m_rttMinNs;
+        }
+
+        long getRttMaxNs() {
+            return m_rttMaxNs;
         }
 
         boolean isWithRequests() {
@@ -524,7 +564,21 @@ public final class DXNetMain implements MessageReceiver {
                 for (int j = 0; j < ms_targetNodeIds.size(); j++) {
                     try {
                         requests[j].reuse();
+
+                        long start = System.nanoTime();
+
                         ms_dxnet.sendSync(requests[j], -1, true);
+
+                        long delta = System.nanoTime() - start;
+                        ms_reqRespRTTSumNs.addAndGet(delta);
+
+                        if (delta > m_rttMaxNs) {
+                            m_rttMaxNs = delta;
+                        }
+
+                        if (delta < m_rttMinNs) {
+                            m_rttMinNs = delta;
+                        }
                     } catch (NetworkException e) {
                         // e.printStackTrace();
                         // repeat until successful
@@ -556,7 +610,21 @@ public final class DXNetMain implements MessageReceiver {
                 for (int j = 0; j < ms_targetNodeIds.size(); j++) {
                     try {
                         BenchmarkRequest request = new BenchmarkRequest(ms_targetNodeIds.get(j), ms_size);
+
+                        long start = System.nanoTime();
+
                         ms_dxnet.sendSync(request, -1, true);
+
+                        long delta = System.nanoTime() - start;
+                        ms_reqRespRTTSumNs.addAndGet(delta);
+
+                        if (delta > m_rttMaxNs) {
+                            m_rttMaxNs = delta;
+                        }
+
+                        if (delta < m_rttMinNs) {
+                            m_rttMinNs = delta;
+                        }
                     } catch (NetworkException e) {
                         // e.printStackTrace();
                         // repeat until successful
