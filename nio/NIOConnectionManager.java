@@ -42,7 +42,9 @@ import de.hhu.bsinfo.dxnet.core.StaticExporterPool;
 import de.hhu.bsinfo.dxutils.NodeID;
 
 /**
- * Created by nothaas on 6/12/17.
+ * Creates and closes NIO connections. Connection creations/closures initiated by a remote node are processed asynchronously.
+ *
+ * @author Kevin Beineke, kevin.beineke@hhu.de, 18.03.2017
  */
 public class NIOConnectionManager extends AbstractConnectionManager {
     private static final Logger LOGGER = LogManager.getFormatterLogger(NIOConnectionManager.class.getSimpleName());
@@ -63,6 +65,28 @@ public class NIOConnectionManager extends AbstractConnectionManager {
 
     private AbstractExporterPool m_exporterPool;
 
+    /**
+     * Creates a NIO connection manager.
+     *
+     * @param p_coreConfig
+     *         all dxnet core configuration values.
+     * @param p_nioConfig
+     *         all dxnet nio configuration values.
+     * @param p_nodeMap
+     *         the node map.
+     * @param p_messageDirectory
+     *         the message directory.
+     * @param p_requestMap
+     *         the request map.
+     * @param p_incomingBufferQueue
+     *         the incoming buffer queue.
+     * @param p_messageHeaderPool
+     *         the (shared) message header pool.
+     * @param p_messageHandlers
+     *         the message handlers.
+     * @param p_overprovisioning
+     *         whether thread overprovisioning was detected before. Might be updated later.
+     */
     public NIOConnectionManager(final CoreConfig p_coreConfig, final NIOConfig p_nioConfig, final NodeMap p_nodeMap, final MessageDirectory p_messageDirectory,
             final RequestMap p_requestMap, final IncomingBufferQueue p_incomingBufferQueue, final MessageHeaderPool p_messageHeaderPool,
             final MessageHandlers p_messageHandlers, final boolean p_overprovisioning) {
@@ -114,6 +138,8 @@ public class NIOConnectionManager extends AbstractConnectionManager {
      *
      * @param p_destination
      *         the destination
+     * @param p_existingConnection
+     *         whether the connection exists already (with opened PipeIn) -> create PipeOut, only.
      * @return a new connection
      * @throws NetworkException
      *         if the connection could not be created
@@ -158,7 +184,7 @@ public class NIOConnectionManager extends AbstractConnectionManager {
 
             if (System.currentTimeMillis() > deadline) {
                 // #if LOGGER >= DEBUG
-                LOGGER.debug("Connection creation time-out. Interval %d ms might be to small", m_config.getConnectionTimeOut());
+                LOGGER.debug("Connection creation time-out. Interval %d ms might be to small", m_config.getConnectionTimeOut().getMs());
                 // #endif /* LOGGER >= DEBUG */
 
                 condLock.unlock();
@@ -170,7 +196,7 @@ public class NIOConnectionManager extends AbstractConnectionManager {
         }
         condLock.unlock();
 
-        m_nioSelector.changeOperationInterestAsync(new ChangeOperationsRequest(ret, NIOSelector.READ_FLOW_CONTROL));
+        m_nioSelector.changeOperationInterestAsync(InterestQueue.READ_FLOW_CONTROL, ret);
 
         return ret;
     }
@@ -220,7 +246,7 @@ public class NIOConnectionManager extends AbstractConnectionManager {
     }
 
     /**
-     * Creates a new connection, triggered by incoming key
+     * Creates a new connection asynchronously, triggered by incoming key
      * m_buffer needs to be synchronized externally
      *
      * @param p_channel
@@ -228,7 +254,7 @@ public class NIOConnectionManager extends AbstractConnectionManager {
      * @throws IOException
      *         if the connection could not be created
      */
-    void createConnection(final SocketChannel p_channel) throws IOException {
+    void createIncomingConnection(final SocketChannel p_channel) throws IOException {
         short remoteNodeID;
 
         try {
@@ -251,7 +277,7 @@ public class NIOConnectionManager extends AbstractConnectionManager {
     }
 
     /**
-     * Reads the NodeID of the remote node that creates this new connection
+     * Reads the NodeID of the remote node that created this new connection
      *
      * @param p_channel
      *         the channel of the connection
@@ -414,6 +440,7 @@ public class NIOConnectionManager extends AbstractConnectionManager {
                     // 0: Create and add connection
                     CreationJob creationJob = (CreationJob) job;
                     destination = creationJob.getDestination();
+
                     SocketChannel channel = creationJob.getSocketChannel();
 
                     m_connectionCreationLock.lock();
@@ -424,13 +451,20 @@ public class NIOConnectionManager extends AbstractConnectionManager {
                             dismissRandomConnection();
                         }
 
-                        connection = createConnection(destination, channel);
-                        m_connections[destination & 0xFFFF] = connection;
+                        connection = new NIOConnection(m_coreConfig.getOwnNodeId(), destination, (int) m_config.getOugoingRingBufferSize().getBytes(),
+                                (int) m_config.getFlowControlWindow().getBytes(), m_config.getFlowControlWindowThreshold(), m_incomingBufferQueue,
+                                m_messageHeaderPool, m_messageDirectory, m_requestMap, m_messageHandlers, m_bufferPool, m_exporterPool, m_nioSelector,
+                                m_nodeMap);
+                        ((NIOConnection) connection).getPipeIn().bindIncomingChannel(channel);
 
+                        m_connections[destination & 0xFFFF] = connection;
                         m_openConnections++;
                     } else {
-                        bindIncomingChannel(channel, connection);
+                        ((NIOConnection) connection).getPipeIn().bindIncomingChannel(channel);
                     }
+                    // Register connection as attachment
+                    m_nioSelector.changeOperationInterestAsync(InterestQueue.READ, (NIOConnection) connection);
+                    connection.setPipeInConnected(true);
 
                     m_connectionCreationLock.unlock();
                 } else {
@@ -454,6 +488,9 @@ public class NIOConnectionManager extends AbstractConnectionManager {
             }
         }
 
+        /**
+         * Closes the job queue and stops the connection creator thread.
+         */
         public void close() {
             m_closed = true;
             m_connectionCreatorHelperThread.interrupt();
@@ -475,29 +512,6 @@ public class NIOConnectionManager extends AbstractConnectionManager {
             m_jobs.push(p_job);
             m_jobAvailableCondition.signalAll();
             m_lock.unlock();
-        }
-
-        private NIOConnection createConnection(final short p_destination, final SocketChannel p_channel) {
-            NIOConnection ret;
-
-            ret = new NIOConnection(m_coreConfig.getOwnNodeId(), p_destination, (int) m_config.getOugoingRingBufferSize().getBytes(),
-                    (int) m_config.getFlowControlWindow().getBytes(), m_config.getFlowControlWindowThreshold(), m_incomingBufferQueue, m_messageHeaderPool,
-                    m_messageDirectory, m_requestMap, m_messageHandlers, m_bufferPool, m_exporterPool, m_nioSelector, m_nodeMap);
-            ret.getPipeIn().bindIncomingChannel(p_channel);
-
-            // Register connection as attachment
-            m_nioSelector.changeOperationInterestAsync(new ChangeOperationsRequest(ret, NIOSelector.READ));
-            ret.setPipeInConnected(true);
-
-            return ret;
-        }
-
-        private void bindIncomingChannel(final SocketChannel p_channel, final AbstractConnection p_connection) {
-            ((NIOConnection) p_connection).getPipeIn().bindIncomingChannel(p_channel);
-
-            // Register connection as attachment
-            m_nioSelector.changeOperationInterestAsync(new ChangeOperationsRequest((NIOConnection) p_connection, NIOSelector.READ));
-            p_connection.setPipeInConnected(true);
         }
     }
 }

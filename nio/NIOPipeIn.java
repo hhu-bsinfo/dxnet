@@ -32,7 +32,10 @@ import de.hhu.bsinfo.dxutils.stats.StatisticsOperation;
 import de.hhu.bsinfo.dxutils.stats.StatisticsRecorderManager;
 
 /**
- * Created by nothaas on 6/9/17.
+ * Enables communication with a remote node over a socket channel. The socket channel's read stream is used to receive data and the write stream is for
+ * sending flow control updates (NOT for sending data!). The outgoing channel is independent from the outgoing channel stored in the NIOPipeOut.
+ *
+ * @author Kevin Beineke, kevin.beineke@hhu.de, 18.03.2017
  */
 class NIOPipeIn extends AbstractPipeIn {
     private static final Logger LOGGER = LogManager.getFormatterLogger(AbstractPipeIn.class.getSimpleName());
@@ -48,6 +51,30 @@ class NIOPipeIn extends AbstractPipeIn {
 
     private final NIOConnection m_parentConnection;
 
+    /**
+     * Creates a NIO PipeIn. Incoming channel is neither created nor binded here!
+     *
+     * @param p_ownNodeId
+     *         this node's NodeID.
+     * @param p_destinationNodeId
+     *         the remote node's NodeID.
+     * @param p_messageHeaderPool
+     *         the (shared) message header pool.
+     * @param p_flowControl
+     *         the flow control for this connection.
+     * @param p_messageDirectory
+     *         the message directory.
+     * @param p_requestMap
+     *         the request map.
+     * @param p_messageHandlers
+     *         the message handlers.
+     * @param p_bufferPool
+     *         the (shared) buffer pool.
+     * @param p_incomingBufferQueue
+     *         the incoming buffer queue.
+     * @param p_parentConnection
+     *         the NIO connection this PipeIn belongs to.
+     */
     NIOPipeIn(final short p_ownNodeId, final short p_destinationNodeId, final MessageHeaderPool p_messageHeaderPool, final AbstractFlowControl p_flowControl,
             final MessageDirectory p_messageDirectory, final RequestMap p_requestMap, final MessageHandlers p_messageHandlers, final BufferPool p_bufferPool,
             final IncomingBufferQueue p_incomingBufferQueue, final NIOConnection p_parentConnection) {
@@ -61,12 +88,19 @@ class NIOPipeIn extends AbstractPipeIn {
         m_parentConnection = p_parentConnection;
     }
 
-    SocketChannel getChannel() {
-        return m_incomingChannel;
-    }
-
+    /**
+     * Binds the incoming channel to this pipe.
+     *
+     * @param p_channel
+     *         the incoming channel.
+     */
     void bindIncomingChannel(final SocketChannel p_channel) {
         m_incomingChannel = p_channel;
+    }
+
+    @Override
+    public boolean isOpen() {
+        return m_incomingChannel != null && m_incomingChannel.isOpen();
     }
 
     @Override
@@ -74,9 +108,13 @@ class NIOPipeIn extends AbstractPipeIn {
         m_bufferPool.returnBuffer((BufferPool.DirectBufferWrapper) p_directBuffer);
     }
 
-    @Override
-    public boolean isOpen() {
-        return m_incomingChannel != null && m_incomingChannel.isOpen();
+    /**
+     * Returns the incoming channel.
+     *
+     * @return the incoming channel.
+     */
+    SocketChannel getChannel() {
+        return m_incomingChannel;
     }
 
     /**

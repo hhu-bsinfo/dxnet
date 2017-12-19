@@ -16,7 +16,6 @@ package de.hhu.bsinfo.dxnet.nio;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.CancelledKeyException;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ClosedSelectorException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -24,9 +23,7 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.ConcurrentModificationException;
 import java.util.Iterator;
-import java.util.LinkedHashSet;
 import java.util.Set;
-import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -34,21 +31,14 @@ import org.apache.logging.log4j.Logger;
 import de.hhu.bsinfo.dxutils.NodeID;
 
 /**
- * Manages the network connections
+ * Manages the whole communication over socket channels like selecting channels, reading and writing data to/from channels, creating/connecting channels, ...
  *
- * @author Florian Klein, florian.klein@hhu.de, 18.03.2012
+ * @author Kevin Beineke, kevin.beineke@hhu.de, 18.03.2017
  */
 class NIOSelector extends Thread {
 
-    // Constants
-    static final int READ = 1;
-    static final int READ_FLOW_CONTROL = 2;
-    static final int FLOW_CONTROL = 3;
-    static final int WRITE = 4;
-    static final int READ_WRITE = 5;
-    static final int CONNECT = 8;
-    static final int CLOSE = 32;
     private static final Logger LOGGER = LogManager.getFormatterLogger(NIOSelector.class.getSimpleName());
+
     // Attributes
     private ServerSocketChannel m_serverChannel;
     private Selector m_selector;
@@ -57,8 +47,7 @@ class NIOSelector extends Thread {
 
     private int m_osBufferSize;
     private int m_connectionTimeout;
-    private LinkedHashSet<ChangeOperationsRequest> m_changeRequests;
-    private ReentrantLock m_changeLock;
+    private InterestQueue m_interestQueue;
 
     private volatile boolean m_running;
 
@@ -82,8 +71,8 @@ class NIOSelector extends Thread {
 
         m_osBufferSize = p_osBufferSize;
         m_connectionTimeout = p_connectionTimeout;
-        m_changeRequests = new LinkedHashSet<ChangeOperationsRequest>();
-        m_changeLock = new ReentrantLock(false);
+        //m_interestQueue = new InterestQueueHashset();
+        m_interestQueue = new InterestQueue();
 
         m_running = false;
 
@@ -127,197 +116,6 @@ class NIOSelector extends Thread {
             LOGGER.error("Could not create network channel!");
             // #endif /* LOGGER >= ERROR */
         }
-    }
-
-    // Getter
-
-    // Methods
-    @Override
-    public String toString() {
-        StringBuilder ret = new StringBuilder("Current keys: ");
-
-        try {
-            if (m_selector != null && m_selector.isOpen()) {
-                Set<SelectionKey> selected = m_selector.keys();
-                Iterator<SelectionKey> iterator = selected.iterator();
-                while (iterator.hasNext()) {
-                    SelectionKey key = iterator.next();
-                    if (key.isValid() && key.attachment() != null) {
-                        ret.append('[').append(NodeID.toHexString(((NIOConnection) key.attachment()).getDestinationNodeID())).append(", ")
-                                .append(key.interestOps()).append("] ");
-                        ret.append(key.attachment());
-                    }
-                }
-            }
-        } catch (final ConcurrentModificationException e) {
-            // #if LOGGER >= DEBUG
-            LOGGER.debug("Unable to print selector status.");
-            // #endif /* LOGGER >= DEBUG */
-        }
-
-        return ret.toString();
-    }
-
-    @Override
-    public void run() {
-        int interest;
-        ChangeOperationsRequest[] requests;
-        NIOConnection connection;
-        Iterator<SelectionKey> iterator;
-        Set<SelectionKey> selected;
-        SelectionKey key;
-
-        LinkedHashSet<ChangeOperationsRequest> delayedCloseOperations = new LinkedHashSet<ChangeOperationsRequest>();
-        while (m_running) {
-            m_changeLock.lock();
-            if (!m_changeRequests.isEmpty()) {
-                requests = m_changeRequests.toArray(new ChangeOperationsRequest[m_changeRequests.size()]);
-                m_changeRequests.clear();
-            } else {
-                requests = null;
-            }
-            m_changeLock.unlock();
-
-            if (requests != null) {
-                for (ChangeOperationsRequest changeRequest : requests) {
-                    connection = changeRequest.getConnection();
-                    interest = changeRequest.getOperations();
-
-                    switch (interest) {
-                        case READ:
-                            try {
-                                // This is a READ access - Called only after creation
-                                try {
-                                    // Use incoming channel for receiving messages
-                                    connection.getPipeIn().getChannel().register(m_selector, interest, connection);
-                                } catch (ClosedChannelException e) {
-                                    e.printStackTrace();
-                                }
-                            } catch (final CancelledKeyException e) {
-                                // Ignore
-                            }
-                            break;
-                        case READ_FLOW_CONTROL:
-                            try {
-                                // This is a READ access for flow control - Called only after creation
-                                try {
-                                    // Use outgoing channel for receiving flow control messages
-                                    connection.getPipeOut().getChannel().register(m_selector, READ, connection);
-                                } catch (ClosedChannelException e) {
-                                    e.printStackTrace();
-                                }
-                            } catch (final CancelledKeyException e) {
-                                // Ignore
-                            }
-                            break;
-                        case FLOW_CONTROL:
-                            try {
-                                // This is a FLOW_CONTROL access - Write flow control bytes over incoming channel
-                                key = connection.getPipeIn().getChannel().keyFor(m_selector);
-                                if (key != null && key.interestOps() != READ_WRITE) {
-                                    // Key might be null if connection was closed during shutdown or due to closing a duplicate connection
-                                    // If key interest is READ | WRITE the interest must not be overwritten with WRITE as both incoming
-                                    // buffers might be filled causing a deadlock
-                                    key.interestOps(WRITE);
-                                }
-                            } catch (final CancelledKeyException e) {
-                                // Ignore
-                            }
-                            break;
-                        case WRITE:
-                        case READ_WRITE:
-                            try {
-                                // This is a WRITE access -> change interest only
-                                key = connection.getPipeOut().getChannel().keyFor(m_selector);
-                                if (key == null) {
-                                    // #if LOGGER >= ERROR
-                                    LOGGER.error("Cannot register WRITE operation as key is null for %s", connection);
-                                    // #endif /* LOGGER >= ERROR */
-                                } else if (key.interestOps() != READ_WRITE) {
-                                    // Key might be null if connection was closed during shutdown or due to closing a duplicate connection
-                                    // If key interest is READ | WRITE the interest must not be overwritten with WRITE as both incoming
-                                    // buffers might be filled causing a deadlock
-                                    key.interestOps(interest);
-                                }
-                            } catch (final CancelledKeyException e) {
-                                // Ignore
-                            }
-                            break;
-                        case CLOSE:
-                            // CLOSE -> close connection
-                            // Only close connection if since request at least the time for two connection timeouts has elapsed
-                            if (System.currentTimeMillis() - connection.getClosingTimestamp() > 2 * m_connectionTimeout) {
-                                // #if LOGGER >= DEBUG
-                                try {
-                                    LOGGER.debug("Closing connection to 0x%X;%s", connection.getDestinationNodeID(),
-                                            connection.getPipeOut().getChannel().getRemoteAddress());
-                                } catch (final IOException ignored) {
-                                }
-                                // #endif /* LOGGER >= DEBUG */
-                                // Close connection
-                                m_connectionManager.closeConnection(connection, false);
-                            } else {
-                                // Delay connection closure
-                                delayedCloseOperations.add(changeRequest);
-                            }
-                            break;
-                        case CONNECT:
-                            // CONNECT -> register with connection as attachment (ACCEPT is registered directly)
-                            try {
-                                connection.getPipeOut().getChannel().register(m_selector, interest, connection);
-                            } catch (final ClosedChannelException e) {
-                                // #if LOGGER >= DEBUG
-                                LOGGER.debug("Could not change operations!");
-                                // #endif /* LOGGER >= DEBUG */
-                            }
-                            break;
-                        default:
-                            // #if LOGGER >= ERROR
-                            LOGGER.error("Network-Selector: Registered operation unknown: %s", interest);
-                            // #endif /* LOGGER >= ERROR */
-                            break;
-                    }
-                }
-
-                if (!delayedCloseOperations.isEmpty()) {
-                    m_changeLock.lock();
-                    m_changeRequests.addAll(delayedCloseOperations);
-                    delayedCloseOperations.clear();
-                    m_changeLock.unlock();
-                }
-            }
-
-            try {
-                // Wait for network action
-                if (m_selector.select() > 0 && m_selector.isOpen()) {
-                    selected = m_selector.selectedKeys();
-                    iterator = selected.iterator();
-
-                    while (iterator.hasNext()) {
-                        key = iterator.next();
-                        iterator.remove();
-                        if (key.isValid()) {
-                            if (key.isAcceptable()) {
-                                accept();
-                            } else {
-                                dispatch(key);
-                            }
-                        } else {
-                            // #if LOGGER >= ERROR
-                            LOGGER.error("Selected key is invalid: %s", key);
-                            // #endif /* LOGGER >= ERROR */
-                        }
-                    }
-                }
-            } catch (final ClosedSelectorException e) {
-                // Ignore
-            } catch (final IOException e) {
-                // #if LOGGER >= ERROR
-                LOGGER.error("Key selection failed!");
-                // #endif /* LOGGER >= ERROR */
-            }
-        }
-
     }
 
     /**
@@ -369,17 +167,13 @@ class NIOSelector extends Thread {
     /**
      * Append the given ChangeOperationsRequest to the Queue
      *
-     * @param p_request
-     *         the ChangeOperationsRequest
+     * @param p_interest
+     *         the operation interest to register.
+     * @param p_connection
+     *         the connection to register the interest for.
      */
-    void changeOperationInterestAsync(final ChangeOperationsRequest p_request) {
-        boolean res;
-
-        m_changeLock.lock();
-        res = m_changeRequests.add(p_request);
-        m_changeLock.unlock();
-
-        if (res) {
+    void changeOperationInterestAsync(final int p_interest, final NIOConnection p_connection) {
+        if (m_interestQueue.addInterest(p_interest, p_connection)) {
             m_selector.wakeup();
         }
     }
@@ -388,14 +182,54 @@ class NIOSelector extends Thread {
      * Append the given NIOConnection to the Queue
      *
      * @param p_connection
-     *         the NIOConnection to close
+     *         the NIOConnection to close.
      */
     void closeConnectionAsync(final NIOConnection p_connection) {
-        m_changeLock.lock();
-        m_changeRequests.add(new ChangeOperationsRequest(p_connection, CLOSE));
-        m_changeLock.unlock();
+        m_interestQueue.addInterest(InterestQueue.CLOSE, p_connection);
 
         m_selector.wakeup();
+    }
+
+    @Override
+    public void run() {
+        Iterator<SelectionKey> iterator;
+        Set<SelectionKey> selected;
+        SelectionKey key;
+
+        while (m_running) {
+            m_interestQueue.processInterests(m_selector, m_connectionManager, m_connectionTimeout);
+
+            try {
+                // Wait for network action
+                if (m_selector.select() > 0 && m_selector.isOpen()) {
+                    selected = m_selector.selectedKeys();
+                    iterator = selected.iterator();
+
+                    while (iterator.hasNext()) {
+                        key = iterator.next();
+                        iterator.remove();
+                        if (key.isValid()) {
+                            if (key.isAcceptable()) {
+                                accept();
+                            } else {
+                                dispatch(key);
+                            }
+                        } else {
+                            // #if LOGGER >= ERROR
+                            LOGGER.error("Selected key is invalid: %s", key);
+                            // #endif /* LOGGER >= ERROR */
+                        }
+                    }
+                }
+            } catch (final ClosedSelectorException e) {
+                // Ignore
+            } catch (final IOException e) {
+                // #if LOGGER >= ERROR
+                LOGGER.error("Key selection failed!");
+                // #endif /* LOGGER >= ERROR */
+            }
+        }
+
     }
 
     /**
@@ -413,7 +247,132 @@ class NIOSelector extends Thread {
         channel.socket().setTcpNoDelay(true);
         channel.socket().setSendBufferSize(32);
 
-        channel.register(m_selector, READ);
+        channel.register(m_selector, InterestQueue.READ);
+    }
+
+    /**
+     * Create a connection.
+     * The channel was created by a remote node and already accepted. Now the NodeID must be read and the connection object attached.
+     *
+     * @param p_key
+     *         the selected key
+     */
+    private void createIncomingConnection(final SelectionKey p_key) {
+        // Channel was accepted but not used yet -> Read NodeID, create NIOConnection and attach to key
+        try {
+            m_connectionManager.createIncomingConnection((SocketChannel) p_key.channel());
+        } catch (final IOException e) {
+            // #if LOGGER >= ERROR
+            LOGGER.error("Connection could not be created!");
+            // #endif /* LOGGER >= ERROR */
+        }
+    }
+
+    /**
+     * Either read data from PipeIn or a flow control update from PipeOut.
+     *
+     * @param p_key
+     *         the selected key
+     * @param p_connection
+     *         the NIOConnection
+     */
+    private void read(final SelectionKey p_key, final NIOConnection p_connection) {
+        boolean successful;
+
+        if (p_connection == null) {
+            createIncomingConnection(p_key);
+            return;
+        }
+
+        if (p_key.channel() == p_connection.getPipeIn().getChannel()) {
+            // Read data from incoming stream of PipeIn
+            if (!p_connection.isPipeInOpen()) {
+                createIncomingConnection(p_key);
+                return;
+            }
+
+            try {
+                successful = p_connection.getPipeIn().read();
+            } catch (final IOException ignore) {
+                successful = false;
+            }
+            if (!successful) {
+                // #if LOGGER >= DEBUG
+                LOGGER.debug("Could not read from channel (0x%X)!", p_connection.getDestinationNodeID());
+                // #endif /* LOGGER >= DEBUG */
+
+                m_connectionManager.closeConnection(p_connection, true);
+            }
+        } else {
+            // Read flow control from incoming stream of PipeOut
+            try {
+                p_connection.getPipeOut().readFlowControlBytes();
+            } catch (final IOException e) {
+                // #if LOGGER >= WARN
+                LOGGER.warn("Failed to read flow control data!");
+                // #endif /* LOGGER >= WARN */
+            }
+        }
+    }
+
+    /**
+     * Either write data to PipeOut or a flow control update to PipeIn.
+     *
+     * @param p_key
+     *         the selected key
+     * @param p_connection
+     *         the NIOConnection
+     */
+    private void write(final SelectionKey p_key, final NIOConnection p_connection) {
+        boolean complete;
+
+        if (p_connection == null) {
+            // #if LOGGER >= ERROR
+            LOGGER.error("If connection is null, key has to be either readable or connectible!");
+            // #endif /* LOGGER >= ERROR */
+            return;
+        }
+
+        if (p_key.channel() == p_connection.getPipeOut().getChannel()) {
+            // Write data to outgoing stream of PipeOut
+            try {
+                complete = p_connection.getPipeOut().write();
+            } catch (final IOException ignored) {
+                // #if LOGGER >= DEBUG
+                LOGGER.debug("Could not write to channel (0x%X)!", p_connection.getDestinationNodeID());
+                // #endif /* LOGGER >= DEBUG */
+
+                m_connectionManager.closeConnection(p_connection, true);
+                return;
+            }
+
+            try {
+                if (!complete || !p_connection.getPipeOut().isOutgoingQueueEmpty()) {
+                    // If there is still data left to write on this connection, add another write request
+                    p_key.interestOps(SelectionKey.OP_WRITE | SelectionKey.OP_READ);
+                } else {
+                    // Set interest to READ after writing; do not if channel was blocked and data is left
+                    p_key.interestOps(SelectionKey.OP_READ);
+                }
+            } catch (final CancelledKeyException ignore) {
+                // Ignore
+            }
+        } else {
+            // Write flow control update to outgoing stream of PipeIn
+            try {
+                p_connection.getPipeIn().writeFlowControlBytes();
+            } catch (final IOException e) {
+                // #if LOGGER >= WARN
+                LOGGER.warn("Failed to write flow control data!");
+                // #endif /* LOGGER >= WARN */
+            }
+            try {
+                // Set interest to READ after writing
+                p_key.interestOps(SelectionKey.OP_READ);
+            } catch (final CancelledKeyException ignore) {
+                // Ignores
+            }
+        }
     }
 
     /**
@@ -423,91 +382,14 @@ class NIOSelector extends Thread {
      *         the current key
      */
     private void dispatch(final SelectionKey p_key) {
-        boolean complete;
-        boolean successful;
         NIOConnection connection;
 
         connection = (NIOConnection) p_key.attachment();
         if (p_key.isValid()) {
             if (p_key.isReadable()) {
-                if (connection == null || !connection.isPipeInOpen()) {
-                    // Channel was accepted but not used yet -> Read NodeID, create NIOConnection and attach to key
-                    try {
-                        m_connectionManager.createConnection((SocketChannel) p_key.channel());
-                    } catch (final IOException e) {
-                        // #if LOGGER >= ERROR
-                        LOGGER.error("Connection could not be created!");
-                        // #endif /* LOGGER >= ERROR */
-                    }
-                } else {
-                    if (p_key.channel() == connection.getPipeIn().getChannel()) {
-                        try {
-                            successful = connection.getPipeIn().read();
-                        } catch (final IOException ignore) {
-                            successful = false;
-                        }
-                        if (!successful) {
-                            // #if LOGGER >= DEBUG
-                            LOGGER.debug("Could not read from channel (0x%X)!", connection.getDestinationNodeID());
-                            // #endif /* LOGGER >= DEBUG */
-
-                            m_connectionManager.closeConnection(connection, true);
-                        }
-                    } else {
-                        try {
-                            connection.getPipeOut().readFlowControlBytes();
-                        } catch (final IOException e) {
-                            // #if LOGGER >= WARN
-                            LOGGER.warn("Failed to read flow control data!");
-                            // #endif /* LOGGER >= WARN */
-                        }
-                    }
-                }
+                read(p_key, connection);
             } else if (p_key.isWritable()) {
-                if (connection == null) {
-                    // #if LOGGER >= ERROR
-                    LOGGER.error("If connection is null, key has to be either readable or connectable!");
-                    // #endif /* LOGGER >= ERROR */
-                    return;
-                }
-                if (p_key.channel() == connection.getPipeOut().getChannel()) {
-                    try {
-                        complete = connection.getPipeOut().write();
-                    } catch (final IOException ignored) {
-                        // #if LOGGER >= DEBUG
-                        LOGGER.debug("Could not write to channel (0x%X)!", connection.getDestinationNodeID());
-                        // #endif /* LOGGER >= DEBUG */
-
-                        m_connectionManager.closeConnection(connection, true);
-                        return;
-                    }
-
-                    try {
-                        if (!complete || !connection.getPipeOut().isOutgoingQueueEmpty()) {
-                            // If there is still data left to write on this connection, add another write request
-                            p_key.interestOps(SelectionKey.OP_WRITE | SelectionKey.OP_READ);
-                        } else {
-                            // Set interest to READ after writing; do not if channel was blocked and data is left
-                            p_key.interestOps(SelectionKey.OP_READ);
-                        }
-                    } catch (final CancelledKeyException ignore) {
-                        // Ignore
-                    }
-                } else {
-                    try {
-                        connection.getPipeIn().writeFlowControlBytes();
-                    } catch (final IOException e) {
-                        // #if LOGGER >= WARN
-                        LOGGER.warn("Failed to write flow control data!");
-                        // #endif /* LOGGER >= WARN */
-                    }
-                    try {
-                        // Set interest to READ after writing
-                        p_key.interestOps(SelectionKey.OP_READ);
-                    } catch (final CancelledKeyException ignore) {
-                        // Ignores
-                    }
-                }
+                write(p_key, connection);
             } else if (p_key.isConnectable()) {
                 try {
                     connection.connect(p_key);
@@ -518,5 +400,31 @@ class NIOSelector extends Thread {
                 }
             }
         }
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder ret = new StringBuilder("Current keys:\n");
+
+        try {
+            if (m_selector != null && m_selector.isOpen()) {
+                Set<SelectionKey> selected = m_selector.keys();
+                Iterator<SelectionKey> iterator = selected.iterator();
+                while (iterator.hasNext()) {
+                    SelectionKey key = iterator.next();
+                    if (key.isValid() && key.attachment() != null) {
+                        ret.append("\t [").append(NodeID.toHexString(((NIOConnection) key.attachment()).getDestinationNodeID())).append(", ")
+                                .append(Integer.toBinaryString(key.interestOps())).append("]\n");
+                        ret.append("\t\t").append(key.attachment()).append('\n');
+                    }
+                }
+            }
+        } catch (final ConcurrentModificationException e) {
+            // #if LOGGER >= DEBUG
+            LOGGER.debug("Unable to print selector status.");
+            // #endif /* LOGGER >= DEBUG */
+        }
+
+        return ret.toString();
     }
 }

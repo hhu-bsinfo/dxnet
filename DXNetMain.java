@@ -50,7 +50,7 @@ import de.hhu.bsinfo.dxutils.unit.StorageUnit;
 import de.hhu.bsinfo.dxutils.unit.TimeUnit;
 
 /**
- * Execution: java -Dlog4j.configurationFile=config/log4j.xml -cp lib/gson-2.7.jar:lib/log4j-api-2.7.jar:lib/log4j-core-2.7.jar:dxram.jar de.hhu.bsinfo.dxnet.DXNetMain config/dxram.json Loopback 127.0.0.1
+ * Execution: java -Dlog4j.configurationFile=config/log4j.xml -cp lib/gson-2.7.jar:lib/log4j-api-2.7.jar:lib/log4j-core-2.7.jar:dxnet.jar de.hhu.bsinfo.dxnet.DXNetMain config/dxnet.json Loopback 127.0.0.1
  */
 public final class DXNetMain implements MessageReceiver {
     private static final Logger LOGGER = LogManager.getFormatterLogger(DXNetMain.class.getSimpleName());
@@ -212,8 +212,8 @@ public final class DXNetMain implements MessageReceiver {
         ms_threads = Integer.parseInt(p_args[4]);
         ms_ownNodeId = Short.parseShort(p_args[5]);
 
-        System.out.printf("Parameters: workload %d, count %d, size %d, threads %d, own node id 0x%X\n", ms_workload, ms_count, ms_size,
-            ms_threads, ms_ownNodeId);
+        System.out
+                .printf("Parameters: workload %d, count %d, size %d, threads %d, own node id 0x%X\n", ms_workload, ms_count, ms_size, ms_threads, ms_ownNodeId);
 
         for (int i = 6; i < p_args.length; i++) {
             ms_targetNodeIds.add(Short.parseShort(p_args[i]));
@@ -396,9 +396,9 @@ public final class DXNetMain implements MessageReceiver {
 
     private static void printResults(final String p_name, final long p_timeDiffNs) {
         System.out.printf("[%s RESULTS]\n" + "[%s WORKLOAD] %d\n" + "[%s RUNTIME] %d ms\n" + "[%s TIME PER MESSAGE] %d ns\n" + "[%s THROUGHPUT] %f MB/s\n" +
-                        "[%s THROUGHPUT OVERHEAD] %f MB/s\n", p_name, p_name, ms_workload, p_name, p_timeDiffNs / 1000 / 1000, p_name, p_timeDiffNs / ms_count,
-                p_name, (double) ms_count * ms_size / 1024 / 1024 / ((double) p_timeDiffNs / 1000 / 1000 / 1000),
-                p_name, (double) ms_count * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
+                        "[%s THROUGHPUT OVERHEAD] %f MB/s\n", p_name, p_name, ms_workload, p_name, p_timeDiffNs / 1000 / 1000, p_name, p_timeDiffNs / ms_count, p_name,
+                (double) ms_count * ms_size / 1024 / 1024 / ((double) p_timeDiffNs / 1000 / 1000 / 1000), p_name,
+                (double) ms_count * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
                         ((double) p_timeDiffNs / 1000 / 1000 / 1000));
     }
 
@@ -595,13 +595,13 @@ public final class DXNetMain implements MessageReceiver {
 
                 long timeDiff = System.nanoTime() - ms_timeStart;
                 System.out.printf("[PROGRESS] %d sec: Sent %d%% (%d), Recv %d%% (%d), TX %f, RX %f, TXO %f, RXO %f\n", timeDiff / 1000 / 1000 / 1000,
-                    (int) (((float) messagesSent / ms_count) * 100), messagesSent, (int) (((float) messagesRecv / ms_count) * 100), messagesRecv,
-                    (double) messagesSent * ms_size / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000),
-                    (double) messagesRecv * ms_size / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000),
-                    (double) messagesSent * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
-                        ((double) timeDiff / 1000 / 1000 / 1000),
-                    (double) messagesRecv * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
-                        ((double) timeDiff / 1000 / 1000 / 1000));
+                        (int) (((float) messagesSent / ms_count) * 100), messagesSent, (int) (((float) messagesRecv / ms_count) * 100), messagesRecv,
+                        (double) messagesSent * ms_size / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000),
+                        (double) messagesRecv * ms_size / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000),
+                        (double) messagesSent * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
+                                ((double) timeDiff / 1000 / 1000 / 1000),
+                        (double) messagesRecv * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
+                                ((double) timeDiff / 1000 / 1000 / 1000));
             }
         }
     }

@@ -84,7 +84,6 @@ public abstract class AbstractPipeIn {
     protected AbstractPipeIn(final short p_ownNodeId, final short p_destinationNodeId, final MessageHeaderPool p_messageHeaderPool,
             final AbstractFlowControl p_flowControl, final MessageDirectory p_messageDirectory, final RequestMap p_requestMap,
             final MessageHandlers p_messageHandlers) {
-
         m_ownNodeID = p_ownNodeId;
         m_destinationNodeID = p_destinationNodeId;
         m_flowControl = p_flowControl;

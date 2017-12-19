@@ -19,7 +19,7 @@ import de.hhu.bsinfo.dxutils.unit.StorageUnit;
 import de.hhu.bsinfo.dxutils.unit.TimeUnit;
 
 /**
- * Dedicated configuration values for NIO
+ * Dedicated configuration values for .
  *
  * @author Stefan Nothaas, stefan.nothaas@hhu.de, 28.07.2017
  */

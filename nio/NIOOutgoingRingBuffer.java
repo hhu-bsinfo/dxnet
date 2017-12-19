@@ -21,7 +21,11 @@ import de.hhu.bsinfo.dxutils.ByteBufferHelper;
 import de.hhu.bsinfo.dxutils.UnsafeMemory;
 
 /**
- * Created by nothaas on 7/17/17.
+ * Extends the outgoing ring buffer in two ways:
+ * - storing the back and front pointers in a DirectByteBuffer for sending without copying to kernel buffer
+ * - enable sending the NodeID after connection establishment
+ *
+ * @author Kevin Beineke, kevin.beineke@hhu.de, 18.03.2017
  */
 class NIOOutgoingRingBuffer extends OutgoingRingBuffer {
 
@@ -43,17 +47,19 @@ class NIOOutgoingRingBuffer extends OutgoingRingBuffer {
      */
     ByteBuffer pop() {
         long tmp;
+
         int posBackRelative;
         int posFrontRelative;
-
         tmp = popBack();
         posBackRelative = (int) (tmp >> 32 & 0x7FFFFFFF);
         posFrontRelative = (int) (tmp & 0x7FFFFFFF);
 
         if (posBackRelative == posFrontRelative) {
+            // Nothing to send right now -> return null
             return null;
         }
 
+        // Use pre-allocated DirectByteBuffer instance for sending (to avoid copying to kernel buffer) -> set position and limit
         m_sendByteBuffer.position(posFrontRelative);
         m_sendByteBuffer.limit(posBackRelative);
 
@@ -68,6 +74,8 @@ class NIOOutgoingRingBuffer extends OutgoingRingBuffer {
      */
     void pushNodeID(final ByteBuffer p_buffer) {
         if (m_posFrontProducer.get() == 0) {
+            // This is the first write access which is done during connection establishment.
+            // It is guaranteed that only one thread executes this and all other threads have to wait until finished.
             m_posFrontProducer.set(2);
             UnsafeMemory.writeByte(m_bufferAddr, p_buffer.get());
             UnsafeMemory.writeByte(m_bufferAddr + 1, p_buffer.get());

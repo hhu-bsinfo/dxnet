@@ -35,9 +35,9 @@ import de.hhu.bsinfo.dxnet.core.NetworkException;
 import de.hhu.bsinfo.dxnet.core.RequestMap;
 
 /**
- * Represents a network connection
+ * Represents a NIO network connection.
  *
- * @author Florian Klein, florian.klein@hhu.de, 18.03.2012
+ * @author Kevin Beineke, kevin.beineke@hhu.de, 18.03.2017
  */
 public class NIOConnection extends AbstractConnection<NIOPipeIn, NIOPipeOut> {
     private static final Logger LOGGER = LogManager.getFormatterLogger(NIOConnection.class.getSimpleName());
@@ -49,6 +49,42 @@ public class NIOConnection extends AbstractConnection<NIOPipeIn, NIOPipeOut> {
 
     private volatile boolean m_connectionCreationAborted;
 
+    /**
+     * Creates a new NIO connection object for given destination. The connection has not been established when returning!
+     *
+     * @param p_ownNodeId
+     *         the NodeID of this node.
+     * @param p_destination
+     *         the NodeID of the node a connection is created for.
+     * @param p_bufferSize
+     *         the outgoing ring buffer size.
+     * @param p_flowControlWindowSize
+     *         the flow control window size.
+     * @param p_flowControlWindowThreshold
+     *         the flow control window threshold.
+     * @param p_incomingBufferQueue
+     *         the (shared) incoming buffer queue.
+     * @param p_messageHeaderPool
+     *         the (shared) message header pool.
+     * @param p_messageDirectory
+     *         the message directory.
+     * @param p_requestMap
+     *         the request map.
+     * @param p_messageHandlers
+     *         the message handlers.
+     * @param p_bufferPool
+     *         the (shared) buffer pool.
+     * @param p_exporterPool
+     *         the exporter pool.
+     * @param p_nioSelector
+     *         the NIO selector.
+     * @param p_nodeMap
+     *         the node map.
+     * @param p_lock
+     *         the lock to be used for connection creation.
+     * @param p_cond
+     *         the condition to signal connection completion.
+     */
     NIOConnection(final short p_ownNodeId, final short p_destination, final int p_bufferSize, final int p_flowControlWindowSize,
             final float p_flowControlWindowThreshold, final IncomingBufferQueue p_incomingBufferQueue, final MessageHeaderPool p_messageHeaderPool,
             final MessageDirectory p_messageDirectory, final RequestMap p_requestMap, final MessageHandlers p_messageHandlers, final BufferPool p_bufferPool,
@@ -71,6 +107,38 @@ public class NIOConnection extends AbstractConnection<NIOPipeIn, NIOPipeOut> {
         m_connectionCond = p_cond;
     }
 
+    /**
+     * Creates a new NIO connection object for given destination. The connection was created from remote side and has been established when entering!
+     *
+     * @param p_ownNodeId
+     *         the NodeID of this node.
+     * @param p_destination
+     *         the NodeID of the node a connection is created for.
+     * @param p_bufferSize
+     *         the outgoing ring buffer size.
+     * @param p_flowControlWindowSize
+     *         the flow control window size.
+     * @param p_flowControlWindowThreshold
+     *         the flow control window threshold.
+     * @param p_incomingBufferQueue
+     *         the (shared) incoming buffer queue.
+     * @param p_messageHeaderPool
+     *         the (shared) message header pool.
+     * @param p_messageDirectory
+     *         the message directory.
+     * @param p_requestMap
+     *         the request map.
+     * @param p_messageHandlers
+     *         the message handlers.
+     * @param p_bufferPool
+     *         the (shared) buffer pool.
+     * @param p_exporterPool
+     *         the exporter pool.
+     * @param p_nioSelector
+     *         the NIO selector.
+     * @param p_nodeMap
+     *         the node map.
+     */
     NIOConnection(final short p_ownNodeId, final short p_destination, final int p_bufferSize, final int p_flowControlWindowSize,
             final float p_flowControlWindowThreshold, final IncomingBufferQueue p_incomingBufferQueue, final MessageHeaderPool p_messageHeaderPool,
             final MessageDirectory p_messageDirectory, final RequestMap p_requestMap, final MessageHandlers p_messageHandlers, final BufferPool p_bufferPool,
@@ -153,7 +221,7 @@ public class NIOConnection extends AbstractConnection<NIOPipeIn, NIOPipeOut> {
      * Register connect interest
      */
     protected void connect() {
-        m_nioSelector.changeOperationInterestAsync(new ChangeOperationsRequest(this, NIOSelector.CONNECT));
+        m_nioSelector.changeOperationInterestAsync(InterestQueue.CONNECT, this);
     }
 
     /**
@@ -177,11 +245,9 @@ public class NIOConnection extends AbstractConnection<NIOPipeIn, NIOPipeOut> {
      *
      * @param p_key
      *         the selection key
-     * @throws NetworkException
-     *         if the connection could not be accessed
      */
 
-    private void connected(final SelectionKey p_key) throws NetworkException {
+    private void connected(final SelectionKey p_key) {
         ByteBuffer temp;
 
         m_connectionCondLock.lock();
@@ -190,11 +256,11 @@ public class NIOConnection extends AbstractConnection<NIOPipeIn, NIOPipeOut> {
         temp.flip();
 
         // Register first write access containing the NodeID
-        getPipeOut().postBuffer(temp);
+        getPipeOut().sendNodeID(temp);
 
         try {
             // Change operation (read <-> write) and/or connection
-            p_key.interestOps(NIOSelector.WRITE);
+            p_key.interestOps(InterestQueue.WRITE);
         } catch (final CancelledKeyException ignore) {
             m_connectionCond.signalAll();
             m_connectionCondLock.unlock();

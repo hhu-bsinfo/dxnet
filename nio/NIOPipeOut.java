@@ -29,7 +29,10 @@ import de.hhu.bsinfo.dxutils.stats.StatisticsOperation;
 import de.hhu.bsinfo.dxutils.stats.StatisticsRecorderManager;
 
 /**
- * Created by nothaas on 6/9/17.
+ * Enables communication with a remote node over a socket channel. The socket channel's write stream is used to send data and the read stream is for
+ * receiving flow control updates (NOT for reading data!). The outgoing channel is independent from the incoming channel stored in the NIOPipeIn.
+ *
+ * @author Kevin Beineke, kevin.beineke@hhu.de, 18.03.2017
  */
 public class NIOPipeOut extends AbstractPipeOut {
     private static final Logger LOGGER = LogManager.getFormatterLogger(NIOPipeOut.class.getSimpleName());
@@ -41,12 +44,32 @@ public class NIOPipeOut extends AbstractPipeOut {
     private final int m_bufferSize;
 
     private SocketChannel m_outgoingChannel;
-    private final ChangeOperationsRequest m_writeOperation;
+    private NIOConnection m_connection;
 
     private final NIOSelector m_nioSelector;
     private final NodeMap m_nodeMap;
     private final ByteBuffer m_flowControlBytes;
 
+    /**
+     * Creates a NIO PipeOut. Outgoing channel is not created/opened here!
+     *
+     * @param p_ownNodeId
+     *         this node's NodeID.
+     * @param p_destinationNodeId
+     *         the NodeID of the remote node.
+     * @param p_bufferSize
+     *         the outgoing ring buffer size.
+     * @param p_flowControl
+     *         the flow control.
+     * @param p_outgoingBuffer
+     *         the outgoing ring buffer. Must be created prior to the PipeOut.
+     * @param p_nioSelector
+     *         the NIO selector thread.
+     * @param p_nodeMap
+     *         the node map.
+     * @param p_parentConnection
+     *         the NIO connection this PipeOut belongs to.
+     */
     NIOPipeOut(final short p_ownNodeId, final short p_destinationNodeId, final int p_bufferSize, final AbstractFlowControl p_flowControl,
             final OutgoingRingBuffer p_outgoingBuffer, final NIOSelector p_nioSelector, final NodeMap p_nodeMap, final NIOConnection p_parentConnection) {
         super(p_ownNodeId, p_destinationNodeId, p_flowControl, p_outgoingBuffer);
@@ -54,17 +77,21 @@ public class NIOPipeOut extends AbstractPipeOut {
         m_bufferSize = p_bufferSize;
 
         m_outgoingChannel = null;
-        m_writeOperation = new ChangeOperationsRequest(p_parentConnection, NIOSelector.WRITE);
+        m_connection = p_parentConnection;
 
         m_nioSelector = p_nioSelector;
         m_nodeMap = p_nodeMap;
         m_flowControlBytes = ByteBuffer.allocateDirect(Integer.BYTES);
     }
 
-    SocketChannel getChannel() {
-        return m_outgoingChannel;
-    }
-
+    /**
+     * Creates and connects the outgoing channel.
+     *
+     * @param p_nodeID
+     *         the remote NodeID.
+     * @throws NetworkException
+     *         if creating the outgoing channel failed
+     */
     void createOutgoingChannel(final short p_nodeID) throws NetworkException {
         try {
             m_outgoingChannel = SocketChannel.open();
@@ -86,8 +113,33 @@ public class NIOPipeOut extends AbstractPipeOut {
         }
     }
 
-    // for NIO (initial message sending node id)
-    void postBuffer(final ByteBuffer p_buffer) throws NetworkException {
+    @Override
+    protected boolean isOpen() {
+        return m_outgoingChannel != null && m_outgoingChannel.isOpen();
+    }
+
+    @Override
+    protected void bufferPosted(final int p_size) {
+        // Change operation (read <-> write) and/or connection
+        m_nioSelector.changeOperationInterestAsync(InterestQueue.WRITE, m_connection);
+    }
+
+    /**
+     * Returns the outgoing channel.
+     *
+     * @return the outgoing channel.
+     */
+    SocketChannel getChannel() {
+        return m_outgoingChannel;
+    }
+
+    /**
+     * Sends the own NodeID after connection establishment.
+     *
+     * @param p_buffer
+     *         the two byte long ByteBuffer containing the node's NodeID
+     */
+    void sendNodeID(final ByteBuffer p_buffer) {
         ((NIOOutgoingRingBuffer) getOutgoingQueue()).pushNodeID(p_buffer);
         bufferPosted(p_buffer.remaining());
     }
@@ -110,7 +162,7 @@ public class NIOPipeOut extends AbstractPipeOut {
         // #endif /* STATISTICS */
 
         buffer = ((NIOOutgoingRingBuffer) getOutgoingQueue()).pop();
-        if (buffer != null && buffer.position() != buffer.limit()) {
+        if (buffer != null) {
             while (buffer.remaining() > 0) {
 
                 bytes = m_outgoingChannel.write(buffer);
@@ -166,16 +218,5 @@ public class NIOPipeOut extends AbstractPipeOut {
         // #ifdef STATISTICS
         SOP_READ_FLOW_CONTROL.leave();
         // #endif /* STATISTICS */
-    }
-
-    @Override
-    protected boolean isOpen() {
-        return m_outgoingChannel != null && m_outgoingChannel.isOpen();
-    }
-
-    @Override
-    protected void bufferPosted(final int p_size) {
-        // Change operation (read <-> write) and/or connection
-        m_nioSelector.changeOperationInterestAsync(m_writeOperation);
     }
 }
