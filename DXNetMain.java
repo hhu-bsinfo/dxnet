@@ -661,9 +661,10 @@ public final class DXNetMain implements MessageReceiver {
                 long messagesRecv = ms_messagesRecived.get();
 
                 long timeDiff = System.nanoTime() - ms_timeStart;
-                System.out.printf("[PROGRESS] %d sec: Sent %d%% (%d), Recv %d%% (%d), TX %f, RX %f, TXO %f, RXO %f\n", timeDiff / 1000 / 1000 / 1000,
-                        (int) ((float) messagesSent / ms_totalMessages * 100), messagesSent, (int) ((float) messagesRecv / ms_totalMessages * 100),
-                        messagesRecv, (double) messagesSent * ms_size / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000),
+                System.out.printf("[PROGRESS] %d sec: Sent %d%% (%d), Recv %d%% (%d), Sent-Recv-Diff %d, TX %f, RX %f, TXO %f, RXO %f\n",
+                        timeDiff / 1000 / 1000 / 1000, (int) ((float) messagesSent / ms_totalMessages * 100), messagesSent,
+                        (int) ((float) messagesRecv / ms_totalMessages * 100), messagesRecv, messagesSent - messagesRecv,
+                        (double) messagesSent * ms_size / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000),
                         (double) messagesRecv * ms_size / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000),
                         (double) messagesSent * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
                                 ((double) timeDiff / 1000 / 1000 / 1000),
