@@ -183,6 +183,12 @@ public class NIOConnectionManager extends AbstractConnectionManager {
                 // #if LOGGER >= DEBUG
                 LOGGER.debug("Connection creation aborted");
                 // #endif /* LOGGER >= DEBUG */
+
+                // revert counter to avoid leak
+                if (p_existingConnection == null) {
+                    m_openConnections--;
+                }
+
                 return null;
             }
 
@@ -192,6 +198,13 @@ public class NIOConnectionManager extends AbstractConnectionManager {
                 // #endif /* LOGGER >= DEBUG */
 
                 condLock.unlock();
+
+                // revert counter to avoid leak
+                if (p_existingConnection == null) {
+                    m_openConnections--;
+                }
+
+
                 throw new NetworkException("Connection creation timeout occurred");
             }
             try {
