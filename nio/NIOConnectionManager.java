@@ -156,6 +156,10 @@ public class NIOConnectionManager extends AbstractConnectionManager {
 
         if (p_existingConnection == null) {
             if (m_openConnections == m_maxConnections) {
+                // #if LOGGER >= DEBUG
+                LOGGER.debug("Create connection on send: Connection max (%d) reached, dismissing random connection", m_maxConnections);
+                // #endif /* LOGGER >= DEBUG */
+
                 dismissRandomConnection();
             }
 
@@ -448,6 +452,11 @@ public class NIOConnectionManager extends AbstractConnectionManager {
 
                     if (connection == null) {
                         if (m_openConnections == m_config.getMaxConnections()) {
+                            // #if LOGGER >= DEBUG
+                            LOGGER.debug("Create connection on recv: Connection max (%d) reached, " +
+                                "dismissing random connection", m_maxConnections);
+                            // #endif /* LOGGER >= DEBUG */
+
                             dismissRandomConnection();
                         }
 

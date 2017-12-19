@@ -214,7 +214,7 @@ public abstract class AbstractConnectionManager {
             dismiss = m_connections[random & 0xFFFF];
         }
         // #if LOGGER >= WARN
-        LOGGER.warn("Removing 0x%X", (short) random);
+        LOGGER.warn("Removing randomly selected connection 0x%X", (short) random);
         // #endif /* LOGGER >= WARN */
 
         m_connections[random & 0xFFFF] = null;

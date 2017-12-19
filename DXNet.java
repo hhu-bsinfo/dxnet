@@ -352,14 +352,14 @@ public final class DXNet {
                         m_lastFailures.set(p_message.getDestination() & 0xFFFF, System.currentTimeMillis());
 
                         // #if LOGGER >= DEBUG
-                        LOGGER.debug("Connection invalid. Ignoring connection exceptions regarding 0x%X during the next second!", p_message.getDestination());
+                        LOGGER.debug("Connection invalid. Ignoring connection excepts regarding 0x%X during the next second!", p_message.getDestination());
                         // #endif /* LOGGER >= DEBUG */
                         throw new NetworkDestinationUnreachableException(p_message.getDestination());
                     }
                 }
             } catch (final NetworkException e) {
                 // #if LOGGER >= DEBUG
-                LOGGER.debug("Sending data failed ", e);
+                LOGGER.debug("Sending data failed: %s", e.getMessage());
                 // #endif /* LOGGER >= DEBUG */
                 throw new NetworkException("Sending data failed ", e);
             }

@@ -178,6 +178,10 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
         }
 
         if (m_openConnections == m_maxConnections) {
+            // #if LOGGER >= DEBUG
+            LOGGER.debug("Connection max (%d) reached, dismissing random connection", m_maxConnections);
+            // #endif /* LOGGER >= DEBUG */
+
             dismissRandomConnection();
         }
 
