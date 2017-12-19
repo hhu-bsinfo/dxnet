@@ -211,7 +211,7 @@ public class NIOConnectionManager extends AbstractConnectionManager {
             } catch (final InterruptedException e) { /* ignore */ }
         }
         condLock.unlock();
-        
+
         // a little ugly: The connection is added/set on the connection map right after the return here
         // however, the operation interest must be changed as well and is not part of the AbstractConnectionManager
         // to avoid a null pointer exception on the NIOSelector thread if the connection is not set before,
