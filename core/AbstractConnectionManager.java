@@ -109,6 +109,10 @@ public abstract class AbstractConnectionManager {
         if (ret == null || !ret.getPipeOut().isConnected()) {
             m_connectionCreationLock.lock();
 
+            // #if LOGGER >= DEBUG
+            LOGGER.debug("Active create connection to: 0x%X", p_destination);
+            // #endif /* LOGGER >= DEBUG */
+
             ret = m_connections[p_destination & 0xFFFF];
             if (ret == null || !ret.getPipeOut().isConnected()) {
                 try {
