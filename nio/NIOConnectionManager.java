@@ -194,7 +194,7 @@ public class NIOConnectionManager extends AbstractConnectionManager {
 
             if (System.currentTimeMillis() > deadline) {
                 // #if LOGGER >= DEBUG
-                LOGGER.debug("Connection creation time-out. Interval %d ms might be to small", m_config.getConnectionTimeOut().getMs());
+                LOGGER.debug("Connection creation time-out. Interval %s ms might be to small", m_config.getConnectionTimeOut());
                 // #endif /* LOGGER >= DEBUG */
 
                 condLock.unlock();
@@ -285,6 +285,10 @@ public class NIOConnectionManager extends AbstractConnectionManager {
             p_channel.register(m_nioSelector.getSelector(), 0);
 
             if (remoteNodeID != NodeID.INVALID_ID) {
+                // #if LOGGER >= DEBUG
+                LOGGER.debug("Passive create new connection to 0x%X", remoteNodeID);
+                // #endif /* LOGGER >= DEBUG */
+
                 m_connectionCreatorHelperThread.pushJob(new CreationJob(remoteNodeID, p_channel));
             } else {
                 throw new IOException("Invalid NodeID");
