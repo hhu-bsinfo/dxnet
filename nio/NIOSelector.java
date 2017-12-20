@@ -215,9 +215,9 @@ class NIOSelector extends Thread {
                                 dispatch(key);
                             }
                         } else {
-                            // #if LOGGER >= ERROR
-                            LOGGER.error("Selected key is invalid: %s", key);
-                            // #endif /* LOGGER >= ERROR */
+                            // #if LOGGER >= WARN
+                            LOGGER.warn("Selected key is invalid: %s", key);
+                            // #endif /* LOGGER >= WARN */
                         }
                     }
                 }
