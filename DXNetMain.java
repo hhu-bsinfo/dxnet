@@ -327,10 +327,10 @@ public final class DXNetMain implements MessageReceiver {
         boolean found = false;
         for (DXNetContext.NodeEntry entry : ms_context.getNodeList()) {
             if (entry.getNodeId() == ms_ownNodeId) {
-                ms_nodeMap.addNode(entry.getNodeId(), new InetSocketAddress(entry.getAddress().getIP(), entry.getAddress().getPort()));
                 found = true;
-                break;
             }
+
+            ms_nodeMap.addNode(entry.getNodeId(), new InetSocketAddress(entry.getAddress().getIP(), entry.getAddress().getPort()));
         }
 
         if (!found) {
@@ -344,7 +344,6 @@ public final class DXNetMain implements MessageReceiver {
             // find in node config
             for (DXNetContext.NodeEntry entry : ms_context.getNodeList()) {
                 if (entry.getNodeId() == targetNodeId) {
-                    ms_nodeMap.addNode(entry.getNodeId(), new InetSocketAddress(entry.getAddress().getIP(), entry.getAddress().getPort()));
                     found = true;
                     break;
                 }
