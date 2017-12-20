@@ -286,11 +286,6 @@ class NIOSelector extends Thread {
 
         if (p_key.channel() == p_connection.getPipeIn().getChannel()) {
             // Read data from incoming stream of PipeIn
-            if (!p_connection.isPipeInOpen()) {
-                createIncomingConnection(p_key);
-                return;
-            }
-
             try {
                 successful = p_connection.getPipeIn().read();
             } catch (final IOException ignore) {
@@ -328,7 +323,7 @@ class NIOSelector extends Thread {
 
         if (p_connection == null) {
             // #if LOGGER >= ERROR
-            LOGGER.error("If connection is null, key has to be either readable or connectible!");
+            LOGGER.error("Key is writable, but connection is null!");
             // #endif /* LOGGER >= ERROR */
             return;
         }

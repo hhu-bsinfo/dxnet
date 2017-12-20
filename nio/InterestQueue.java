@@ -128,7 +128,7 @@ class InterestQueue {
                 if ((interest & CONNECT) == CONNECT) {
                     // CONNECT -> register with connection as attachment (ACCEPT is registered directly)
                     try {
-                        connection.getPipeOut().getChannel().register(p_selector, interest, connection);
+                        connection.getPipeOut().getChannel().register(p_selector, CONNECT, connection);
                     } catch (final ClosedChannelException e) {
                         // #if LOGGER >= DEBUG
                         LOGGER.debug("Could not change operations!");
@@ -153,7 +153,7 @@ class InterestQueue {
                         // This is a READ access - CALLED ONCE AFTER CONNECTION CREATION
                         try {
                             // Use incoming channel for receiving messages
-                            connection.getPipeIn().getChannel().register(p_selector, interest, connection);
+                            connection.getPipeIn().getChannel().register(p_selector, READ, connection);
                         } catch (ClosedChannelException e) {
                             e.printStackTrace();
                         }
@@ -182,14 +182,14 @@ class InterestQueue {
                         // This is a WRITE access -> change interest only
                         key = connection.getPipeOut().getChannel().keyFor(p_selector);
                         if (key == null) {
+                            // Key might be null if connection was closed during shutdown or due to closing a duplicate connection
                             // #if LOGGER >= ERROR
                             LOGGER.error("Cannot register WRITE operation as key is null for %s", connection);
                             // #endif /* LOGGER >= ERROR */
                         } else if (key.interestOps() != READ_WRITE) {
-                            // Key might be null if connection was closed during shutdown or due to closing a duplicate connection
                             // If key interest is READ | WRITE the interest must not be overwritten with WRITE as both incoming
                             // buffers might be filled causing a deadlock
-                            key.interestOps(interest);
+                            key.interestOps(WRITE);
                         }
                     } catch (final CancelledKeyException e) {
                         // Ignore
