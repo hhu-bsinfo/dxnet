@@ -20,7 +20,6 @@ import org.apache.logging.log4j.Logger;
 
 import de.hhu.bsinfo.dxnet.core.MessageHeader;
 import de.hhu.bsinfo.dxnet.core.MessageHeaderPool;
-import de.hhu.bsinfo.dxnet.core.messages.Messages;
 import de.hhu.bsinfo.dxutils.stats.StatisticsOperation;
 import de.hhu.bsinfo.dxutils.stats.StatisticsRecorderManager;
 
@@ -36,14 +35,14 @@ final class ExclusiveMessageHandler {
     private static final StatisticsOperation SOP_WAIT = StatisticsRecorderManager.getOperation(RECORDER, "Wait");
 
     // must be a power of two to work with wrap around
-    private static final int EXCLUSIVE_MESSAGE_STORE_SIZE = 32;
+    private static final int EXCLUSIVE_MESSAGE_STORE_SIZE = 128;
 
     private final MessageHeaderStore m_exclusiveMessageHeaders;
 
     private final MessageHandler m_exclusiveMessageHandler;
 
     /**
-     * Creates an instance of ExlusiveMessageHandler
+     * Creates an instance of ExclusiveMessageHandler
      *
      * @param p_messageReceivers
      *         Provides all registered message receivers
@@ -101,26 +100,19 @@ final class ExclusiveMessageHandler {
         // #endif /* STATISTICS */
 
         if (!m_exclusiveMessageHeaders.pushMessageHeaders(p_headers, p_messages)) {
-            for (int i = 0; i < p_headers.length; i++) {
-                if (p_headers[i] == null) {
-                    break;
-                }
+            for (int i = 0; i < p_messages; i++) {
+                if (!m_exclusiveMessageHeaders.pushMessageHeader(p_headers[i])) {
+                    // #ifdef STATISTICS
+                    SOP_WAIT.enter();
+                    // #endif /* STATISTICS */
 
-                // Ignore network test messages (e.g. ping after response delay)
-                if (!(p_headers[i].getType() == Messages.DEFAULT_MESSAGES_TYPE && p_headers[i].getSubtype() == Messages.SUBTYPE_DEFAULT_MESSAGE)) {
-                    if (!m_exclusiveMessageHeaders.pushMessageHeader(p_headers[i])) {
-                        // #ifdef STATISTICS
-                        SOP_WAIT.enter();
-                        // #endif /* STATISTICS */
-
-                        while (!m_exclusiveMessageHeaders.pushMessageHeader(p_headers[i])) {
-                            LockSupport.parkNanos(100);
-                        }
-
-                        // #ifdef STATISTICS
-                        SOP_WAIT.leave();
-                        // #endif /* STATISTICS */
+                    while (!m_exclusiveMessageHeaders.pushMessageHeader(p_headers[i])) {
+                        LockSupport.parkNanos(100);
                     }
+
+                    // #ifdef STATISTICS
+                    SOP_WAIT.leave();
+                    // #endif /* STATISTICS */
                 }
             }
         }
@@ -128,9 +120,5 @@ final class ExclusiveMessageHandler {
         // #ifdef STATISTICS
         SOP_PUSH.leave();
         // #endif /* STATISTICS */
-    }
-
-    boolean isEmpty() {
-        return m_exclusiveMessageHeaders.isEmpty();
     }
 }

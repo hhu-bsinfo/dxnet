@@ -353,6 +353,12 @@ public class OutgoingRingBuffer {
         exporter.setPosition(p_start);
 
         p_message.serialize(exporter, p_messageSize);
+
+        if (exporter.getNumberOfWrittenBytes() != p_messageSize) {
+            throw new NetworkException(
+                    "Message size differs from calculated size. Exported " + exporter.getNumberOfWrittenBytes() + " bytes, expected " + p_messageSize +
+                            " bytes (including header). Check getPayloadLength method of message type " + p_message.getClass().getSimpleName());
+        }
     }
 
     /**

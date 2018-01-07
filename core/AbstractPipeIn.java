@@ -238,6 +238,34 @@ public abstract class AbstractPipeIn {
                 }
             }
 
+            // Check type and subtype (must not be both 0)
+            byte type = messageHeader.getType();
+            byte subtype = messageHeader.getSubtype();
+            if (!m_messageDirectory.contains(type, subtype)) {
+                StringBuilder builder = new StringBuilder();
+                int len = bytesAvailable;
+
+                if (len > 1024) {
+                    len = 1024;
+                }
+
+                for (int i = currentPosition; i < currentPosition + len; i++) {
+                    builder.append(Integer.toHexString(UnsafeMemory.readByte(address + i) & 0xFF));
+                    builder.append(' ');
+                }
+
+                if (type == Messages.DEFAULT_MESSAGES_TYPE && subtype == Messages.SUBTYPE_INVALID_MESSAGE) {
+                    throw new NetworkException(
+                            "Invalid message type 0, subtype 0, most likely corrupted message/buffer. Current message header: " + messageHeader +
+                                    "\nBuffer section (first index is start of message header): " + builder + "\nImporterCollectionState:\n" + m_importers);
+                } else {
+                    throw new NetworkException(
+                            "Invalid message type " + type + ", subtype " + subtype + ", not registered in message directory. Current message header: " +
+                                    messageHeader + "\nBuffer section (first index is start of message header): " + builder + "\nImporterCollectionState:\n" +
+                                    m_importers);
+                }
+            }
+
             // Ignore network test messages (e.g. ping after response delay). Default messages do not have a payload.
             if (messageHeader.getType() == Messages.DEFAULT_MESSAGES_TYPE && messageHeader.getSubtype() == Messages.SUBTYPE_DEFAULT_MESSAGE) {
                 continue;
@@ -338,13 +366,13 @@ public abstract class AbstractPipeIn {
 
         if (p_unfinishedOperation.isEmpty() || !p_unfinishedOperation.wasMessageCreated()) {
             // Create a new message
-            message = createMessage(p_header, p_currentPosition, p_address, p_bytesAvailable, p_importerCollection);
+            message = createMessage(p_header);
         } else {
             // Continue with partly de-serialized message
             message = p_unfinishedOperation.getMessage();
         }
 
-        // important: Set corresponding request BEFORE readPayload. The call might use the request
+        // Important: set corresponding request BEFORE readPayload. The call might use the request
         Request request = null;
         if (message.isResponse()) {
 
@@ -377,6 +405,13 @@ public abstract class AbstractPipeIn {
         if (!readPayload(p_currentPosition, message, p_address, p_bytesAvailable, p_header.getPayloadSize(), p_unfinishedOperation, p_importerCollection)) {
             // Message could not be completely de-serialized
             return message;
+        }
+
+        if (message.getPayloadLength() != p_header.getPayloadSize()) {
+            throw new NetworkException(
+                    "Read message size in header differs from calculated size. Size in header " + (p_header.getPayloadSize() + Message.HEADER_SIZE) +
+                            " bytes, expected " + (message.getPayloadLength() + Message.HEADER_SIZE) +
+                            " bytes (including header). Check getPayloadLength method of message type " + message.getClass().getSimpleName());
         }
 
         updateBufferSlot(p_slot);
@@ -492,56 +527,23 @@ public abstract class AbstractPipeIn {
     /**
      * Create a message from a given buffer
      *
-     * @param p_address
-     *         (Unsafe) address to buffer
-     * @param p_bytesAvailable
-     *         Number of bytes available in buffer
+     * @param p_header
+     *         the message header
      * @return New message instance created from the buffer(s)
      * @throws NetworkException
      *         If creating/reading/deserializing the message failed
      */
-    private Message createMessage(final MessageHeader p_header, final int p_currentPosition, final long p_address, final int p_bytesAvailable,
-            final MessageImporterCollection p_importerCollection) throws NetworkException {
+    private Message createMessage(final MessageHeader p_header) throws NetworkException {
         Message ret;
         byte type = p_header.getType();
         byte subtype = p_header.getSubtype();
 
-        if (type == Messages.DEFAULT_MESSAGES_TYPE && subtype == Messages.SUBTYPE_INVALID_MESSAGE) {
-            StringBuilder builder = new StringBuilder();
-            int len = p_bytesAvailable;
-
-            if (len > 1024) {
-                len = 1024;
-            }
-
-            for (int i = p_currentPosition - 10; i < p_currentPosition - 10 + len; i++) {
-                builder.append(Integer.toHexString(UnsafeMemory.readByte(p_address + i) & 0xFF));
-                builder.append(' ');
-            }
-
-            throw new NetworkException("Invalid message type 0, subtype 0, most likely corrupted message/buffer. Current message header: " + p_header +
-                    "\nBuffer section (first index is start of message header): " + builder + "\nImporterCollectionState:\n" + p_importerCollection);
-        }
-
         try {
             ret = m_messageDirectory.getInstance(type, subtype);
         } catch (final Exception e) {
-            StringBuilder builder = new StringBuilder();
-            int len = p_bytesAvailable;
-
-            if (len > 1024) {
-                len = 1024;
-            }
-
-            for (int i = p_currentPosition - 10; i < p_currentPosition - 10 + len; i++) {
-                builder.append(Integer.toHexString(UnsafeMemory.readByte(p_address + i) & 0xFF));
-                builder.append(' ');
-            }
-
             throw new NetworkException(
                     "Unable to create message of type " + type + ", subtype " + subtype + ". Type is missing in message directory. Current message header " +
-                            p_header + "\nBuffer section (first index is start of message header): " + builder + "\nImporterCollectionState:\n" +
-                            p_importerCollection, e);
+                            p_header, e);
         }
 
         ret.initialize(p_header, m_ownNodeID, m_destinationNodeID);

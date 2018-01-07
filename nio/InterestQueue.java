@@ -53,7 +53,7 @@ class InterestQueue {
      * Creates an instance of InterestQueue
      */
     InterestQueue() {
-        m_changeRequests = new int[Short.MAX_VALUE];
+        m_changeRequests = new int[(int) Math.pow(2, 16)];
         m_activeConnections = new ArrayList<>();
         m_changeLock = new ReentrantLock(false);
     }
