@@ -172,7 +172,7 @@ class NIOSelector extends Thread {
      * @param p_connection
      *         the connection to register the interest for.
      */
-    void changeOperationInterestAsync(final int p_interest, final NIOConnection p_connection) {
+    void changeOperationInterestAsync(final byte p_interest, final NIOConnection p_connection) {
         if (m_interestQueue.addInterest(p_interest, p_connection)) {
             m_selector.wakeup();
         }
@@ -247,7 +247,7 @@ class NIOSelector extends Thread {
         channel.socket().setTcpNoDelay(true);
         channel.socket().setSendBufferSize(32);
 
-        channel.register(m_selector, InterestQueue.READ);
+        channel.register(m_selector, SelectionKey.OP_READ);
     }
 
     /**

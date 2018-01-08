@@ -260,7 +260,7 @@ public class NIOConnection extends AbstractConnection<NIOPipeIn, NIOPipeOut> {
 
         try {
             // Change operation (read <-> write) and/or connection
-            p_key.interestOps(InterestQueue.WRITE);
+            p_key.interestOps(SelectionKey.OP_WRITE);
         } catch (final CancelledKeyException ignore) {
             m_connectionCond.signalAll();
             m_connectionCondLock.unlock();

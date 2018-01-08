@@ -34,15 +34,14 @@ class InterestQueue {
     private static final Logger LOGGER = LogManager.getFormatterLogger(InterestQueue.class.getSimpleName());
 
     // Operations (0b1, 0b10, 0b100, 0b1000 reserved in SelectionKey)
-    static final int READ = 1;
-    static final int WRITE = 1 << 2;
-    static final int CONNECT = 1 << 3;
-    static final int READ_WRITE = READ | WRITE;
-    static final int READ_FLOW_CONTROL = 1 << 5;
-    static final int FLOW_CONTROL = 1 << 6;
-    static final int CLOSE = 1 << 1;
+    static final byte READ = 1;
+    static final byte WRITE = 1 << 2;
+    static final byte CONNECT = 1 << 3;
+    static final byte READ_FLOW_CONTROL = 1 << 5;
+    static final byte FLOW_CONTROL = 1 << 6;
+    static final byte CLOSE = 1 << 1;
 
-    private int[] m_changeRequests;
+    private byte[] m_changeRequests;
     private ArrayList<NIOConnection> m_activeConnections;
 
     private ReentrantLock m_changeLock;
@@ -53,7 +52,7 @@ class InterestQueue {
      * Creates an instance of InterestQueue
      */
     InterestQueue() {
-        m_changeRequests = new int[Short.MAX_VALUE];
+        m_changeRequests = new byte[Short.MAX_VALUE];
         m_activeConnections = new ArrayList<>();
         m_changeLock = new ReentrantLock(false);
     }
@@ -67,10 +66,10 @@ class InterestQueue {
      *         the connection.
      * @return true, if the interest was not yet registered.
      */
-    boolean addInterest(final int p_interest, final NIOConnection p_connection) {
+    boolean addInterest(final byte p_interest, final NIOConnection p_connection) {
         boolean ret = false;
+        byte oldInterest;
         short nodeID = p_connection.getDestinationNodeID();
-        int oldInterest;
 
         m_changeLock.lock();
         oldInterest = m_changeRequests[nodeID & 0xFFFF];
@@ -84,7 +83,7 @@ class InterestQueue {
             ret = true;
         }
 
-        m_changeRequests[nodeID & 0xFFFF] = oldInterest | p_interest;
+        m_changeRequests[nodeID & 0xFFFF] = (byte) (oldInterest | p_interest);
         m_changeLock.unlock();
 
         return ret;
@@ -128,7 +127,7 @@ class InterestQueue {
                 if ((interest & CONNECT) == CONNECT) {
                     // CONNECT -> register with connection as attachment (ACCEPT is registered directly)
                     try {
-                        connection.getPipeOut().getChannel().register(p_selector, CONNECT, connection);
+                        connection.getPipeOut().getChannel().register(p_selector, SelectionKey.OP_CONNECT, connection);
                     } catch (final ClosedChannelException e) {
                         // #if LOGGER >= DEBUG
                         LOGGER.debug("Could not change operations!");
@@ -140,7 +139,7 @@ class InterestQueue {
                         // This is a READ access for flow control - CALLED ONCE AFTER CONNECTION CREATION
                         try {
                             // Use outgoing channel for receiving flow control messages
-                            connection.getPipeOut().getChannel().register(p_selector, READ, connection);
+                            connection.getPipeOut().getChannel().register(p_selector, SelectionKey.OP_READ, connection);
                         } catch (ClosedChannelException e) {
                             e.printStackTrace();
                         }
@@ -153,7 +152,7 @@ class InterestQueue {
                         // This is a READ access - CALLED ONCE AFTER CONNECTION CREATION
                         try {
                             // Use incoming channel for receiving messages
-                            connection.getPipeIn().getChannel().register(p_selector, READ, connection);
+                            connection.getPipeIn().getChannel().register(p_selector, SelectionKey.OP_READ, connection);
                         } catch (ClosedChannelException e) {
                             e.printStackTrace();
                         }
@@ -166,11 +165,11 @@ class InterestQueue {
                     try {
                         // This is a FLOW_CONTROL access - Write flow control bytes over incoming channel
                         key = connection.getPipeIn().getChannel().keyFor(p_selector);
-                        if (key != null && key.interestOps() != READ_WRITE) {
+                        if (key != null && key.interestOps() != (SelectionKey.OP_READ | SelectionKey.OP_WRITE)) {
                             // Key might be null if connection was closed during shutdown or due to closing a duplicate connection
                             // If key interest is READ | WRITE the interest must not be overwritten with WRITE as both incoming
                             // buffers might be filled causing a deadlock
-                            key.interestOps(WRITE);
+                            key.interestOps(SelectionKey.OP_WRITE);
                         }
                     } catch (final CancelledKeyException e) {
                         // Ignore
@@ -186,10 +185,10 @@ class InterestQueue {
                             // #if LOGGER >= ERROR
                             LOGGER.error("Cannot register WRITE operation as key is null for %s", connection);
                             // #endif /* LOGGER >= ERROR */
-                        } else if (key.interestOps() != READ_WRITE) {
+                        } else if (key.interestOps() != (SelectionKey.OP_READ | SelectionKey.OP_WRITE)) {
                             // If key interest is READ | WRITE the interest must not be overwritten with WRITE as both incoming
                             // buffers might be filled causing a deadlock
-                            key.interestOps(WRITE);
+                            key.interestOps(SelectionKey.OP_WRITE);
                         }
                     } catch (final CancelledKeyException e) {
                         // Ignore
