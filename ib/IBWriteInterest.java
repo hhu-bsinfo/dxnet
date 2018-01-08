@@ -41,7 +41,7 @@ class IBWriteInterest {
     @Override
     public String toString() {
         long tmp = m_interestsAvailable.get();
-        return NodeID.toHexString(m_nodeId) + ", " + (tmp & 0x7FFFFFFF) + ", " + ((tmp >> 32) & 0x7FFFFFFF);
+        return NodeID.toHexString(m_nodeId) + ", " + (tmp & 0x7FFFFFFF) + ", " + (tmp >> 32 & 0x7FFFFFFF);
     }
 
     /**
@@ -57,7 +57,13 @@ class IBWriteInterest {
      * @return True if no interest was available before adding this one, false otherwise
      */
     boolean addDataInterest() {
-        return m_interestsAvailable.getAndAdd(1) == 0;
+        long tmp = m_interestsAvailable.getAndAdd(1);
+
+        if ((int) tmp < 0) {
+            throw new IllegalStateException();
+        }
+
+        return tmp == 0;
     }
 
     /**
@@ -66,7 +72,13 @@ class IBWriteInterest {
      * @return True if no interest was available before adding this one, false otherwise
      */
     boolean addFcInterest() {
-        return m_interestsAvailable.getAndAdd(1L << 32) == 0;
+        long tmp = m_interestsAvailable.getAndAdd(1L << 32);
+
+        if ((int) (tmp >> 32L) < 0) {
+            throw new IllegalStateException();
+        }
+
+        return tmp == 0;
     }
 
     /**

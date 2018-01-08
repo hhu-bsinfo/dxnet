@@ -17,7 +17,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import de.hhu.bsinfo.dxutils.NodeID;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Manager for write interests of all connections
@@ -107,5 +106,20 @@ class IBWriteInterestManager {
      */
     void nodeDisconnected(final short p_nodeId) {
         m_writeInterests[p_nodeId & 0xFFFF].reset();
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder strBuilder = new StringBuilder();
+
+        strBuilder.append(m_interestQueue);
+        strBuilder.append('\n');
+
+        for (int i = 0; i < m_writeInterests.length; i++) {
+            strBuilder.append(m_writeInterests[i]);
+            strBuilder.append('\n');
+        }
+
+        return strBuilder.toString();
     }
 }

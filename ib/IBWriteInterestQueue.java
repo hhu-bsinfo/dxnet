@@ -13,8 +13,9 @@
 
 package de.hhu.bsinfo.dxnet.ib;
 
-import de.hhu.bsinfo.dxutils.NodeID;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import de.hhu.bsinfo.dxutils.NodeID;
 
 /**
  * N:1 Queue to keep track of nodes with available interests. The caller has to ensure
@@ -37,10 +38,6 @@ class IBWriteInterestQueue {
         m_front = 0;
         m_backReserved = new AtomicInteger(0);
         m_back = new AtomicInteger(0);
-
-        if ((m_queue.length & (m_queue.length - 1)) == 0) {
-            throw new IllegalStateException("Queue length must be power of two");
-        }
     }
 
     /**
@@ -48,26 +45,23 @@ class IBWriteInterestQueue {
      *
      * @param p_nodeId
      *         Node id to push back
-     * @return True if successful, false if queue full
      */
-    public boolean pushBack(final short p_nodeId) {
+    public void pushBack(final short p_nodeId) {
         if (p_nodeId == NodeID.INVALID_ID) {
             throw new IllegalStateException("Invalid node id is not allowed on interest queue");
         }
 
+        int backResSigned;
         int backRes;
+        int front;
 
         // reserve a slot to write to
-        while (true) {
-            backRes = m_backReserved.get() & 0x7FFFFFFF;
+        backResSigned = m_backReserved.getAndIncrement();
+        backRes = backResSigned & 0x7FFFFFFF;
+        front = m_front & 0x7FFFFFFF;
 
-            if ((backRes + 1) % m_queue.length == (m_front & 0x7FFFFFFF) % m_queue.length) {
-                return false;
-            }
-
-            if (m_backReserved.compareAndSet(backRes, backRes + 1)) {
-                break;
-            }
+        if ((backRes + 1 & 0x7FFFFFFF) % m_queue.length == front % m_queue.length) {
+            throw new IllegalStateException("Interest queue cannot be full: m_back " + m_back.get() + ", backRes " + backRes + ", front " + front);
         }
 
         // write to reserved slot
@@ -76,11 +70,9 @@ class IBWriteInterestQueue {
         // update actual back pointer to allow front to consume the element
         // other threads might do this concurrently, so wait until the back pointer has moved
         // up to our reserved position
-        while (!m_back.compareAndSet(backRes, backRes + 1)) {
+        while (!m_back.compareAndSet(backResSigned, backResSigned + 1)) {
             Thread.yield();
         }
-
-        return true;
     }
 
     /**
@@ -90,8 +82,9 @@ class IBWriteInterestQueue {
      */
     public short popFront() {
         int frontPos = (m_front & 0x7FFFFFFF) % m_queue.length;
+        int backPos = m_back.get() & 0x7FFFFFFF;
 
-        if ((m_back.get() & 0x7FFFFFFF) % m_queue.length == frontPos) {
+        if (backPos % m_queue.length == frontPos) {
             return NodeID.INVALID_ID;
         }
 
@@ -99,5 +92,10 @@ class IBWriteInterestQueue {
         m_front++;
 
         return elem;
+    }
+
+    @Override
+    public String toString() {
+        return "m_front " + m_front + ", m_backReserved " + m_backReserved.get() + ", m_back " + m_back.get();
     }
 }

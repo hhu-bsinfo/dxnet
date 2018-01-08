@@ -147,7 +147,7 @@ public final class MessageDirectory {
      *         the subtype of the Message
      * @return true if registered
      */
-    private boolean contains(final byte p_type, final byte p_subtype) {
+    public boolean contains(final byte p_type, final byte p_subtype) {
         boolean result;
         final Constructor<?>[][] constructors = m_constructors;
 

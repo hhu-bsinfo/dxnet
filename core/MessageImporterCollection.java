@@ -39,8 +39,8 @@ public class MessageImporterCollection {
 
     @Override
     public String toString() {
-        return "m_importer [" + m_importer + "], m_importerOverflow [" + m_importerOverflow + "], m_importerUnderflow [" + m_importerUnderflow +
-                "], m_importerUnderOverflow [" + m_importerUnderOverflow + ']';
+        return "m_importer [" + m_importer + "]\nm_importerOverflow [" + m_importerOverflow + "]\nm_importerUnderflow [" + m_importerUnderflow +
+                "]\nm_importerUnderOverflow [" + m_importerUnderOverflow + ']';
     }
 
     /**

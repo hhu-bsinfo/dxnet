@@ -156,6 +156,10 @@ public class NIOConnectionManager extends AbstractConnectionManager {
 
         if (p_existingConnection == null) {
             if (m_openConnections == m_maxConnections) {
+                // #if LOGGER >= DEBUG
+                LOGGER.debug("Create connection on send: Connection max (%d) reached, dismissing random connection", m_maxConnections);
+                // #endif /* LOGGER >= DEBUG */
+
                 dismissRandomConnection();
             }
 
@@ -179,15 +183,27 @@ public class NIOConnectionManager extends AbstractConnectionManager {
                 // #if LOGGER >= DEBUG
                 LOGGER.debug("Connection creation aborted");
                 // #endif /* LOGGER >= DEBUG */
+
+                // revert counter to avoid leak
+                if (p_existingConnection == null) {
+                    m_openConnections--;
+                }
+
                 return null;
             }
 
             if (System.currentTimeMillis() > deadline) {
                 // #if LOGGER >= DEBUG
-                LOGGER.debug("Connection creation time-out. Interval %d ms might be to small", m_config.getConnectionTimeOut().getMs());
+                LOGGER.debug("Connection creation time-out. Interval %s ms might be to small", m_config.getConnectionTimeOut());
                 // #endif /* LOGGER >= DEBUG */
 
                 condLock.unlock();
+
+                // revert counter to avoid leak
+                if (p_existingConnection == null) {
+                    m_openConnections--;
+                }
+
                 throw new NetworkException("Connection creation timeout occurred");
             }
             try {
@@ -196,6 +212,11 @@ public class NIOConnectionManager extends AbstractConnectionManager {
         }
         condLock.unlock();
 
+        // a little ugly: The connection is added/set on the connection map right after the return here
+        // however, the operation interest must be changed as well and is not part of the AbstractConnectionManager
+        // to avoid a null pointer exception on the NIOSelector thread if the connection is not set before,
+        // set the connection before issuing the operation interest
+        m_connections[p_destination & 0xFFFF] = ret;
         m_nioSelector.changeOperationInterestAsync(InterestQueue.READ_FLOW_CONTROL, ret);
 
         return ret;
@@ -264,6 +285,10 @@ public class NIOConnectionManager extends AbstractConnectionManager {
             p_channel.register(m_nioSelector.getSelector(), 0);
 
             if (remoteNodeID != NodeID.INVALID_ID) {
+                // #if LOGGER >= DEBUG
+                LOGGER.debug("Passive create new connection to 0x%X", remoteNodeID);
+                // #endif /* LOGGER >= DEBUG */
+
                 m_connectionCreatorHelperThread.pushJob(new CreationJob(remoteNodeID, p_channel));
             } else {
                 throw new IOException("Invalid NodeID");
@@ -448,6 +473,10 @@ public class NIOConnectionManager extends AbstractConnectionManager {
 
                     if (connection == null) {
                         if (m_openConnections == m_config.getMaxConnections()) {
+                            // #if LOGGER >= DEBUG
+                            LOGGER.debug("Create connection on recv: Connection max (%d) reached, " + "dismissing random connection", m_maxConnections);
+                            // #endif /* LOGGER >= DEBUG */
+
                             dismissRandomConnection();
                         }
 

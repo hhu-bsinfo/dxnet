@@ -352,14 +352,14 @@ public final class DXNet {
                         m_lastFailures.set(p_message.getDestination() & 0xFFFF, System.currentTimeMillis());
 
                         // #if LOGGER >= DEBUG
-                        LOGGER.debug("Connection invalid. Ignoring connection exceptions regarding 0x%X during the next second!", p_message.getDestination());
+                        LOGGER.debug("Connection invalid. Ignoring connection excepts regarding 0x%X during the next second!", p_message.getDestination());
                         // #endif /* LOGGER >= DEBUG */
                         throw new NetworkDestinationUnreachableException(p_message.getDestination());
                     }
                 }
             } catch (final NetworkException e) {
                 // #if LOGGER >= DEBUG
-                LOGGER.debug("Sending data failed ", e);
+                LOGGER.debug("Sending data failed: %s", e.getMessage());
                 // #endif /* LOGGER >= DEBUG */
                 throw new NetworkException("Sending data failed ", e);
             }
@@ -433,9 +433,9 @@ public final class DXNet {
             SOP_SEND_SYNC.leave();
             // #endif /* STATISTICS */
 
-            // #if LOGGER >= ERROR
-            LOGGER.error("Sending sync, waiting for responses to %s failed, timeout: %d ms", p_request, timeout);
-            // #endif /* LOGGER >= ERROR */
+            // #if LOGGER >= WARN
+            LOGGER.warn("Sending sync, waiting for responses to %s failed, timeout: %d ms", p_request, timeout);
+            // #endif /* LOGGER >= WARN */
 
             m_requestMap.remove(p_request.getRequestID());
 
@@ -449,9 +449,9 @@ public final class DXNet {
             SOP_SEND_SYNC.leave();
             // #endif /* STATISTICS */
 
-            // #if LOGGER >= TRACE
-            LOGGER.trace("Sending sync, waiting for responses to %s failed, cancelled: %d ms", p_request, timeout);
-            // #endif /* LOGGER >= TRACE */
+            // #if LOGGER >= WARN
+            LOGGER.warn("Sending sync, waiting for responses to %s failed, cancelled: %d ms", p_request, timeout);
+            // #endif /* LOGGER >= WARN */
 
             throw e;
         }
