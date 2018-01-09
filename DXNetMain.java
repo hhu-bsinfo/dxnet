@@ -225,7 +225,7 @@ public final class DXNetMain implements MessageReceiver {
 
         loadConfiguration(p_args[0]);
 
-        if (p_args.length < 8) {
+        if (p_args.length < 7) {
             System.out.println("To execute benchmarks with a valid configuration file:");
             System.out.println("Args: <config_file> <workload> <send count> <recv count> <size> <send/app threads> <node id> [send target node ids ...]");
             System.exit(-1);
