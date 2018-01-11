@@ -176,7 +176,7 @@ public final class DXNetMain implements MessageReceiver {
 
         PrintStatistics.printStatisticsToOutput(System.out);
         ExportStatistics.writeStatisticsTablesToStdout();
-        printResults("SEND", timeEndSender - ms_timeStart, minRttNs, maxRttNs, ms_sendCount);
+        printResults("SEND", timeEndSender - ms_timeStart, minRttNs, maxRttNs, ms_sendCount * ms_targetNodeIds.size());
         printResults("RECV", ms_timeEndReceiver - ms_timeStart, 0, 0, ms_recvCount);
 
         try {
@@ -250,9 +250,8 @@ public final class DXNetMain implements MessageReceiver {
             targets.append(p_args[i]);
         }
 
-        System.out
-                .printf("Parameters: workload %d, send count %d, recv count %d, size %d, threads %d, own node id 0x%X, targets %s\n", ms_workload, ms_sendCount,
-                        ms_recvCount, ms_size, ms_threads, ms_ownNodeId, targets.toString());
+        System.out.printf("Parameters: workload %d, send count %d (per target), recv count %d (all), size %d, threads %d, own node id 0x%X, targets %s\n",
+                ms_workload, ms_sendCount, ms_recvCount, ms_size, ms_threads, ms_ownNodeId, targets.toString());
     }
 
     private static void loadConfiguration(final String p_configPath) {
@@ -675,8 +674,8 @@ public final class DXNetMain implements MessageReceiver {
 
                 long timeDiff = System.nanoTime() - ms_timeStart;
                 System.out.printf("[PROGRESS] %d sec: Sent %d%% (%d), Recv %d%% (%d), Sent-Recv-Diff %d, TX %f, RX %f, TXO %f, RXO %f\n",
-                        timeDiff / 1000 / 1000 / 1000, ms_sendCount != 0 ? (int) ((float) messagesSent / ms_sendCount * 100) : 0, messagesSent,
-                        ms_recvCount != 0 ? (int) ((float) messagesRecv / ms_recvCount * 100) : 0, messagesRecv, messagesSent - messagesRecv,
+                        timeDiff / 1000 / 1000 / 1000, ms_sendCount != 0 ? (int) ((float) messagesSent / ms_sendCount / ms_targetNodeIds.size() * 100) : 0,
+                        messagesSent, ms_recvCount != 0 ? (int) ((float) messagesRecv / ms_recvCount * 100) : 0, messagesRecv, messagesSent - messagesRecv,
                         (double) messagesSent * ms_size / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000),
                         (double) messagesRecv * ms_size / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000),
                         (double) messagesSent * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
