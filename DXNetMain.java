@@ -140,7 +140,7 @@ public final class DXNetMain implements MessageReceiver {
 
         LOGGER.info("Workload finished for sender.");
 
-        if (threadArray[0].isWithRequests()) {
+        if (threadArray.length > 0 && threadArray[0].isWithRequests()) {
             // Wait for all requests to be fulfilled
             while (!ms_dxnet.isRequestMapEmpty()) {
                 LockSupport.parkNanos(100);
@@ -162,7 +162,7 @@ public final class DXNetMain implements MessageReceiver {
         long minRttNs = Long.MAX_VALUE;
         long maxRttNs = 0;
 
-        if (threadArray[0].isWithRequests()) {
+        if (threadArray.length > 0 && threadArray[0].isWithRequests()) {
             for (int i = 0; i < ms_threads; i++) {
                 if (threadArray[i].getRttMaxNs() > maxRttNs) {
                     maxRttNs = threadArray[i].getRttMaxNs();
