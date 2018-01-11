@@ -24,6 +24,10 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import de.hhu.bsinfo.dxutils.UnsafeHandler;
+import de.hhu.bsinfo.dxutils.stats.StatisticsOperation;
+import de.hhu.bsinfo.dxutils.stats.StatisticsRecorderManager;
+
 /**
  * Interest queue based on an array and an ArrayList.
  *
@@ -32,6 +36,9 @@ import org.apache.logging.log4j.Logger;
 class InterestQueue {
 
     private static final Logger LOGGER = LogManager.getFormatterLogger(InterestQueue.class.getSimpleName());
+    private static final String RECORDER = "DXNet-NIOInterestQueue";
+    private static final StatisticsOperation SOP_ADD = StatisticsRecorderManager.getOperation(RECORDER, "AddInterest");
+    private static final StatisticsOperation SOP_PROCESS = StatisticsRecorderManager.getOperation(RECORDER, "ProcessInterests");
 
     // Operations (0b1, 0b10, 0b100, 0b1000 reserved in SelectionKey)
     static final byte READ = 1;
@@ -71,6 +78,19 @@ class InterestQueue {
         byte oldInterest;
         short nodeID = p_connection.getDestinationNodeID();
 
+        // #ifdef STATISTICS
+        SOP_ADD.enter();
+        // #endif /* STATISTICS */
+
+        // Shortcut: if interest was already set (e.g. WRITE), we return immediately without locking (happens very often; once per message).
+        // Other threads in this section can only add further interests which will not affect this thread's interest.
+        // The selector thread might be processing the interests in parallel and might have reset the interest already (not visible yet as the lock has not been
+        // released). But, the operation (e.g. writing to the channel) has not been started as the selector thread must leave the critical area first.
+        UnsafeHandler.getInstance().getUnsafe().loadFence();
+        if (m_changeRequests[nodeID & 0xFFFF] == p_interest) {
+            return false;
+        }
+
         m_changeLock.lock();
         oldInterest = m_changeRequests[nodeID & 0xFFFF];
         if (oldInterest == 0) {
@@ -85,6 +105,10 @@ class InterestQueue {
 
         m_changeRequests[nodeID & 0xFFFF] = (byte) (oldInterest | p_interest);
         m_changeLock.unlock();
+
+        // #ifdef STATISTICS
+        SOP_ADD.leave();
+        // #endif /* STATISTICS */
 
         return ret;
     }
@@ -103,6 +127,10 @@ class InterestQueue {
         int interest;
         int entries;
         SelectionKey key;
+
+        // #ifdef STATISTICS
+        SOP_PROCESS.enter();
+        // #endif /* STATISTICS */
 
         m_changeLock.lock();
         entries = m_activeConnections.size();
@@ -224,5 +252,9 @@ class InterestQueue {
             }
         }
         m_changeLock.unlock();
+
+        // #ifdef STATISTICS
+        SOP_PROCESS.leave();
+        // #endif /* STATISTICS */
     }
 }
