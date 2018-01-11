@@ -23,8 +23,8 @@ import de.hhu.bsinfo.dxnet.core.AbstractFlowControl;
 import de.hhu.bsinfo.dxnet.core.AbstractPipeIn;
 import de.hhu.bsinfo.dxnet.core.BufferPool;
 import de.hhu.bsinfo.dxnet.core.IncomingBufferQueue;
+import de.hhu.bsinfo.dxnet.core.LocalMessageHeaderPool;
 import de.hhu.bsinfo.dxnet.core.MessageDirectory;
-import de.hhu.bsinfo.dxnet.core.MessageHeaderPool;
 import de.hhu.bsinfo.dxnet.core.RequestMap;
 import de.hhu.bsinfo.dxutils.stats.StatisticsOperation;
 import de.hhu.bsinfo.dxutils.stats.StatisticsRecorderManager;
@@ -43,7 +43,7 @@ public class LoopbackPipeIn extends AbstractPipeIn {
 
     private final ByteBuffer m_flowControlBytes;
 
-    LoopbackPipeIn(final short p_ownNodeId, final short p_destinationNodeId, final MessageHeaderPool p_messageHeaderPool,
+    LoopbackPipeIn(final short p_ownNodeId, final short p_destinationNodeId, final LocalMessageHeaderPool p_messageHeaderPool,
             final AbstractFlowControl p_flowControl, final MessageDirectory p_messageDirectory, final RequestMap p_requestMap,
             final MessageHandlers p_messageHandlers, final BufferPool p_bufferPool, final IncomingBufferQueue p_incomingBufferQueue,
             final LoopbackConnection p_parentConnection) {

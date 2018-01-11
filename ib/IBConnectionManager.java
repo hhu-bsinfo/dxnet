@@ -30,8 +30,8 @@ import de.hhu.bsinfo.dxnet.core.AbstractExporterPool;
 import de.hhu.bsinfo.dxnet.core.CoreConfig;
 import de.hhu.bsinfo.dxnet.core.DynamicExporterPool;
 import de.hhu.bsinfo.dxnet.core.IncomingBufferQueue;
+import de.hhu.bsinfo.dxnet.core.LocalMessageHeaderPool;
 import de.hhu.bsinfo.dxnet.core.MessageDirectory;
-import de.hhu.bsinfo.dxnet.core.MessageHeaderPool;
 import de.hhu.bsinfo.dxnet.core.NetworkException;
 import de.hhu.bsinfo.dxnet.core.NetworkRuntimeException;
 import de.hhu.bsinfo.dxnet.core.RequestMap;
@@ -58,7 +58,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
     private final MessageDirectory m_messageDirectory;
     private final RequestMap m_requestMap;
     private final IncomingBufferQueue m_incomingBufferQueue;
-    private final MessageHeaderPool m_messageHeaderPool;
+    private final LocalMessageHeaderPool m_messageHeaderPool;
     private final MessageHandlers m_messageHandlers;
 
     private AbstractExporterPool m_exporterPool;
@@ -96,7 +96,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
      *         Message handlers instance
      */
     public IBConnectionManager(final CoreConfig p_coreConfig, final IBConfig p_config, final NodeMap p_nodeMap, final MessageDirectory p_messageDirectory,
-            final RequestMap p_requestMap, final IncomingBufferQueue p_incomingBufferQueue, final MessageHeaderPool p_messageHeaderPool,
+            final RequestMap p_requestMap, final IncomingBufferQueue p_incomingBufferQueue, final LocalMessageHeaderPool p_messageHeaderPool,
             final MessageHandlers p_messageHandlers, final boolean p_overprovisioning) {
         super(p_config.getMaxConnections(), p_overprovisioning);
 

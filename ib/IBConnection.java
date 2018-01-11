@@ -13,15 +13,15 @@
 
 package de.hhu.bsinfo.dxnet.ib;
 
-import de.hhu.bsinfo.dxnet.NetworkDestinationUnreachableException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import de.hhu.bsinfo.dxnet.MessageHandlers;
+import de.hhu.bsinfo.dxnet.NetworkDestinationUnreachableException;
 import de.hhu.bsinfo.dxnet.core.AbstractConnection;
 import de.hhu.bsinfo.dxnet.core.AbstractExporterPool;
+import de.hhu.bsinfo.dxnet.core.LocalMessageHeaderPool;
 import de.hhu.bsinfo.dxnet.core.MessageDirectory;
-import de.hhu.bsinfo.dxnet.core.MessageHeaderPool;
 import de.hhu.bsinfo.dxnet.core.RequestMap;
 
 /**
@@ -59,7 +59,7 @@ class IBConnection extends AbstractConnection<IBPipeIn, IBPipeOut> {
      *         Write interest manager instance
      */
     IBConnection(final short p_ownNodeId, final short p_destinationNodeId, final int p_outBufferSize, final int p_flowControlWindowSize,
-            final float p_flowControlWindowThreshold, final MessageHeaderPool p_messageHeaderPool, final MessageDirectory p_messageDirectory,
+            final float p_flowControlWindowThreshold, final LocalMessageHeaderPool p_messageHeaderPool, final MessageDirectory p_messageDirectory,
             final RequestMap p_requestMap, final AbstractExporterPool p_exporterPool, final MessageHandlers p_messageHandlers,
             final IBWriteInterestManager p_writeInterestManager) throws NetworkDestinationUnreachableException {
         super(p_ownNodeId);

@@ -25,8 +25,8 @@ import de.hhu.bsinfo.dxnet.core.BufferPool;
 import de.hhu.bsinfo.dxnet.core.CoreConfig;
 import de.hhu.bsinfo.dxnet.core.DynamicExporterPool;
 import de.hhu.bsinfo.dxnet.core.IncomingBufferQueue;
+import de.hhu.bsinfo.dxnet.core.LocalMessageHeaderPool;
 import de.hhu.bsinfo.dxnet.core.MessageDirectory;
-import de.hhu.bsinfo.dxnet.core.MessageHeaderPool;
 import de.hhu.bsinfo.dxnet.core.NetworkException;
 import de.hhu.bsinfo.dxnet.core.RequestMap;
 import de.hhu.bsinfo.dxnet.core.StaticExporterPool;
@@ -45,7 +45,7 @@ public class LoopbackConnectionManager extends AbstractConnectionManager {
     private final MessageDirectory m_messageDirectory;
     private final RequestMap m_requestMap;
     private final IncomingBufferQueue m_incomingBufferQueue;
-    private final MessageHeaderPool m_messageHeaderPool;
+    private final LocalMessageHeaderPool m_messageHeaderPool;
     private final MessageHandlers m_messageHandlers;
 
     private final LoopbackSendThread m_loopbackSendThread;
@@ -56,7 +56,7 @@ public class LoopbackConnectionManager extends AbstractConnectionManager {
 
     public LoopbackConnectionManager(final CoreConfig p_coreConfig, final LoopbackConfig p_nioConfig, final NodeMap p_nodeMap,
             final MessageDirectory p_messageDirectory, final RequestMap p_requestMap, final IncomingBufferQueue p_incomingBufferQueue,
-            final MessageHeaderPool p_messageHeaderPool, final MessageHandlers p_messageHandlers, final boolean p_overprovisioning) {
+            final LocalMessageHeaderPool p_messageHeaderPool, final MessageHandlers p_messageHandlers, final boolean p_overprovisioning) {
         super(2, p_overprovisioning);
 
         m_coreConfig = p_coreConfig;

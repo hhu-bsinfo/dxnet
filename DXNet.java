@@ -22,6 +22,7 @@ import org.apache.logging.log4j.Logger;
 import de.hhu.bsinfo.dxnet.core.AbstractConnection;
 import de.hhu.bsinfo.dxnet.core.AbstractConnectionManager;
 import de.hhu.bsinfo.dxnet.core.CoreConfig;
+import de.hhu.bsinfo.dxnet.core.LocalMessageHeaderPool;
 import de.hhu.bsinfo.dxnet.core.Message;
 import de.hhu.bsinfo.dxnet.core.MessageCreationCoordinator;
 import de.hhu.bsinfo.dxnet.core.MessageDirectory;
@@ -124,8 +125,10 @@ public final class DXNet {
             // #endif /* LOGGER >= INFO */
         }
 
-        MessageHeaderPool headerPool = new MessageHeaderPool(MESSAGE_HEADER_POOL_SIZE);
-        m_messageHandlers = new MessageHandlers(m_coreConfig.getNumMessageHandlerThreads(), m_overprovisioning, m_messageReceivers, headerPool);
+        MessageHeaderPool globalHeaderPool = new MessageHeaderPool(MESSAGE_HEADER_POOL_SIZE);
+        // Local message header pool for message creation coordinator thread
+        LocalMessageHeaderPool localHeaderPool = new LocalMessageHeaderPool(globalHeaderPool);
+        m_messageHandlers = new MessageHandlers(m_coreConfig.getNumMessageHandlerThreads(), m_overprovisioning, m_messageReceivers, globalHeaderPool);
 
         if ("Ethernet".equals(m_coreConfig.getDevice())) {
             m_messageDirectory = new MessageDirectory((int) m_nioConfig.getRequestTimeOut().getMs());
@@ -166,14 +169,14 @@ public final class DXNet {
 
         if ("Ethernet".equals(m_coreConfig.getDevice())) {
             m_connectionManager = new NIOConnectionManager(m_coreConfig, m_nioConfig, p_nodeMap, m_messageDirectory, m_requestMap,
-                    m_messageCreationCoordinator.getIncomingBufferQueue(), headerPool, m_messageHandlers, m_overprovisioning);
+                    m_messageCreationCoordinator.getIncomingBufferQueue(), localHeaderPool, m_messageHandlers, m_overprovisioning);
         } else if ("Infiniband".equals(m_coreConfig.getDevice())) {
             m_connectionManager = new IBConnectionManager(m_coreConfig, m_ibConfig, p_nodeMap, m_messageDirectory, m_requestMap,
-                    m_messageCreationCoordinator.getIncomingBufferQueue(), headerPool, m_messageHandlers, m_overprovisioning);
+                    m_messageCreationCoordinator.getIncomingBufferQueue(), localHeaderPool, m_messageHandlers, m_overprovisioning);
             ((IBConnectionManager) m_connectionManager).init();
         } else {
             m_connectionManager = new LoopbackConnectionManager(m_coreConfig, m_loopbackConfig, p_nodeMap, m_messageDirectory, m_requestMap,
-                    m_messageCreationCoordinator.getIncomingBufferQueue(), headerPool, m_messageHandlers, m_overprovisioning);
+                    m_messageCreationCoordinator.getIncomingBufferQueue(), localHeaderPool, m_messageHandlers, m_overprovisioning);
         }
     }
 

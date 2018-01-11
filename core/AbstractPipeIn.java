@@ -47,7 +47,7 @@ public abstract class AbstractPipeIn {
     private volatile boolean m_isConnected;
     private final AbstractFlowControl m_flowControl;
 
-    private final LocalMessageHeaderPool m_messageHeaderPool;
+    private final LocalMessageHeaderPool m_messageHeaderPool; // Used by MessageCreationCoordinator, only
     private final MessageHandlers m_messageHandlers;
     private final int m_messageHandlerPoolSize;
     private final MessageDirectory m_messageDirectory;
@@ -81,7 +81,7 @@ public abstract class AbstractPipeIn {
      * @param p_messageHandlers
      *         MessageHandlers instance
      */
-    protected AbstractPipeIn(final short p_ownNodeId, final short p_destinationNodeId, final MessageHeaderPool p_messageHeaderPool,
+    protected AbstractPipeIn(final short p_ownNodeId, final short p_destinationNodeId, final LocalMessageHeaderPool p_messageHeaderPool,
             final AbstractFlowControl p_flowControl, final MessageDirectory p_messageDirectory, final RequestMap p_requestMap,
             final MessageHandlers p_messageHandlers) {
         m_ownNodeID = p_ownNodeId;
@@ -90,7 +90,7 @@ public abstract class AbstractPipeIn {
 
         m_importers = new MessageImporterCollection();
 
-        m_messageHeaderPool = new LocalMessageHeaderPool(p_messageHeaderPool);
+        m_messageHeaderPool = p_messageHeaderPool;
         m_messageHandlers = p_messageHandlers;
         m_messageHandlerPoolSize = MessageHandlers.getPoolSize();
         m_messageDirectory = p_messageDirectory;

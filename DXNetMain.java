@@ -90,7 +90,7 @@ public final class DXNetMain implements MessageReceiver {
     private static long ms_sendPerThread;
     private static volatile long ms_timeStart;
     private static volatile long ms_timeEndReceiver;
-    private static AtomicLong ms_messagesRecived = new AtomicLong(0);
+    private static AtomicLong ms_messagesReceived = new AtomicLong(0);
     private static AtomicLong ms_messagesSent = new AtomicLong(0);
     private static AtomicLong ms_reqRespRTTSumNs = new AtomicLong(0);
 
@@ -115,7 +115,7 @@ public final class DXNetMain implements MessageReceiver {
         setupDXNet();
 
         try {
-            Thread.sleep(3000);
+            Thread.sleep(30000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -211,7 +211,7 @@ public final class DXNetMain implements MessageReceiver {
             }
         }
 
-        if (ms_messagesRecived.incrementAndGet() == ms_recvCount) {
+        if (ms_messagesReceived.incrementAndGet() == ms_recvCount) {
             ms_timeEndReceiver = System.nanoTime();
             ms_remoteFinished = true;
         }
@@ -672,7 +672,7 @@ public final class DXNetMain implements MessageReceiver {
                 }
 
                 long messagesSent = ms_messagesSent.get();
-                long messagesRecv = ms_messagesRecived.get();
+                long messagesRecv = ms_messagesReceived.get();
 
                 long timeDiff = System.nanoTime() - ms_timeStart;
                 System.out.printf("[PROGRESS] %d sec: Sent %d%% (%d), Recv %d%% (%d), Sent-Recv-Diff %d, TX %f, RX %f, TXO %f, RXO %f\n",

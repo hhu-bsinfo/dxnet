@@ -14,6 +14,7 @@
 package de.hhu.bsinfo.dxnet.core;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.LockSupport;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -66,7 +67,7 @@ public final class MessageHeaderPool {
         int posBack = m_posBackConsumer.get();
 
         if ((posBack + m_size & 0x7FFFFFFF) >= (posFront + p_messageHeaders.length & 0x7FFFFFFF) ||
-                /* 31-bit overflow in posBack but not posFront */
+                        /* 31-bit overflow in posBack but not posFront */
                 (posBack + m_size & 0x7FFFFFFF) < (posBack & 0x7FFFFFFF) && (posFront + p_messageHeaders.length & 0x7FFFFFFF) > (posBack & 0x7FFFFFFF)) {
             for (int i = 0; i < p_messageHeaders.length; i++) {
                 p_messageHeaders[i] = m_buffer[(posFront + i & 0x7FFFFFFF) % m_size];
@@ -76,12 +77,7 @@ public final class MessageHeaderPool {
             return true;
         }
 
-        // Ring-buffer is empty.
-
-        // #if LOGGER >= WARN
-        LOGGER.warn("Insufficient pooled message headers. Allocating temporary message header.");
-        // #endif /* LOGGER >= WARN *//*
-
+        // Ring-buffer is empty. Trying single mode now.
         return false;
     }
 
@@ -92,24 +88,28 @@ public final class MessageHeaderPool {
      */
     public MessageHeader getHeader() {
         MessageHeader ret;
+        boolean print = true;
 
-        // & 0x7FFFFFFF to kill sign
-        int posFront = m_posFront & 0x7FFFFFFF;
+        while (true) {
+            // & 0x7FFFFFFF to kill sign
+            int posFront = m_posFront & 0x7FFFFFFF;
 
-        if ((m_posBackConsumer.get() + m_size & 0x7FFFFFFF) != posFront) {
-            ret = m_buffer[posFront % m_size];
-            m_posFront++;
+            if ((m_posBackConsumer.get() + m_size & 0x7FFFFFFF) != posFront) {
+                ret = m_buffer[posFront % m_size];
+                m_posFront++;
 
-            return ret;
+                return ret;
+            } else {
+                if (print) {
+                    print = false;
+
+                    // #if LOGGER >= WARN
+                    LOGGER.warn("Insufficient pooled message headers. Waiting for headers to be returned.");
+                    // #endif /* LOGGER >= WARN */
+                }
+                LockSupport.parkNanos(100);
+            }
         }
-
-        // Ring-buffer is empty.
-
-        // #if LOGGER >= WARN
-        LOGGER.warn("Insufficient pooled message headers. Allocating temporary message header.");
-        // #endif /* LOGGER >= WARN *//*
-
-        return new MessageHeader();
     }
 
     /**
@@ -127,9 +127,7 @@ public final class MessageHeaderPool {
             if ((posBack + p_messageHeaders.length & 0x7FFFFFFF) > posFront) {
                 // Cannot return all message headers at once -> try returning single message headers until pool is full
                 for (int i = 0; i < p_messageHeaders.length; i++) {
-                    if (!returnHeader(p_messageHeaders[i])) {
-                        break;
-                    }
+                    returnHeader(p_messageHeaders[i]);
                 }
 
                 return;
@@ -156,22 +154,16 @@ public final class MessageHeaderPool {
      *
      * @param p_messageHeader
      *         the message header
-     * @return whether returning was successful
      */
-    private boolean returnHeader(final MessageHeader p_messageHeader) {
+    private void returnHeader(final MessageHeader p_messageHeader) {
         while (true) {
             // & 0x7FFFFFFF to kill sign
             int posFront = m_posFront & 0x7FFFFFFF;
             int posBackSigned = m_posBackProducer.get();
             int posBack = posBackSigned & 0x7FFFFFFF;
             if (posBack == posFront) {
-                // Return without adding the message header if queue is full (happens if message headers were created in getHeader())
-
-                // #if LOGGER >= WARN
-                LOGGER.warn("Cannot add message headers. Buffer is full.");
-                // #endif /* LOGGER >= WARN *//*
-
-                return false;
+                // Looks like we missed an posFront update because this queue cannot be full at this point
+                continue;
             }
 
             if (m_posBackProducer.compareAndSet(posBackSigned, posBackSigned + 1)) {
@@ -186,6 +178,5 @@ public final class MessageHeaderPool {
                 break;
             }
         }
-        return true;
     }
 }

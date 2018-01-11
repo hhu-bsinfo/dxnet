@@ -144,7 +144,7 @@ public final class BufferPool {
 
         // All buffer pools are empty
         // #if LOGGER >= WARN
-        LOGGER.warn("Insufficient pooled incoming buffers. Allocating temporary buffer.");
+        LOGGER.warn("Insufficient pooled incoming buffers. Allocating temporary buffer with size %d.", m_osBufferSize);
         // #endif /* LOGGER >= WARN */
 
         return new DirectBufferWrapper(m_osBufferSize);
@@ -166,14 +166,12 @@ public final class BufferPool {
             // Buffer fits in large buffer pool
             while (true) {
                 // PosFront must be read before posBack to avoid missing a posBack update and thus having posBack % BUFFER_SIZE == posFront % BUFFER_SIZE
-                // The opposite case cannot happen (practically) as the complete buffer has to be processed before returning the buffer (meanwhile all thread-
-                // local copies of posFront have been updated)
                 posFront = m_posFrontLarge & 0x7FFFFFFF;
                 posBackSigned = m_posBackProducerLarge.get();
                 posBack = posBackSigned & 0x7FFFFFFF;
                 if (posBack == posFront) {
-                    // Full
-                    break;
+                    // Looks like we missed an posFront update because this queue cannot be full at this point
+                    continue;
                 }
 
                 if (m_posBackProducerLarge.compareAndSet(posBackSigned, posBackSigned + 1)) {
@@ -188,18 +186,17 @@ public final class BufferPool {
                     return;
                 }
             }
-        } else if (p_directBufferWrapper.getBuffer().capacity() == m_osBufferSize / MEDIUM_BUFFER_POOL_FACTOR) {
+        }
+        if (p_directBufferWrapper.getBuffer().capacity() == m_osBufferSize / MEDIUM_BUFFER_POOL_FACTOR) {
             // Buffer fits in medium buffer pool
             while (true) {
                 // PosFront must be read before posBack to avoid missing a posBack update and thus having posBack % BUFFER_SIZE == posFront % BUFFER_SIZE
-                // The opposite case cannot happen (practically) as the complete buffer has to be processed before returning the buffer (meanwhile all thread-
-                // local copies of posFront have been updated)
                 posFront = m_posFrontMedium & 0x7FFFFFFF;
                 posBackSigned = m_posBackProducerMedium.get();
                 posBack = posBackSigned & 0x7FFFFFFF;
                 if (posBack == posFront) {
-                    // Full
-                    break;
+                    // Looks like we missed an posFront update because this queue cannot be full at this point
+                    continue;
                 }
 
                 if (m_posBackProducerMedium.compareAndSet(posBackSigned, posBackSigned + 1)) {
@@ -214,18 +211,17 @@ public final class BufferPool {
                     return;
                 }
             }
-        } else if (p_directBufferWrapper.getBuffer().capacity() == m_osBufferSize / SMALL_BUFFER_POOL_FACTOR) {
+        }
+        if (p_directBufferWrapper.getBuffer().capacity() == m_osBufferSize / SMALL_BUFFER_POOL_FACTOR) {
             // Buffer fits in small buffer pool
             while (true) {
                 // PosFront must be read before posBack to avoid missing a posBack update and thus having posBack % BUFFER_SIZE == posFront % BUFFER_SIZE
-                // The opposite case cannot happen (practically) as the complete buffer has to be processed before returning the buffer (meanwhile all thread-
-                // local copies of posFront have been updated)
                 posFront = m_posFrontSmall & 0x7FFFFFFF;
                 posBackSigned = m_posBackProducerSmall.get();
                 posBack = posBackSigned & 0x7FFFFFFF;
                 if (posBack == posFront) {
-                    // Full
-                    break;
+                    // Looks like we missed an posFront update because this queue cannot be full at this point
+                    continue;
                 }
 
                 if (m_posBackProducerSmall.compareAndSet(posBackSigned, posBackSigned + 1)) {
@@ -244,8 +240,7 @@ public final class BufferPool {
 
         // Return without adding the incoming buffer if pool is full or buffer size is incompatible (was created after initialization)
         // #if LOGGER >= WARN
-        LOGGER.warn("Could not add incoming buffer because size (%d) does not match or corresponding queue is full!",
-                p_directBufferWrapper.getBuffer().capacity());
+        LOGGER.warn("Could not add incoming buffer because size (%d) does not match!", p_directBufferWrapper.getBuffer().capacity());
         // #endif /* LOGGER >= WARN */
     }
 

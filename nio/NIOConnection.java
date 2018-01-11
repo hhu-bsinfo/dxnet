@@ -29,8 +29,8 @@ import de.hhu.bsinfo.dxnet.core.AbstractConnection;
 import de.hhu.bsinfo.dxnet.core.AbstractExporterPool;
 import de.hhu.bsinfo.dxnet.core.BufferPool;
 import de.hhu.bsinfo.dxnet.core.IncomingBufferQueue;
+import de.hhu.bsinfo.dxnet.core.LocalMessageHeaderPool;
 import de.hhu.bsinfo.dxnet.core.MessageDirectory;
-import de.hhu.bsinfo.dxnet.core.MessageHeaderPool;
 import de.hhu.bsinfo.dxnet.core.NetworkException;
 import de.hhu.bsinfo.dxnet.core.RequestMap;
 
@@ -86,7 +86,7 @@ public class NIOConnection extends AbstractConnection<NIOPipeIn, NIOPipeOut> {
      *         the condition to signal connection completion.
      */
     NIOConnection(final short p_ownNodeId, final short p_destination, final int p_bufferSize, final int p_flowControlWindowSize,
-            final float p_flowControlWindowThreshold, final IncomingBufferQueue p_incomingBufferQueue, final MessageHeaderPool p_messageHeaderPool,
+            final float p_flowControlWindowThreshold, final IncomingBufferQueue p_incomingBufferQueue, final LocalMessageHeaderPool p_messageHeaderPool,
             final MessageDirectory p_messageDirectory, final RequestMap p_requestMap, final MessageHandlers p_messageHandlers, final BufferPool p_bufferPool,
             final AbstractExporterPool p_exporterPool, final NIOSelector p_nioSelector, final NodeMap p_nodeMap, final ReentrantLock p_lock,
             final Condition p_cond) {
@@ -140,7 +140,7 @@ public class NIOConnection extends AbstractConnection<NIOPipeIn, NIOPipeOut> {
      *         the node map.
      */
     NIOConnection(final short p_ownNodeId, final short p_destination, final int p_bufferSize, final int p_flowControlWindowSize,
-            final float p_flowControlWindowThreshold, final IncomingBufferQueue p_incomingBufferQueue, final MessageHeaderPool p_messageHeaderPool,
+            final float p_flowControlWindowThreshold, final IncomingBufferQueue p_incomingBufferQueue, final LocalMessageHeaderPool p_messageHeaderPool,
             final MessageDirectory p_messageDirectory, final RequestMap p_requestMap, final MessageHandlers p_messageHandlers, final BufferPool p_bufferPool,
             final AbstractExporterPool p_exporterPool, final NIOSelector p_nioSelector, final NodeMap p_nodeMap) {
         super(p_ownNodeId);

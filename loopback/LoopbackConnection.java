@@ -19,8 +19,8 @@ import de.hhu.bsinfo.dxnet.core.AbstractConnection;
 import de.hhu.bsinfo.dxnet.core.AbstractExporterPool;
 import de.hhu.bsinfo.dxnet.core.BufferPool;
 import de.hhu.bsinfo.dxnet.core.IncomingBufferQueue;
+import de.hhu.bsinfo.dxnet.core.LocalMessageHeaderPool;
 import de.hhu.bsinfo.dxnet.core.MessageDirectory;
-import de.hhu.bsinfo.dxnet.core.MessageHeaderPool;
 import de.hhu.bsinfo.dxnet.core.RequestMap;
 
 /**
@@ -33,7 +33,7 @@ public class LoopbackConnection extends AbstractConnection<LoopbackPipeIn, Loopb
     private LoopbackSendThread m_loopbackSendThread;
 
     LoopbackConnection(final short p_ownNodeId, final short p_destination, final int p_bufferSize, final int p_flowControlWindowSize,
-            final float p_flowControlWindowThreshold, final IncomingBufferQueue p_incomingBufferQueue, final MessageHeaderPool p_messageHeaderPool,
+            final float p_flowControlWindowThreshold, final IncomingBufferQueue p_incomingBufferQueue, final LocalMessageHeaderPool p_messageHeaderPool,
             final MessageDirectory p_messageDirectory, final RequestMap p_requestMap, final MessageHandlers p_messageHandlers, final BufferPool p_bufferPool,
             final AbstractExporterPool p_exporterPool, final LoopbackSendThread p_loopbackSendThread, final NodeMap p_nodeMap) {
         super(p_ownNodeId);
