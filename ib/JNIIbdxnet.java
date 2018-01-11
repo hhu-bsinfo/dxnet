@@ -44,12 +44,10 @@ final class JNIIbdxnet {
         /**
          * The receive thread calls this to pass buffers with incoming data to the java space
          *
-         * @param p_fcSourceNodeId
-         *         Node id of the source (fc data)
-         * @param p_fcBytes
-         *         FC data (0 for none)
-         * @param p_dataSourceNodeId
-         *         Node id of the source (remote sender)
+         * @param p_sourceNodeId
+         *         Node id of the source
+         * @param p_fcConfirm
+         *         True if flow control confirms data processing, false none
          * @param p_dataBufferHandle
          *         Handle to identify the buffer (important when returning it), 0 if no data available
          * @param p_dataAddr
@@ -57,8 +55,7 @@ final class JNIIbdxnet {
          * @param p_dataLength
          *         Length of the incoming data, 0 if no data available
          */
-        void received(final short p_fcSourceNodeId, final int p_fcBytes, final short p_dataSourceNodeId,
-            final long p_dataBufferHandle, final long p_dataAddr, final int p_dataLength);
+        void received(final short p_sourceNodeId, final boolean p_fcConfirm, final long p_dataBufferHandle, final long p_dataAddr, final int p_dataLength);
     }
 
     /**

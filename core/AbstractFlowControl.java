@@ -38,6 +38,7 @@ public abstract class AbstractFlowControl {
 
     private final int m_flowControlWindowSize;
     private final float m_flowControlWindowThreshold;
+    private final int m_flowControlWindowSizeThreshold;
 
     private AtomicInteger m_unconfirmedBytes;
     private AtomicInteger m_receivedBytes;
@@ -56,6 +57,7 @@ public abstract class AbstractFlowControl {
         m_destinationNodeID = p_destinationNodeID;
         m_flowControlWindowSize = p_flowControlWindowSize;
         m_flowControlWindowThreshold = p_flowControlWindowThreshold;
+        m_flowControlWindowSizeThreshold = (int) (m_flowControlWindowSize * m_flowControlWindowThreshold);
 
         m_unconfirmedBytes = new AtomicInteger(0);
         m_receivedBytes = new AtomicInteger(0);
@@ -118,7 +120,7 @@ public abstract class AbstractFlowControl {
         // #endif /* LOGGER >= TRACE */
 
         int receivedBytes = m_receivedBytes.addAndGet(p_receivedBytes);
-        if (receivedBytes > m_flowControlWindowSize * m_flowControlWindowThreshold) {
+        if (receivedBytes >= m_flowControlWindowSizeThreshold) {
             try {
                 flowControlWrite();
             } catch (final NetworkException e) {
@@ -140,13 +142,36 @@ public abstract class AbstractFlowControl {
     public int getAndResetFlowControlData() {
         int ret;
 
-        ret = m_receivedBytes.getAndSet(0);
+        // TODO further doc and tweaks for NIO
+
+        // not using CAS here requires this to be called by a single thread, only
+        int curFcData = m_receivedBytes.get();
+
+        if (curFcData < m_flowControlWindowSizeThreshold) {
+            return 0;
+        }
+
+        ret = m_receivedBytes.addAndGet(-m_flowControlWindowSizeThreshold);
+
+        if (ret < 0) {
+            throw new IllegalStateException("Negative flow control");
+        }
+
+        if (ret >= m_flowControlWindowSizeThreshold) {
+            try {
+                flowControlWrite();
+            } catch (final NetworkException e) {
+                // #if LOGGER >= ERROR
+                LOGGER.error("Could not send flow control message", e);
+                // #endif /* LOGGER >= ERROR */
+            }
+        }
 
         // #if LOGGER >= TRACE
         LOGGER.trace("getAndResetFlowControlData (%X): %d", m_destinationNodeID, ret);
         // #endif /* LOGGER >= TRACE */
 
-        return ret;
+        return m_flowControlWindowSizeThreshold;
     }
 
     /**
@@ -160,7 +185,7 @@ public abstract class AbstractFlowControl {
         LOGGER.trace("handleFlowControlData (%X): %d", m_destinationNodeID, p_confirmedBytes);
         // #endif /* LOGGER >= TRACE */
 
-        m_unconfirmedBytes.addAndGet(-p_confirmedBytes);
+        m_unconfirmedBytes.addAndGet(-m_flowControlWindowSizeThreshold);
     }
 
     @Override

@@ -255,10 +255,14 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
 
     @Override
     public long getNextDataToSend(final short p_prevNodeIdWritten, final int p_prevDataWrittenLen) {
+        // TODO try catch block around everything -> check performance
+        // TODO do this for all other calls from native to java as well
+
         // return interest of previous call
         if (p_prevNodeIdWritten != NodeID.INVALID_ID) {
+            // FIXME getting a nullptr exception here when turning on exception checking on env return in native handler
             // #ifdef STATISTICS
-            SOP_SEND_NEXT_DATA.leave();
+            //            SOP_SEND_NEXT_DATA.leave();
             // #endif /* STATISTICS */
 
             // #if LOGGER >= TRACE
@@ -276,164 +280,172 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
             }
         }
 
-        // poll for next interest
-        short nodeId = m_writeInterestManager.getNextInterests();
+        while (true) {
+            // poll for next interest
+            short nodeId = m_writeInterestManager.getNextInterests();
 
-        // no data available
-        if (nodeId == NodeID.INVALID_ID) {
-            return 0;
-        }
+            // no data available
+            if (nodeId == NodeID.INVALID_ID) {
+                // TODO waiting strats
+                // TODO check for thread shut down signal if we stay here and wait until data is available
+                //                if (!m_waitTimer.IsRunning()) {
+                //                    m_waitTimer.Start();
+                //                }
+                //
+                //                if (m_waitTimer.GetTimeMs() > 100.0) {
+                //                    std::this_thread::yield();
+                //                } else if (m_waitTimer.GetTimeMs() > 1000.0) {
+                //                    std::this_thread::sleep_for(std::chrono::nanoseconds(1));
+                //                }
 
-        // #if LOGGER >= TRACE
-        LOGGER.trace("Next write interests on node 0x%X", nodeId);
-        // #endif /* LOGGER >= TRACE */
+                // TODO for testing, this will throttle performance
+                //LockSupport.parkNanos(1);
 
-        // prepare next work load
-        IBConnection connection;
-        try {
-            connection = (IBConnection) getConnection(nodeId);
-        } catch (final NetworkException ignored) {
-            m_writeInterestManager.nodeDisconnected(nodeId);
-            return 0;
-        }
+                continue;
+            }
 
-        // assemble arguments for struct to pass back to jni
-        m_sendThreadRetArgs.clear();
+            // #if LOGGER >= TRACE
+            LOGGER.trace("Next write interests on node 0x%X", nodeId);
+            // #endif /* LOGGER >= TRACE */
 
-        boolean noDataAvailable = true;
-        long interests = m_writeInterestManager.consumeInterests(nodeId);
+            // prepare next work load
+            IBConnection connection;
+            try {
+                connection = (IBConnection) getConnection(nodeId);
+            } catch (final NetworkException ignored) {
+                m_writeInterestManager.nodeDisconnected(nodeId);
+                continue;
+            }
 
-        // interest queue and interest count MUST stay on sync. otherwise, something's not right with the
-        // interest manager (bug)
-        if (interests == 0) {
-            // #if LOGGER >= ERROR
-            LOGGER.error("No interests available but interest manager has write interest set, probably a bug");
-            // #endif /* LOGGER >= ERROR */
-        }
+            // assemble arguments for struct to pass back to jni
+            m_sendThreadRetArgs.clear();
 
-        int dataInterests = (int) interests;
-        int fcInterests = (int) (interests >> 32L);
+            boolean noDataAvailable = true;
+            long interests = m_writeInterestManager.consumeInterests(nodeId);
 
-        // process data interests
-        if (dataInterests > 0) {
-            long pos = connection.getPipeOut().getNextBuffer();
-            int relPosBackRel = (int) (pos >> 32 & 0x7FFFFFFF);
-            int relPosFrontRel = (int) (pos & 0x7FFFFFFF);
+            // interest queue and interest count MUST stay on sync. otherwise, something's not right with the
+            // interest manager (bug)
+            if (interests == 0) {
+                // #if LOGGER >= ERROR
+                LOGGER.error("No interests available but interest manager has write interest set, probably a bug");
+                // #endif /* LOGGER >= ERROR */
+            }
 
-            if (relPosBackRel != relPosFrontRel) {
-                // relative position of data start in buffer
-                m_sendThreadRetArgs.putInt(relPosFrontRel);
-                // relative position of data end in buffer
-                m_sendThreadRetArgs.putInt(relPosBackRel);
+            int dataInterests = (int) interests;
+            int fcInterests = (int) (interests >> 32L);
 
-                // #if LOGGER >= TRACE
-                LOGGER.trace("Next data write on node 0x%X, posFrontRelative %d, posBackRelative %d", nodeId, relPosFrontRel, relPosBackRel);
-                // #endif /* LOGGER >= TRACE */
+            // process data interests
+            if (dataInterests > 0) {
+                long pos = connection.getPipeOut().getNextBuffer();
+                int relPosBackRel = (int) (pos >> 32 & 0x7FFFFFFF);
+                int relPosFrontRel = (int) (pos & 0x7FFFFFFF);
 
-                // check if outgoing is empty or if we got the first part of a wrap around
-                // if wrap around -> push back a new interest to not forget the wrap around
-                if (!connection.getPipeOut().isOutgoingQueueEmpty()) {
-                    m_writeInterestManager.pushBackDataInterest(nodeId);
+                if (relPosBackRel != relPosFrontRel) {
+                    // relative position of data start in buffer
+                    m_sendThreadRetArgs.putInt(relPosFrontRel);
+                    // relative position of data end in buffer
+                    m_sendThreadRetArgs.putInt(relPosBackRel);
+
+                    // #if LOGGER >= TRACE
+                    LOGGER.trace("Next data write on node 0x%X, posFrontRelative %d, posBackRelative %d", nodeId, relPosFrontRel, relPosBackRel);
+                    // #endif /* LOGGER >= TRACE */
+
+                    // check if outgoing is empty or if we got the first part of a wrap around
+                    // if wrap around -> push back a new interest to not forget the wrap around
+                    if (!connection.getPipeOut().isOutgoingQueueEmpty()) {
+                        m_writeInterestManager.pushBackDataInterest(nodeId);
+                    }
+
+                    noDataAvailable = false;
+                } else {
+                    // we got an interest but no data is available because the data was already sent with the previous
+                    // interest (non harmful data race between ORB and interest manager)
+                    m_sendThreadRetArgs.putInt(0);
+                    m_sendThreadRetArgs.putInt(0);
                 }
-
-                noDataAvailable = false;
             } else {
-                // we got an interest but no data is available because the data was already sent with the previous
-                // interest (non harmful data race between ORB and interest manager)
+                // no data to write, fc only
                 m_sendThreadRetArgs.putInt(0);
                 m_sendThreadRetArgs.putInt(0);
             }
-        } else {
-            // no data to write, fc only
-            m_sendThreadRetArgs.putInt(0);
-            m_sendThreadRetArgs.putInt(0);
-        }
 
-        // process flow control interests
-        if (fcInterests > 0) {
-            int fcData = connection.getPipeOut().getFlowControlToWrite();
+            // process flow control interests
+            if (fcInterests > 0) {
+                int fcData = connection.getPipeOut().getFlowControlToWrite();
 
-            if (fcData != 0) {
-                m_sendThreadRetArgs.putInt(fcData);
+                if (fcData > 0) {
+                    m_sendThreadRetArgs.putInt(fcData);
 
-                // #if LOGGER >= TRACE
-                LOGGER.trace("Next flow control write on node 0x%X, fc data %d", nodeId, fcData);
-                // #endif /* LOGGER >= TRACE */
+                    // #if LOGGER >= TRACE
+                    LOGGER.trace("Next flow control write on node 0x%X, fc data %d", nodeId, fcData);
+                    // #endif /* LOGGER >= TRACE */
 
-                noDataAvailable = false;
+                    noDataAvailable = false;
+                } else {
+                    // and again, we got an interest but no FC data is available because the FC data was already sent with the previous
+                    // interest (non harmful data race between ORB/flow control and interest manager)
+                    m_sendThreadRetArgs.putInt(0);
+                }
             } else {
-                // and again, we got an interest but no FC data is available because the FC data was already sent with the previous
-                // interest (non harmful data race between ORB/flow control and interest manager)
+                // data only, no fc
                 m_sendThreadRetArgs.putInt(0);
             }
-        } else {
-            // data only, no fc
-            m_sendThreadRetArgs.putInt(0);
+
+            // due to the non harmful data race, we might end up getting interests from the manager but have no data to send
+            // because the previous interest already consumed more data than initially supposed to which is good because
+            // we aggregated more data on a single send call
+            // however, return null data to put the send thread back to sleep
+            if (noDataAvailable) {
+                continue;
+            }
+
+            // node id
+            m_sendThreadRetArgs.putShort(nodeId);
+
+            break;
         }
 
-        // due to the non harmful data race, we might end up getting interests from the manager but have no data to send
-        // because the previous interest already consumed more data than initially supposed to which is good because
-        // we aggregated more data on a single send call
-        // however, return null data to put the send thread back to sleep
-        if (noDataAvailable) {
-            return 0;
-        }
-
-        // node id
-        m_sendThreadRetArgs.putShort(nodeId);
-
+        // FIXME see fixme above for leave
         // #ifdef STATISTICS
-        SOP_SEND_NEXT_DATA.enter();
+        //        SOP_SEND_NEXT_DATA.enter();
         // #endif /* STATISTICS */
 
         return ByteBufferHelper.getDirectAddress(m_sendThreadRetArgs);
     }
 
     @Override
-    public void received(final short p_fcSourceNodeId, final int p_fcBytes, final short p_dataSourceNodeId, final long p_dataBufferHandle,
-            final long p_dataAddr, final int p_dataLength) {
+    public void received(final short p_sourceNodeId, final boolean p_fcConfirm, final long p_dataBufferHandle, final long p_dataAddr, final int p_dataLength) {
         // #if LOGGER >= TRACE
-        LOGGER.trace("Received, FC (0x%X, %d), data (0x%X, 0x%X 0x%X %d)", p_fcSourceNodeId, p_fcBytes, p_dataSourceNodeId, p_dataBufferHandle, p_dataAddr,
-                p_dataLength);
+        LOGGER.trace("Received, 0x%X, %d, 0x%X 0x%X %d)", p_sourceNodeId, p_fcConfirm, p_dataBufferHandle, p_dataAddr, p_dataLength);
         // #endif /* LOGGER >= TRACE */
 
-        IBConnection connection = null;
+        if (p_fcConfirm || p_dataLength != 0) {
+            IBConnection connection;
 
-        if (p_fcBytes != 0) {
             try {
-                connection = (IBConnection) getConnection(p_fcSourceNodeId);
+                connection = (IBConnection) getConnection(p_sourceNodeId);
             } catch (final NetworkException e) {
                 // #if LOGGER >= ERROR
-                LOGGER.error("Getting connection for FC recv of node 0x%X failed, leaking FC data", p_fcSourceNodeId, e);
+                LOGGER.error("Getting connection for recv of node 0x%X failed", p_sourceNodeId, e);
                 // #endif /* LOGGER >= ERROR */
 
                 // if that happens we lose data which is quite bad...I don't see any proper fix for this atm
                 return;
             }
 
-            connection.getPipeIn().handleFlowControlData(p_fcBytes);
-        }
-
-        if (p_dataBufferHandle != 0) {
-            if (p_fcSourceNodeId != p_dataSourceNodeId) {
-                try {
-                    connection = (IBConnection) getConnection(p_dataSourceNodeId);
-                } catch (final NetworkException e) {
-                    // #if LOGGER >= ERROR
-                    LOGGER.error("Getting connection for data recv of node 0x%X failed, leaking buffers", p_dataSourceNodeId, e);
-                    // #endif /* LOGGER >= ERROR */
-
-                    // if that happens we lose data/buffers which is quite bad...I don't see any proper fix for this atm
-                    return;
-                }
+            // handle fc confirm
+            if (p_fcConfirm) {
+                // TODO parameter doesn't matter but the interface to NIO isn't clean that way
+                connection.getPipeIn().handleFlowControlData(1);
             }
 
-            m_incomingBufferQueue.pushBuffer(connection, null, p_dataBufferHandle, p_dataAddr, p_dataLength);
-        }
-
-        if (connection == null) {
+            // handle data
+            if (p_dataLength != 0) {
+                m_incomingBufferQueue.pushBuffer(connection, null, p_dataBufferHandle, p_dataAddr, p_dataLength);
+            }
+        } else {
             // #if LOGGER >= ERROR
-            LOGGER.error("No FC or buffer data available, probably a bug");
+            LOGGER.error("Nothing received but handler was called, probably a bug");
             // #endif /* LOGGER >= ERROR */
         }
     }
