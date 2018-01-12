@@ -16,6 +16,7 @@ package de.hhu.bsinfo.dxnet.ib;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.concurrent.locks.LockSupport;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -62,6 +63,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
 
     private AbstractExporterPool m_exporterPool;
 
+    private long m_waitTimerStartNs = 0;
     private final IBWriteInterestManager m_writeInterestManager;
 
     private final boolean[] m_nodeConnected;
@@ -262,7 +264,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
         if (p_prevNodeIdWritten != NodeID.INVALID_ID) {
             // FIXME getting a nullptr exception here when turning on exception checking on env return in native handler
             // #ifdef STATISTICS
-            //            SOP_SEND_NEXT_DATA.leave();
+            SOP_SEND_NEXT_DATA.leave();
             // #endif /* STATISTICS */
 
             // #if LOGGER >= TRACE
@@ -286,23 +288,26 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
 
             // no data available
             if (nodeId == NodeID.INVALID_ID) {
-                // TODO waiting strats
-                // TODO check for thread shut down signal if we stay here and wait until data is available
-                //                if (!m_waitTimer.IsRunning()) {
-                //                    m_waitTimer.Start();
-                //                }
-                //
-                //                if (m_waitTimer.GetTimeMs() > 100.0) {
-                //                    std::this_thread::yield();
-                //                } else if (m_waitTimer.GetTimeMs() > 1000.0) {
-                //                    std::this_thread::sleep_for(std::chrono::nanoseconds(1));
-                //                }
 
-                // TODO for testing, this will throttle performance
-                //LockSupport.parkNanos(1);
+                if (m_waitTimerStartNs == 0) {
+                    m_waitTimerStartNs = System.nanoTime();
+                }
+
+                double waitTimeMs = (System.nanoTime() - m_waitTimerStartNs) / 1000.0 / 1000.0;
+
+                if (waitTimeMs >= 100.0 && waitTimeMs < 1000.0) {
+                    Thread.yield();
+                } else if (waitTimeMs >= 1000.0) {
+                    LockSupport.parkNanos(1);
+                    // return to allow the send thread to shut down (on subsystem shutdown)
+                    return 0;
+                }
 
                 continue;
             }
+
+            // reset
+            m_waitTimerStartNs = 0;
 
             // #if LOGGER >= TRACE
             LOGGER.trace("Next write interests on node 0x%X", nodeId);
@@ -407,7 +412,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
 
         // FIXME see fixme above for leave
         // #ifdef STATISTICS
-        //        SOP_SEND_NEXT_DATA.enter();
+        SOP_SEND_NEXT_DATA.enter();
         // #endif /* STATISTICS */
 
         return ByteBufferHelper.getDirectAddress(m_sendThreadRetArgs);
