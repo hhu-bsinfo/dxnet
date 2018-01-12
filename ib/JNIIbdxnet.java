@@ -118,8 +118,6 @@ final class JNIIbdxnet {
      *         Max number of WRQs in the (shared) recv queue
      * @param p_maxSendReqs
      *         Max number of WRQs in the (per connection) send queue
-     * @param p_flowControlMaxRecvReqs
-     *         Max number of WRQs in the (shared) FC recv queue
      * @param p_maxNumConnections
      *         Max number of connections
      * @param p_connectionCreationTimeoutMs
@@ -133,15 +131,11 @@ final class JNIIbdxnet {
      * @param p_enableSignalHandler
      *         True to overwrite java's signal handler with Ibdxnet's. Useful for
      *         debugging segmentation faults in the subsystem
-     * @param p_enableDebugThread
-     *         True to enable a thread printing additional runtime information periodically
-     *         (runtime statistics, current load, throughput) of the subsystem
      * @return True if init was successful, false on failure
      */
     public static native boolean init(final short p_ownNodeId, final int p_inBufferSize, final int p_outBufferSize, final long p_recvPoolSizeBytes,
-            final int p_maxRecvReqs, final int p_maxSendReqs, final int p_flowControlMaxRecvReqs, final int p_maxNumConnections,
-            final int p_connectionCreationTimeoutMs, final SendHandler p_sendHandler, final RecvHandler p_recvHandler,
-            final ConnectionHandler p_connectionHandler, final boolean p_enableSignalHandler, final boolean p_enableDebugThread);
+            final int p_maxRecvReqs, final int p_maxSendReqs, final int p_maxNumConnections, final int p_connectionCreationTimeoutMs,
+            final SendHandler p_sendHandler, final RecvHandler p_recvHandler, final ConnectionHandler p_connectionHandler, final boolean p_enableSignalHandler);
 
     /**
      * Shut down the subsystem

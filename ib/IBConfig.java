@@ -55,13 +55,7 @@ public class IBConfig {
     private int m_maxRecvReqs = 100;
 
     @Expose
-    private int m_flowControlMaxRecvReqs = 100;
-
-    @Expose
     private boolean m_enableSignalHandler = false;
-
-    @Expose
-    private boolean m_enableDebugThread = false;
 
     /**
      * Default constructor
@@ -141,24 +135,10 @@ public class IBConfig {
     }
 
     /**
-     * Infiniband recv queue size for flow control (shared across all connections)
-     */
-    public int getFlowControlMaxRecvReqs() {
-        return m_flowControlMaxRecvReqs;
-    }
-
-    /**
      * Enable a signal handler in the IB subsystem to catch signals and print debug info.
      * If enabled, this overwrites the signal handler of the JVM!
      */
     public boolean getEnableSignalHandler() {
         return m_enableSignalHandler;
-    }
-
-    /**
-     * Enable a debug thread the prints throughput information periodically (for debugging)
-     */
-    public boolean getEnableDebugThread() {
-        return m_enableDebugThread;
     }
 }

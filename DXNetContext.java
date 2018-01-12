@@ -169,12 +169,6 @@ public class DXNetContext {
             return false;
         }
 
-        if (m_ibConfig.getFlowControlMaxRecvReqs() < m_ibConfig.getMaxConnections()) {
-            // #if LOGGER >= WARN
-            LOGGER.warn("IB m_ibFlowControlMaxRecvReqs < m_maxConnections: This may result in performance penalties when too many nodes are active");
-            // #endif /* LOGGER >= WARN */
-        }
-
         if (m_ibConfig.getMaxRecvReqs() < m_ibConfig.getMaxConnections()) {
             // #if LOGGER >= WARN
             LOGGER.warn("IB m_ibMaxRecvReqs < m_maxConnections: This may result in performance penalties when too many nodes are active");

@@ -133,8 +133,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
         if (!JNIIbdxnet
                 .init(m_coreConfig.getOwnNodeId(), (int) m_config.getIncomingBufferSize().getBytes(), (int) m_config.getOugoingRingBufferSize().getBytes(),
                         m_config.getIncomingBufferPoolTotalSize().getBytes(), m_config.getMaxRecvReqs(), m_config.getMaxSendReqs(),
-                        m_config.getFlowControlMaxRecvReqs(), m_config.getMaxConnections(), (int) m_config.getConnectionCreationTimeout().getMs(), this, this,
-                        this, m_config.getEnableSignalHandler(), m_config.getEnableDebugThread())) {
+                        m_config.getMaxConnections(), (int) m_config.getConnectionCreationTimeout().getMs(), this, this, this,
+                        m_config.getEnableSignalHandler())) {
             // #if LOGGER >= DEBUG
             LOGGER.debug("Initializing ibnet failed, check ibnet logs");
             // #endif /* LOGGER >= DEBUG */
