@@ -149,11 +149,13 @@ public final class DXNetMain implements MessageReceiver {
 
         long timeEndSender = System.nanoTime();
 
-        while (!ms_remoteFinished) {
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+        if (ms_recvCount != 0) {
+            while (!ms_remoteFinished) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
         }
 
