@@ -115,7 +115,7 @@ public final class DXNetMain implements MessageReceiver {
         setupDXNet();
 
         try {
-            Thread.sleep(30000);
+            Thread.sleep((ms_targetNodeIds.size() - ms_ownNodeId) * 1000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
