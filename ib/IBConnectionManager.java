@@ -440,8 +440,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
 
             // handle fc confirm
             if (p_fcConfirm) {
-                // TODO parameter doesn't matter but the interface to NIO isn't clean that way
-                connection.getPipeIn().handleFlowControlData(1);
+                connection.getPipeIn().handleFlowControlData();
             }
 
             // handle data

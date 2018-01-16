@@ -51,4 +51,39 @@ class IBFlowControl extends AbstractFlowControl {
     public void flowControlWrite() throws NetworkException {
         m_writeInterestManager.pushBackFcInterest(getDestinationNodeId());
     }
+
+    @Override
+    public byte getAndResetFlowControlData() {
+        int bytesLeft;
+
+        // not using CAS here requires this to be called by a single thread, only
+        int curFcData = m_receivedBytes.get();
+
+        if (curFcData < m_flowControlWindowSizeThreshold) {
+            return 0;
+        }
+
+        bytesLeft = m_receivedBytes.addAndGet(-m_flowControlWindowSizeThreshold);
+
+        if (bytesLeft < 0) {
+            throw new IllegalStateException("Negative flow control");
+        }
+
+        if (bytesLeft >= m_flowControlWindowSizeThreshold) {
+            try {
+                flowControlWrite();
+            } catch (final NetworkException e) {
+                // #if LOGGER >= ERROR
+                LOGGER.error("Could not send flow control message", e);
+                // #endif /* LOGGER >= ERROR */
+            }
+        }
+
+        // #if LOGGER >= TRACE
+        LOGGER.trace("getAndResetFlowControlData (%X): %d", m_destinationNodeID, bytesLeft);
+        // #endif /* LOGGER >= TRACE */
+
+        //return m_flowControlWindowSizeThreshold;
+        return (byte) 1;
+    }
 }

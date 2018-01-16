@@ -13,6 +13,9 @@
 
 package de.hhu.bsinfo.dxnet.nio;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import de.hhu.bsinfo.dxnet.core.AbstractFlowControl;
 import de.hhu.bsinfo.dxnet.core.NetworkException;
 
@@ -22,6 +25,7 @@ import de.hhu.bsinfo.dxnet.core.NetworkException;
  * @author Kevin Beineke, kevin.beineke@hhu.de, 18.03.2017
  */
 public class NIOFlowControl extends AbstractFlowControl {
+    private static final Logger LOGGER = LogManager.getFormatterLogger(NIOFlowControl.class.getSimpleName());
 
     private final NIOSelector m_nioSelector;
     private final NIOConnection m_connection;
@@ -51,5 +55,29 @@ public class NIOFlowControl extends AbstractFlowControl {
     @Override
     public void flowControlWrite() throws NetworkException {
         m_nioSelector.changeOperationInterestAsync(InterestQueue.FLOW_CONTROL, m_connection);
+    }
+
+    @Override
+    public byte getAndResetFlowControlData() {
+        int bytesLeft;
+        byte ret;
+
+        // not using CAS here requires this to be called by a single thread, only
+        ret = (byte) (m_receivedBytes.get() / m_flowControlWindowSizeThreshold);
+        if (ret == 0) {
+            return 0;
+        }
+
+        bytesLeft = m_receivedBytes.addAndGet(-(m_flowControlWindowSizeThreshold * ret));
+
+        if (bytesLeft < 0) {
+            throw new IllegalStateException("Negative flow control");
+        }
+
+        // #if LOGGER >= TRACE
+        LOGGER.trace("getAndResetFlowControlData (%X): %d", m_destinationNodeID, bytesLeft);
+        // #endif /* LOGGER >= TRACE */
+
+        return ret;
     }
 }

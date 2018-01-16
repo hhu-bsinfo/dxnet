@@ -48,7 +48,7 @@ public class NIOPipeOut extends AbstractPipeOut {
 
     private final NIOSelector m_nioSelector;
     private final NodeMap m_nodeMap;
-    private final ByteBuffer m_flowControlBytes;
+    private final ByteBuffer m_flowControlByte;
 
     /**
      * Creates a NIO PipeOut. Outgoing channel is not created/opened here!
@@ -81,7 +81,7 @@ public class NIOPipeOut extends AbstractPipeOut {
 
         m_nioSelector = p_nioSelector;
         m_nodeMap = p_nodeMap;
-        m_flowControlBytes = ByteBuffer.allocateDirect(Integer.BYTES);
+        m_flowControlByte = ByteBuffer.allocateDirect(1);
     }
 
     /**
@@ -188,17 +188,19 @@ public class NIOPipeOut extends AbstractPipeOut {
      */
     void readFlowControlBytes() throws IOException {
         int readBytes;
-        int readAllBytes;
 
         // #ifdef STATISTICS
         SOP_READ_FLOW_CONTROL.enter();
         // #endif /* STATISTICS */
 
         // This is a flow control byte
-        m_flowControlBytes.rewind();
-        readAllBytes = 0;
-        while (readAllBytes < Integer.BYTES) {
-            readBytes = m_outgoingChannel.read(m_flowControlBytes);
+        m_flowControlByte.rewind();
+        while (true) {
+            readBytes = m_outgoingChannel.read(m_flowControlByte);
+
+            if (readBytes == 1) {
+                break;
+            }
 
             if (readBytes == -1) {
                 // Channel was closed
@@ -209,11 +211,9 @@ public class NIOPipeOut extends AbstractPipeOut {
 
                 return;
             }
-
-            readAllBytes += readBytes;
         }
 
-        getFlowControl().handleFlowControlData(m_flowControlBytes.getInt(0));
+        getFlowControl().handleFlowControlData(m_flowControlByte.get(0));
 
         // #ifdef STATISTICS
         SOP_READ_FLOW_CONTROL.leave();

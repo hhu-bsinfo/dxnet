@@ -41,7 +41,7 @@ public class LoopbackPipeIn extends AbstractPipeIn {
     private IncomingBufferQueue m_incomingBufferQueue;
     private LoopbackConnection m_parentConnection;
 
-    private final ByteBuffer m_flowControlBytes;
+    private final ByteBuffer m_flowControlByte;
 
     LoopbackPipeIn(final short p_ownNodeId, final short p_destinationNodeId, final LocalMessageHeaderPool p_messageHeaderPool,
             final AbstractFlowControl p_flowControl, final MessageDirectory p_messageDirectory, final RequestMap p_requestMap,
@@ -53,7 +53,7 @@ public class LoopbackPipeIn extends AbstractPipeIn {
         m_incomingBufferQueue = p_incomingBufferQueue;
         m_parentConnection = p_parentConnection;
 
-        m_flowControlBytes = ByteBuffer.allocateDirect(Integer.BYTES);
+        m_flowControlByte = ByteBuffer.allocateDirect(1);
 
         setConnected(true);
     }
@@ -101,10 +101,10 @@ public class LoopbackPipeIn extends AbstractPipeIn {
     ByteBuffer readFlowControlData(final ByteBuffer p_buffer) {
         // Copy flow control bytes for comparison reasons
 
-        m_flowControlBytes.rewind();
-        m_flowControlBytes.put(p_buffer);
+        m_flowControlByte.rewind();
+        m_flowControlByte.put(p_buffer);
 
-        return m_flowControlBytes;
+        return m_flowControlByte;
     }
 
     @Override

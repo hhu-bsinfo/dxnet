@@ -34,14 +34,14 @@ public abstract class AbstractFlowControl {
     private static final Logger LOGGER = LogManager.getFormatterLogger(AbstractFlowControl.class.getSimpleName());
     private static final StatisticsOperation SOP_WAIT = StatisticsRecorderManager.getOperation("DXNet-FlowControl", "Wait");
 
-    private final short m_destinationNodeID;
+    protected final short m_destinationNodeID;
 
     private final int m_flowControlWindowSize;
     private final float m_flowControlWindowThreshold;
-    private final int m_flowControlWindowSizeThreshold;
+    protected final int m_flowControlWindowSizeThreshold;
 
     private AtomicInteger m_unconfirmedBytes;
-    private AtomicInteger m_receivedBytes;
+    protected AtomicInteger m_receivedBytes;
 
     /**
      * Constructor
@@ -77,6 +77,16 @@ public abstract class AbstractFlowControl {
      *         If writing the flow control data failed
      */
     public abstract void flowControlWrite() throws NetworkException;
+
+    // call when writing flow control data
+
+    /**
+     * Get current number of "confirmed bytes" to send back to the source (to confirm data was processed)
+     * and reset
+     *
+     * @return Number of confirmed FC windows to send back
+     */
+    public abstract byte getAndResetFlowControlData();
 
     /**
      * Called when messages ("unconfirmed bytes") are written to the connection of the destination
@@ -131,61 +141,18 @@ public abstract class AbstractFlowControl {
         }
     }
 
-    // call when writing flow control data
-
-    /**
-     * Get current number of "confirmed bytes" to send back to the source (to confirm data was processed)
-     * and reset
-     *
-     * @return Number of confirmed bytes to send back
-     */
-    public int getAndResetFlowControlData() {
-        int ret;
-
-        // TODO further doc and tweaks for NIO
-
-        // not using CAS here requires this to be called by a single thread, only
-        int curFcData = m_receivedBytes.get();
-
-        if (curFcData < m_flowControlWindowSizeThreshold) {
-            return 0;
-        }
-
-        ret = m_receivedBytes.addAndGet(-m_flowControlWindowSizeThreshold);
-
-        if (ret < 0) {
-            throw new IllegalStateException("Negative flow control");
-        }
-
-        if (ret >= m_flowControlWindowSizeThreshold) {
-            try {
-                flowControlWrite();
-            } catch (final NetworkException e) {
-                // #if LOGGER >= ERROR
-                LOGGER.error("Could not send flow control message", e);
-                // #endif /* LOGGER >= ERROR */
-            }
-        }
-
-        // #if LOGGER >= TRACE
-        LOGGER.trace("getAndResetFlowControlData (%X): %d", m_destinationNodeID, ret);
-        // #endif /* LOGGER >= TRACE */
-
-        return m_flowControlWindowSizeThreshold;
-    }
-
     /**
      * Called when "confirmed bytes" are received from the remote
      *
-     * @param p_confirmedBytes
-     *         Number of bytes confirmed by the remote
+     * @param p_confirmedWindows
+     *         Number of windows confirmed by the remote
      */
-    public void handleFlowControlData(final int p_confirmedBytes) {
+    public void handleFlowControlData(final byte p_confirmedWindows) {
         // #if LOGGER >= TRACE
-        LOGGER.trace("handleFlowControlData (%X): %d", m_destinationNodeID, p_confirmedBytes);
+        LOGGER.trace("handleFlowControlData (%X): %d", m_destinationNodeID, p_confirmedWindows * m_flowControlWindowSizeThreshold);
         // #endif /* LOGGER >= TRACE */
 
-        m_unconfirmedBytes.addAndGet(-m_flowControlWindowSizeThreshold);
+        m_unconfirmedBytes.addAndGet(-(p_confirmedWindows * m_flowControlWindowSizeThreshold));
     }
 
     @Override

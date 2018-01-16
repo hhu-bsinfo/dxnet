@@ -51,12 +51,9 @@ class IBPipeIn extends AbstractPipeIn {
 
     /**
      * Handle incoming flow control data from the remote connection
-     *
-     * @param p_confirmedBytes
-     *         Bytes confirmed/processed and sent by the remote to use to handle
      */
-    void handleFlowControlData(final int p_confirmedBytes) {
-        getFlowControl().handleFlowControlData(p_confirmedBytes);
+    void handleFlowControlData() {
+        getFlowControl().handleFlowControlData((byte) 1);
     }
 
     @Override

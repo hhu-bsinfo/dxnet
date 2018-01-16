@@ -15,18 +15,23 @@ package de.hhu.bsinfo.dxnet.loopback;
 
 import java.nio.ByteBuffer;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import de.hhu.bsinfo.dxnet.core.AbstractFlowControl;
 import de.hhu.bsinfo.dxnet.core.NetworkException;
+import de.hhu.bsinfo.dxnet.nio.NIOFlowControl;
 
 /**
  * Created by nothaas on 6/12/17.
  */
 public class LoopbackFlowControl extends AbstractFlowControl {
+    private static final Logger LOGGER = LogManager.getFormatterLogger(NIOFlowControl.class.getSimpleName());
 
     private final LoopbackSendThread m_loopbackSendThread;
     private LoopbackConnection m_connection;
 
-    private final ByteBuffer m_flowControlBytes;
+    private final ByteBuffer m_flowControlByte;
 
     LoopbackFlowControl(final short p_destinationNodeId, final int p_flowControlWindowSize, final float p_flowControlWindowThreshold,
             final LoopbackSendThread p_loopbackSendThread, final LoopbackConnection p_connection) {
@@ -35,16 +40,40 @@ public class LoopbackFlowControl extends AbstractFlowControl {
         m_loopbackSendThread = p_loopbackSendThread;
         m_connection = p_connection;
 
-        m_flowControlBytes = ByteBuffer.allocateDirect(Integer.BYTES);
+        m_flowControlByte = ByteBuffer.allocateDirect(1);
     }
 
     @Override
     public void flowControlWrite() throws NetworkException {
-        m_flowControlBytes.rewind();
-        m_flowControlBytes.putInt(super.getAndResetFlowControlData());
-        m_flowControlBytes.rewind();
+        m_flowControlByte.rewind();
+        m_flowControlByte.put(getAndResetFlowControlData());
+        m_flowControlByte.rewind();
 
-        ByteBuffer buffer = m_connection.getPipeIn().readFlowControlData(m_flowControlBytes);
-        handleFlowControlData(buffer.getInt(0));
+        ByteBuffer buffer = m_connection.getPipeIn().readFlowControlData(m_flowControlByte);
+        handleFlowControlData(buffer.get(0));
+    }
+
+    @Override
+    public byte getAndResetFlowControlData() {
+        int bytesLeft;
+        byte ret;
+
+        // not using CAS here requires this to be called by a single thread, only
+        ret = (byte) (m_receivedBytes.get() / m_flowControlWindowSizeThreshold);
+        if (ret == 0) {
+            return 0;
+        }
+
+        bytesLeft = m_receivedBytes.addAndGet(-(m_flowControlWindowSizeThreshold * ret));
+
+        if (bytesLeft < 0) {
+            throw new IllegalStateException("Negative flow control");
+        }
+
+        // #if LOGGER >= TRACE
+        LOGGER.trace("getAndResetFlowControlData (%X): %d", m_destinationNodeID, bytesLeft);
+        // #endif /* LOGGER >= TRACE */
+
+        return ret;
     }
 }

@@ -182,6 +182,20 @@ public class DXNetContext {
             return false;
         }
 
+        if (m_nioConfig.getFlowControlWindowThreshold() < 1 / Byte.MAX_VALUE) {
+            // #if LOGGER >= ERROR
+            LOGGER.error("NIO: Flow control window threshold is too small");
+            // #endif /* LOGGER >= ERROR */
+            return false;
+        }
+
+        if (m_loopbackConfig.getFlowControlWindowThreshold() < 1 / Byte.MAX_VALUE) {
+            // #if LOGGER >= ERROR
+            LOGGER.error("Loopback: Flow control window threshold is too small");
+            // #endif /* LOGGER >= ERROR */
+            return false;
+        }
+
         if (m_ibConfig.getFlowControlWindow().getBytes() > Integer.MAX_VALUE) {
             // #if LOGGER >= ERROR
             LOGGER.error("IB: Flow control window size exceeding 2 GB, not allowed");

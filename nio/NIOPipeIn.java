@@ -47,7 +47,7 @@ class NIOPipeIn extends AbstractPipeIn {
     private SocketChannel m_incomingChannel;
     private final BufferPool m_bufferPool;
     private final IncomingBufferQueue m_incomingBufferQueue;
-    private final ByteBuffer m_flowControlBytes;
+    private final ByteBuffer m_flowControlByte;
 
     private final NIOConnection m_parentConnection;
 
@@ -84,7 +84,7 @@ class NIOPipeIn extends AbstractPipeIn {
         m_incomingChannel = null;
         m_bufferPool = p_bufferPool;
         m_incomingBufferQueue = p_incomingBufferQueue;
-        m_flowControlBytes = ByteBuffer.allocateDirect(Integer.BYTES);
+        m_flowControlByte = ByteBuffer.allocateDirect(1);
 
         m_parentConnection = p_parentConnection;
     }
@@ -177,13 +177,17 @@ class NIOPipeIn extends AbstractPipeIn {
         SOP_WRITE_FLOW_CONTROL.enter();
         // #endif /* STATISTICS */
 
-        m_flowControlBytes.rewind();
-        m_flowControlBytes.putInt(getFlowControl().getAndResetFlowControlData());
-        m_flowControlBytes.rewind();
+        m_flowControlByte.rewind();
+        byte windows = getFlowControl().getAndResetFlowControlData();
+        if (windows == 0) {
+            return;
+        }
+        m_flowControlByte.put(windows);
+        m_flowControlByte.rewind();
 
-        while (bytes < Integer.BYTES && ++tries < 1000) {
+        while (bytes != 1 && ++tries < 1000) {
             // Send flow control bytes over incoming channel as this is unused
-            bytes += m_incomingChannel.write(m_flowControlBytes);
+            bytes += m_incomingChannel.write(m_flowControlByte);
         }
 
         if (tries == 1000) {
