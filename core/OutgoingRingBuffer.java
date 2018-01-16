@@ -179,6 +179,7 @@ public class OutgoingRingBuffer {
 
                     /* Leave serialization area */
                     leaveSerializationArea(posFrontProducer, newPosFrontProducer, p_messageSize);
+
                     break;
                 } else {
                     // #ifdef STATISTICS
@@ -450,15 +451,11 @@ public class OutgoingRingBuffer {
      * @return the start and end address; empty if both back and front are equal
      */
     protected long popBack() {
-        int posFront;
         int posFrontRelative;
-        int posBack;
         int posBackRelative;
 
-        posFront = (int) m_posFrontConsumer.get();
-        posFrontRelative = posFront % m_bufferSize;
-        posBack = m_posBack;
-        posBackRelative = posBack % m_bufferSize;
+        posFrontRelative = (int) m_posFrontConsumer.get() % m_bufferSize;
+        posBackRelative = m_posBack % m_bufferSize;
 
         if (posFrontRelative < posBackRelative) {
             posFrontRelative = m_bufferSize;
