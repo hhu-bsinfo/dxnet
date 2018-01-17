@@ -40,13 +40,16 @@ class IBOutgoingRingBuffer extends OutgoingRingBuffer {
     }
 
     /**
-     * Get the next currently available slice of data to send out
-     *
-     * @return Long holding the current relative position of the front pointer
-     * (lower 32-bit) and the relative position of the back pointer
-     * (higher 32-bit) of the ring buffer
+     * TODO doc: overriding to get pointers with wrap around
      */
-    long popFront() {
-        return popBack();
+    @Override
+    protected long popBack() {
+        int posFrontRelative;
+        int posBackRelative;
+
+        posFrontRelative = (int) m_posFrontConsumer.get() % m_bufferSize;
+        posBackRelative = m_posBack % m_bufferSize;
+
+        return (long) posFrontRelative << 32 | (long) posBackRelative;
     }
 }

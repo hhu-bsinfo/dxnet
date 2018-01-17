@@ -53,7 +53,7 @@ class IBPipeOut extends AbstractPipeOut {
      * (higher 32-bit) of the ring buffer
      */
     long getNextBuffer() {
-        return ((IBOutgoingRingBuffer) getOutgoingQueue()).popFront();
+        return ((IBOutgoingRingBuffer) getOutgoingQueue()).popBack();
     }
 
     /**

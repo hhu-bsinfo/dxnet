@@ -342,24 +342,18 @@ public class IBConnectionManager extends AbstractConnectionManager implements JN
             // process data interests
             if (dataInterests > 0) {
                 long pos = connection.getPipeOut().getNextBuffer();
-                int relPosBackRel = (int) (pos >> 32 & 0x7FFFFFFF);
-                int relPosFrontRel = (int) (pos & 0x7FFFFFFF);
+                int relPosFrontRel = (int) (pos >> 32 & 0x7FFFFFFF);
+                int relPosBackRel = (int) (pos & 0x7FFFFFFF);
 
-                if (relPosBackRel != relPosFrontRel) {
+                if (relPosFrontRel != relPosBackRel) {
                     // relative position of data start in buffer
-                    m_sendThreadRetArgs.putInt(relPosFrontRel);
-                    // relative position of data end in buffer
                     m_sendThreadRetArgs.putInt(relPosBackRel);
+                    // relative position of data end in buffer
+                    m_sendThreadRetArgs.putInt(relPosFrontRel);
 
                     // #if LOGGER >= TRACE
-                    LOGGER.trace("Next data write on node 0x%X, posFrontRelative %d, posBackRelative %d", nodeId, relPosFrontRel, relPosBackRel);
+                    LOGGER.trace("Next data write on node 0x%X, posBackRelative %d, posFrontRelative %d", nodeId, relPosBackRel, relPosFrontRel);
                     // #endif /* LOGGER >= TRACE */
-
-                    // check if outgoing is empty or if we got the first part of a wrap around
-                    // if wrap around -> push back a new interest to not forget the wrap around
-                    if (!connection.getPipeOut().isOutgoingQueueEmpty()) {
-                        m_writeInterestManager.pushBackDataInterest(nodeId);
-                    }
 
                     noDataAvailable = false;
                 } else {
