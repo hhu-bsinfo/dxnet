@@ -166,8 +166,6 @@ public class NIOConnectionManager extends AbstractConnectionManager {
             ret = new NIOConnection(m_coreConfig.getOwnNodeId(), p_destination, (int) m_config.getOugoingRingBufferSize().getBytes(),
                     (int) m_config.getFlowControlWindow().getBytes(), m_config.getFlowControlWindowThreshold(), m_incomingBufferQueue, m_messageHeaderPool,
                     m_messageDirectory, m_requestMap, m_messageHandlers, m_bufferPool, m_exporterPool, m_nioSelector, m_nodeMap, condLock, cond);
-
-            m_openConnections++;
         } else {
             ret = (NIOConnection) p_existingConnection;
         }
@@ -184,11 +182,6 @@ public class NIOConnectionManager extends AbstractConnectionManager {
                 LOGGER.debug("Connection creation aborted");
                 // #endif /* LOGGER >= DEBUG */
 
-                // revert counter to avoid leak
-                if (p_existingConnection == null) {
-                    m_openConnections--;
-                }
-
                 return null;
             }
 
@@ -199,11 +192,6 @@ public class NIOConnectionManager extends AbstractConnectionManager {
 
                 condLock.unlock();
 
-                // revert counter to avoid leak
-                if (p_existingConnection == null) {
-                    m_openConnections--;
-                }
-
                 throw new NetworkException("Connection creation timeout occurred");
             }
             try {
@@ -211,6 +199,10 @@ public class NIOConnectionManager extends AbstractConnectionManager {
             } catch (final InterruptedException e) { /* ignore */ }
         }
         condLock.unlock();
+
+        if (p_existingConnection == null) {
+            m_openConnections++;
+        }
 
         // a little ugly: The connection is added/set on the connection map right after the return here
         // however, the operation interest must be changed as well and is not part of the AbstractConnectionManager
