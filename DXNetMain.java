@@ -504,12 +504,12 @@ public final class DXNetMain implements MessageReceiver {
                 for (int j = 0; j < ms_targetNodeIds.size(); j++) {
                     try {
                         ms_dxnet.sendMessage(messages[j]);
+
+                        ms_messagesSent.incrementAndGet();
                     } catch (NetworkException e) {
                         // repeat until successful
                         --j;
                     }
-
-                    ms_messagesSent.incrementAndGet();
                 }
             }
         }
@@ -534,12 +534,12 @@ public final class DXNetMain implements MessageReceiver {
                     try {
                         BenchmarkMessage message = new BenchmarkMessage(ms_targetNodeIds.get(j), ms_size);
                         ms_dxnet.sendMessage(message);
+
+                        ms_messagesSent.incrementAndGet();
                     } catch (NetworkException e) {
                         // repeat until successful
                         --j;
                     }
-
-                    ms_messagesSent.incrementAndGet();
                 }
             }
         }
@@ -589,12 +589,12 @@ public final class DXNetMain implements MessageReceiver {
                         if (delta < m_rttMinNs) {
                             m_rttMinNs = delta;
                         }
+
+                        ms_messagesSent.incrementAndGet();
                     } catch (NetworkException e) {
                         // repeat until successful
                         --j;
                     }
-
-                    ms_messagesSent.incrementAndGet();
                 }
             }
         }
@@ -633,12 +633,12 @@ public final class DXNetMain implements MessageReceiver {
                         if (delta < m_rttMinNs) {
                             m_rttMinNs = delta;
                         }
+
+                        ms_messagesSent.incrementAndGet();
                     } catch (NetworkException e) {
                         // repeat until successful
                         --j;
                     }
-
-                    ms_messagesSent.incrementAndGet();
                 }
             }
         }
