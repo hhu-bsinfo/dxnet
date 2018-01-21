@@ -25,24 +25,29 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 
+import de.hhu.bsinfo.dxnet.main.messages.LoginRequest;
+import de.hhu.bsinfo.dxnet.main.messages.LoginResponse;
+import de.hhu.bsinfo.dxnet.main.messages.Messages;
+import de.hhu.bsinfo.dxnet.main.messages.StartMessage;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import de.hhu.bsinfo.dxnet.core.Message;
 import de.hhu.bsinfo.dxnet.core.NetworkException;
-import de.hhu.bsinfo.dxnet.core.messages.BenchmarkMessage;
-import de.hhu.bsinfo.dxnet.core.messages.BenchmarkRequest;
-import de.hhu.bsinfo.dxnet.core.messages.BenchmarkResponse;
-import de.hhu.bsinfo.dxnet.core.messages.Messages;
+import de.hhu.bsinfo.dxnet.main.messages.BenchmarkMessage;
+import de.hhu.bsinfo.dxnet.main.messages.BenchmarkRequest;
+import de.hhu.bsinfo.dxnet.main.messages.BenchmarkResponse;
 import de.hhu.bsinfo.dxutils.StorageUnitGsonSerializer;
 import de.hhu.bsinfo.dxutils.TimeUnitGsonSerializer;
 import de.hhu.bsinfo.dxutils.serialization.ObjectSizeUtil;
@@ -81,7 +86,13 @@ public final class DXNetMain implements MessageReceiver {
 
     private static DXNetContext ms_context;
 
+    private static int ms_totalNumNodes;
     private static DXNetNodeMap ms_nodeMap;
+
+    private static boolean ms_isLoginCoordinator;
+    private static ReentrantLock ms_loginLock = new ReentrantLock(false);
+    private static HashSet<Short> ms_loggedInNodes = new HashSet<>();
+    private static volatile boolean ms_startBenchmark = false;
 
     private static BenchmarkResponse[] ms_responses;
     private static boolean ms_objectPooling;
@@ -113,12 +124,7 @@ public final class DXNetMain implements MessageReceiver {
 
         // now setup DXNet which already opens receiving
         setupDXNet();
-
-        try {
-            Thread.sleep(Math.max((ms_targetNodeIds.size() - ms_ownNodeId) * 1000, 0));
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        coordinateStartupAndWait();
 
         LOGGER.info("Starting workload (%d threads)", ms_threads);
         ProgressThread progressThread = new ProgressThread(1000);
@@ -194,26 +200,72 @@ public final class DXNetMain implements MessageReceiver {
 
     @Override
     public void onIncomingMessage(final Message p_message) {
-        if (p_message.getSubtype() == Messages.SUBTYPE_BENCHMARK_REQUEST) {
-            BenchmarkResponse response;
-            if (ms_objectPooling) {
-                response = ms_responses[Integer.parseInt(Thread.currentThread().getName().substring(24)) - 1];
-                response.reuse((BenchmarkRequest) p_message, Messages.SUBTYPE_BENCHMARK_RESPONSE);
-                response.setDestination(p_message.getSource());
-            } else {
-                response = new BenchmarkResponse((BenchmarkRequest) p_message);
+        if (p_message.getSubtype() == Messages.SUBTYPE_LOGIN_REQUEST) {
+            LoginResponse resp = new LoginResponse((LoginRequest) p_message);
+
+            while (true) {
+                try {
+                    ms_dxnet.sendMessage(resp);
+                } catch (NetworkException e) {
+                    LockSupport.parkNanos(100);
+                }
+
+                break;
             }
 
-            try {
-                ms_dxnet.sendMessage(response);
-            } catch (NetworkException e) {
-                e.printStackTrace();
-            }
-        }
+            ms_loginLock.lock();
 
-        if (ms_messagesReceived.incrementAndGet() == ms_recvCount) {
-            ms_timeEndReceiver = System.nanoTime();
-            ms_remoteFinished = true;
+            if (!ms_startBenchmark) {
+                System.out.printf("Received login message from %X\n", p_message.getSource());
+
+                ms_loggedInNodes.add(p_message.getSource());
+
+                // -1: Don't count coordinator
+                if (ms_loggedInNodes.size() == ms_totalNumNodes - 1) {
+                    System.out.println("All nodes have logged in, signaling start");
+
+                    for (Short targetNodeId : ms_loggedInNodes) {
+                        StartMessage start = new StartMessage(targetNodeId);
+
+                        try {
+                            System.out.printf("Send start message to %X...\n", targetNodeId);
+                            ms_dxnet.sendMessage(start);
+                        } catch (NetworkException e) {
+                            System.out.printf("ERROR sending start message to node %X: %s\n", targetNodeId, e.getMessage());
+                        }
+                    }
+
+                    System.out.println("Starting benchmark");
+                    ms_startBenchmark = true;
+                }
+            }
+
+            ms_loginLock.unlock();
+        } else if (p_message.getSubtype() == Messages.SUBTYPE_START_MESSAGE) {
+            System.out.println("Starting benchmark (start signal)");
+            ms_startBenchmark = true;
+        } else {
+            if (p_message.getSubtype() == Messages.SUBTYPE_BENCHMARK_REQUEST) {
+                BenchmarkResponse response;
+                if (ms_objectPooling) {
+                    response = ms_responses[Integer.parseInt(Thread.currentThread().getName().substring(24)) - 1];
+                    response.reuse((BenchmarkRequest) p_message, Messages.SUBTYPE_BENCHMARK_RESPONSE);
+                    response.setDestination(p_message.getSource());
+                } else {
+                    response = new BenchmarkResponse((BenchmarkRequest) p_message);
+                }
+
+                try {
+                    ms_dxnet.sendMessage(response);
+                } catch (NetworkException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            if (ms_messagesRecived.incrementAndGet() == ms_recvCount) {
+                ms_timeEndReceiver = System.nanoTime();
+                ms_remoteFinished = true;
+            }
         }
     }
 
@@ -250,6 +302,7 @@ public final class DXNetMain implements MessageReceiver {
         for (int i = 7; i < p_args.length; i++) {
             ms_targetNodeIds.add(Short.parseShort(p_args[i]));
             targets.append(p_args[i]);
+            targets.append(" ");
         }
 
         System.out.printf("Parameters: workload %d, send count %d (per target), recv count %d (all), size %d, threads %d, own node id 0x%X, targets %s\n",
@@ -331,6 +384,7 @@ public final class DXNetMain implements MessageReceiver {
                 found = true;
             }
 
+            ms_totalNumNodes++;
             ms_nodeMap.addNode(entry.getNodeId(), new InetSocketAddress(entry.getAddress().getIP(), entry.getAddress().getPort()));
         }
 
@@ -355,6 +409,8 @@ public final class DXNetMain implements MessageReceiver {
                 ms_targetNodeIds.remove(targetNodeId);
             }
         }
+
+        ms_isLoginCoordinator = ms_nodeMap.getOwnNodeID() == 0;
     }
 
     private static void deviceLoadAndCheck() {
@@ -418,13 +474,53 @@ public final class DXNetMain implements MessageReceiver {
     private static void setupDXNet() {
         ms_dxnet = new DXNet(ms_context.getCoreConfig(), ms_context.getNIOConfig(), ms_context.getIBConfig(), ms_context.getLoopbackConfig(), ms_nodeMap);
 
+        // register coordination messages
+        ms_dxnet.registerMessageType(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_LOGIN_REQUEST, LoginRequest.class);
+        ms_dxnet.registerMessageType(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_LOGIN_RESPONSE, LoginResponse.class);
+        ms_dxnet.registerMessageType(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_START_MESSAGE, StartMessage.class);
+        ms_dxnet.register(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_LOGIN_REQUEST, new DXNetMain());
+        ms_dxnet.register(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_LOGIN_RESPONSE, new DXNetMain());
+        ms_dxnet.register(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_START_MESSAGE, new DXNetMain());
+
         // Register benchmark message in DXNet
-        ms_dxnet.registerMessageType(Messages.DEFAULT_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_MESSAGE, BenchmarkMessage.class);
-        ms_dxnet.registerMessageType(Messages.DEFAULT_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_REQUEST, BenchmarkRequest.class);
-        ms_dxnet.registerMessageType(Messages.DEFAULT_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_RESPONSE, BenchmarkResponse.class);
-        ms_dxnet.register(Messages.DEFAULT_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_MESSAGE, new DXNetMain());
-        ms_dxnet.register(Messages.DEFAULT_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_REQUEST, new DXNetMain());
-        ms_dxnet.register(Messages.DEFAULT_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_RESPONSE, new DXNetMain());
+        ms_dxnet.registerMessageType(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_MESSAGE, BenchmarkMessage.class);
+        ms_dxnet.registerMessageType(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_REQUEST, BenchmarkRequest.class);
+        ms_dxnet.registerMessageType(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_RESPONSE, BenchmarkResponse.class);
+        ms_dxnet.register(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_MESSAGE, new DXNetMain());
+        ms_dxnet.register(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_REQUEST, new DXNetMain());
+        ms_dxnet.register(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_RESPONSE, new DXNetMain());
+    }
+
+    private static void coordinateStartupAndWait() {
+        if (!ms_isLoginCoordinator) {
+            LoginRequest req = new LoginRequest((short) 0);
+
+            System.out.println("I am login slave, send login message to coordinator");
+
+            // try contacting coordinator until successful
+            while (true) {
+                try {
+                    ms_dxnet.sendSync(req, -1, true);
+                    break;
+                } catch (NetworkException e) {
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException ignored) {
+
+                    }
+                }
+            }
+
+            System.out.println("Logged in at coordinator, waiting...");
+        } else {
+            // -1: Don't count coordinator (us)
+            System.out.printf("I am login coordinator, waiting for %d nodes to login...\n", ms_totalNumNodes - 1);
+        }
+
+        // wait until all nodes have logged in and the coordinator sent the start message
+        while (!ms_startBenchmark) {
+            LockSupport.parkNanos(100);
+        }
     }
 
     private static void printResults(final String p_name, final long p_timeDiffNs, final long p_minRttNs, final long p_maxRttNs, final long p_totalMessages) {

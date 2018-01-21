@@ -11,22 +11,33 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-package de.hhu.bsinfo.dxnet.core.messages;
+package de.hhu.bsinfo.dxnet.main.messages;
+
+import de.hhu.bsinfo.dxnet.core.Request;
 
 /**
- * Message types reserved for the network subsystem
+ * Request sent by all other nodes to the coordinator on DXNetMain to login
+ * before running the benchmark
  *
- * @author Stefan Nothaas, stefan.nothaas@hhu.de, 05.07.2017
+ * @author Stefan Nothaas, stefan.nothaas@hhu.de, 21.01.2018
  */
-public final class Messages {
-    public static final byte DEFAULT_MESSAGES_TYPE = 0;
-
-    public static final byte SUBTYPE_INVALID_MESSAGE = 0;
-    public static final byte SUBTYPE_DEFAULT_MESSAGE = 1;
+public class LoginRequest extends Request {
 
     /**
-     * Hidden constructor
+     * Creates an instance of LoginRequest.
      */
-    private Messages() {
+    public LoginRequest() {
+        super();
     }
+
+    /**
+     * Creates an instance of LoginRequest
+     *
+     * @param p_destination
+     *         the destination nodeID
+     */
+    public LoginRequest(final short p_destination) {
+        super(p_destination, Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_LOGIN_REQUEST);
+    }
+
 }
