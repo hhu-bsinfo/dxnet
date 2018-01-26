@@ -82,7 +82,7 @@ class IBConnection extends AbstractConnection<IBPipeIn, IBPipeOut> {
 
     @Override
     public void close(final boolean p_force) {
-        setClosingTimestamp();
+        setClosingTimestamp(System.currentTimeMillis());
 
         if (!p_force) {
             if (!getPipeOut().isOutgoingQueueEmpty()) {

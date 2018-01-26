@@ -45,7 +45,7 @@ class InterestQueue {
     static final byte WRITE = 1 << 2;
     static final byte CONNECT = 1 << 3;
     static final byte READ_FLOW_CONTROL = 1 << 5;
-    static final byte FLOW_CONTROL = 1 << 6;
+    static final byte WRITE_FLOW_CONTROL = 1 << 6;
     static final byte CLOSE = 1 << 1;
 
     private byte[] m_changeRequests;
@@ -96,11 +96,10 @@ class InterestQueue {
         if (oldInterest == 0) {
             // Connection was not registered since last processing -> add to active connections
             m_activeConnections.add(p_connection);
-        }
-
-        if (oldInterest % p_interest != p_interest) {
-            // Given operation interest was not yet registered for this connection
-            ret = true;
+            if (m_activeConnections.size() == 1) {
+                // Wake-up the NIOSelector thread on return
+                ret = true;
+            }
         }
 
         m_changeRequests[nodeID & 0xFFFF] = (byte) (oldInterest | p_interest);
@@ -127,6 +126,7 @@ class InterestQueue {
         int interest;
         int entries;
         SelectionKey key;
+        NIOConnection connection;
 
         // #ifdef STATISTICS
         SOP_PROCESS.enter();
@@ -135,19 +135,20 @@ class InterestQueue {
         m_changeLock.lock();
         entries = m_activeConnections.size();
         if (entries > 0) {
-            for (NIOConnection connection : m_activeConnections) {
+            for (int i = 0; i < m_activeConnections.size(); i++) {
+                connection = m_activeConnections.get(i);
                 // Get interest of this connection
                 interest = m_changeRequests[connection.getDestinationNodeID() & 0xFFFF];
                 // Reset interest for this connection
                 m_changeRequests[connection.getDestinationNodeID() & 0xFFFF] = 0;
 
                 /*
-                 * By aggregating different interests (CONNECT, READ_FLOW_CONTROL, READ, FLOW_CONTROL, WRITE and CLOSE) for one connection, we loose the
+                 * By aggregating different interests (CONNECT, READ_FLOW_CONTROL, READ, WRITE_FLOW_CONTROL, WRITE and CLOSE) for one connection, we loose the
                  * ordering within those interests. But, this is not a problem at all as the ordering is implicitly (we favor flow control over data transfer):
                  *     1) CONNECT              - a connection must be connected before using it
                  *     2) READ_FLOW_CONTROL    - after creating the PipeOut, the incoming stream must be registered for reading flow control updates
                  *     3) READ                 - after creating the PipeIn, the incoming stream must be registered for reading data
-                 *     4) FLOW_CONTROL         - there is a new flow control update to be written to the outgoing stream of the PipeIn
+                 *     4) WRITE_FLOW_CONTROL         - there is a new flow control update to be written to the outgoing stream of the PipeIn
                  *     5) WRITE                - there is new data to be written to the outgoing stream of the PipeOut
                  *     6) CLOSE                - connection closure is always the last operation as all following will fail (without re-opening the connection)
                  *
@@ -189,9 +190,9 @@ class InterestQueue {
                     }
                 }
 
-                if ((interest & FLOW_CONTROL) == FLOW_CONTROL) {
+                if ((interest & WRITE_FLOW_CONTROL) == WRITE_FLOW_CONTROL) {
                     try {
-                        // This is a FLOW_CONTROL access - Write flow control bytes over incoming channel
+                        // This is a WRITE_FLOW_CONTROL access - Write flow control bytes over incoming channel
                         key = connection.getPipeIn().getChannel().keyFor(p_selector);
                         if (key != null && key.interestOps() != (SelectionKey.OP_READ | SelectionKey.OP_WRITE)) {
                             // Key might be null if connection was closed during shutdown or due to closing a duplicate connection

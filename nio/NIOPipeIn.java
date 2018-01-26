@@ -147,8 +147,7 @@ class NIOPipeIn extends AbstractPipeIn {
                 break;
             } else if (readBytes == 0 && buffer.position() != 0 || readBytes >= m_bufferPool.getOSBufferSize() * 0.9) {
                 // There is nothing more to read at the moment
-                buffer.limit(buffer.position());
-                buffer.rewind();
+                buffer.flip();
 
                 // #if LOGGER >= TRACE
                 LOGGER.trace("Posting receive buffer (limit %d) to connection 0x%X", buffer.limit(), getDestinationNodeID());
@@ -171,7 +170,6 @@ class NIOPipeIn extends AbstractPipeIn {
      */
     void writeFlowControlBytes() throws IOException {
         int bytes = 0;
-        int tries = 0;
 
         // #ifdef STATISTICS
         SOP_WRITE_FLOW_CONTROL.enter();
@@ -185,15 +183,9 @@ class NIOPipeIn extends AbstractPipeIn {
         m_flowControlByte.put(windows);
         m_flowControlByte.rewind();
 
-        while (bytes != 1 && ++tries < 1000) {
+        while (bytes != 1) {
             // Send flow control bytes over incoming channel as this is unused
             bytes += m_incomingChannel.write(m_flowControlByte);
-        }
-
-        if (tries == 1000) {
-            // #if LOGGER >= ERROR
-            LOGGER.error("Could not send flow control data!");
-            // #endif /* LOGGER >= ERROR */
         }
 
         // #ifdef STATISTICS

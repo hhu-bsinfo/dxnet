@@ -139,8 +139,8 @@ public abstract class AbstractConnection<PipeIn extends AbstractPipeIn, PipeOut 
     /**
      * Set the closing timestamp of the connection
      */
-    protected final void setClosingTimestamp() {
-        m_closingTimestamp = System.currentTimeMillis();
+    protected final void setClosingTimestamp(final long p_time) {
+        m_closingTimestamp = p_time;
     }
 
     /**

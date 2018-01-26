@@ -54,7 +54,7 @@ public class LoopbackConnection extends AbstractConnection<LoopbackPipeIn, Loopb
 
     @Override
     public void close(boolean p_force) {
-        setClosingTimestamp();
+        setClosingTimestamp(System.currentTimeMillis());
     }
 
     @Override

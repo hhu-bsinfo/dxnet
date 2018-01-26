@@ -21,6 +21,7 @@ import org.apache.logging.log4j.Logger;
 
 import de.hhu.bsinfo.dxnet.ConnectionManagerListener;
 import de.hhu.bsinfo.dxutils.NodeID;
+import de.hhu.bsinfo.dxutils.UnsafeHandler;
 
 /**
  * Abstract class for a connection manager. Manage connections to keep only a max amount of connections
@@ -34,7 +35,8 @@ public abstract class AbstractConnectionManager {
     private static final Logger LOGGER = LogManager.getFormatterLogger(AbstractConnectionManager.class.getSimpleName());
 
     protected final AbstractConnection[] m_connections;
-    protected final ReentrantLock m_connectionCreationLock;
+    private final ReentrantLock m_connectionCreationLock;
+    private final ReentrantLock[] m_connectionLocks;
 
     protected ConnectionManagerListener m_listener;
 
@@ -53,6 +55,7 @@ public abstract class AbstractConnectionManager {
         m_maxConnections = p_maxConnections;
         m_connections = new AbstractConnection[65536];
         m_connectionCreationLock = new ReentrantLock(false);
+        m_connectionLocks = new ReentrantLock[65536];
 
         m_openConnections = 0;
         m_overprovisioning = p_overprovisioning;
@@ -102,12 +105,14 @@ public abstract class AbstractConnectionManager {
      */
     public AbstractConnection getConnection(final short p_destination) throws NetworkException {
         AbstractConnection ret;
+        ReentrantLock connectionLock;
 
         assert p_destination != NodeID.INVALID_ID;
 
         ret = m_connections[p_destination & 0xFFFF];
         if (ret == null || !ret.getPipeOut().isConnected()) {
-            m_connectionCreationLock.lock();
+            connectionLock = getConnectionLock(p_destination);
+            connectionLock.lock();
 
             // #if LOGGER >= DEBUG
             LOGGER.debug("Active create connection to: 0x%X", p_destination);
@@ -118,7 +123,7 @@ public abstract class AbstractConnectionManager {
                 try {
                     ret = createConnection(p_destination, ret);
                 } catch (final NetworkException e) {
-                    m_connectionCreationLock.unlock();
+                    connectionLock.unlock();
 
                     throw e;
                 }
@@ -135,7 +140,7 @@ public abstract class AbstractConnectionManager {
                     // #endif /* LOGGER >= ERROR */
                 }
             }
-            m_connectionCreationLock.unlock();
+            connectionLock.unlock();
         }
 
         return ret;
@@ -150,6 +155,27 @@ public abstract class AbstractConnectionManager {
         for (int i = 0; i < m_connections.length; i++) {
             m_connections[i] = null;
         }
+    }
+
+    /**
+     * Get the connection creation lock for a given NodeID.
+     *
+     * @param p_destination
+     *         the NodeID of the remote node
+     * @return the ReentrantLock
+     */
+    protected ReentrantLock getConnectionLock(final short p_destination) {
+        ReentrantLock connectionLock;
+
+        m_connectionCreationLock.lock();
+        connectionLock = m_connectionLocks[p_destination & 0xFFFF];
+        if (connectionLock == null) {
+            connectionLock = new ReentrantLock(false);
+            m_connectionLocks[p_destination & 0xFFFF] = connectionLock;
+        }
+        m_connectionCreationLock.unlock();
+
+        return connectionLock;
     }
 
     /**
@@ -179,7 +205,7 @@ public abstract class AbstractConnectionManager {
      * Close all connections
      */
     private void closeAllConnections() {
-        AbstractConnection connection = null;
+        AbstractConnection connection;
 
         m_connectionCreationLock.lock();
         for (int i = 0; i < 65536; i++) {
@@ -188,16 +214,6 @@ public abstract class AbstractConnectionManager {
                 m_connections[connection.getDestinationNodeID() & 0xFFFF] = null;
 
                 closeConnection(connection, false);
-            }
-        }
-
-        // Wait for last connection being closed by selector (for NIO)
-        while (connection != null && (connection.getPipeOut().isConnected() || connection.getPipeIn().isConnected())) {
-            connection.wakeup();
-            try {
-                Thread.sleep(100);
-            } catch (final InterruptedException ignore) {
-
             }
         }
         m_openConnections = 0;
@@ -222,6 +238,7 @@ public abstract class AbstractConnectionManager {
         // #endif /* LOGGER >= WARN */
 
         m_connections[random & 0xFFFF] = null;
+        UnsafeHandler.getInstance().getUnsafe().storeFence();
         m_openConnections--;
 
         dismiss.close(false);

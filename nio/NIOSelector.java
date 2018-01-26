@@ -71,7 +71,6 @@ class NIOSelector extends Thread {
 
         m_osBufferSize = p_osBufferSize;
         m_connectionTimeout = p_connectionTimeout;
-        //m_interestQueue = new InterestQueueHashset();
         m_interestQueue = new InterestQueue();
 
         m_running = false;

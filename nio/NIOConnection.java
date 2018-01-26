@@ -188,9 +188,9 @@ public class NIOConnection extends AbstractConnection<NIOPipeIn, NIOPipeOut> {
 
     @Override
     public void close(boolean p_force) {
-        setClosingTimestamp();
 
         if (!p_force) {
+            setClosingTimestamp(System.currentTimeMillis());
             if (!getPipeOut().isOutgoingQueueEmpty()) {
                 // #if LOGGER >= DEBUG
                 LOGGER.debug("Waiting for all scheduled messages to be sent over to be closed connection!");
@@ -207,6 +207,8 @@ public class NIOConnection extends AbstractConnection<NIOPipeIn, NIOPipeOut> {
                     }
                 }
             }
+        } else {
+            setClosingTimestamp(0);
         }
 
         m_nioSelector.closeConnectionAsync(this);

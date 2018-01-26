@@ -54,7 +54,7 @@ public class NIOFlowControl extends AbstractFlowControl {
 
     @Override
     public void flowControlWrite() throws NetworkException {
-        m_nioSelector.changeOperationInterestAsync(InterestQueue.FLOW_CONTROL, m_connection);
+        m_nioSelector.changeOperationInterestAsync(InterestQueue.WRITE_FLOW_CONTROL, m_connection);
     }
 
     @Override

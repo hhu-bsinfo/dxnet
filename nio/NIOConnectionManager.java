@@ -460,7 +460,9 @@ public class NIOConnectionManager extends AbstractConnectionManager {
 
                     SocketChannel channel = creationJob.getSocketChannel();
 
-                    m_connectionCreationLock.lock();
+                    ReentrantLock connectionLock = getConnectionLock(destination);
+                    connectionLock.lock();
+
                     connection = m_connections[destination & 0xFFFF];
 
                     if (connection == null) {
@@ -487,19 +489,20 @@ public class NIOConnectionManager extends AbstractConnectionManager {
                     m_nioSelector.changeOperationInterestAsync(InterestQueue.READ, (NIOConnection) connection);
                     connection.setPipeInConnected(true);
 
-                    m_connectionCreationLock.unlock();
+                    connectionLock.unlock();
                 } else {
                     // 1: Connection was closed by NIOSelectorThread (connection was faulty) -> Remove it
                     ClosureJob closeJob = (ClosureJob) job;
                     connection = closeJob.getConnection();
 
-                    m_connectionCreationLock.lock();
+                    ReentrantLock connectionLock = getConnectionLock(connection.getDestinationNodeID());
+                    connectionLock.lock();
                     AbstractConnection tmp = m_connections[connection.getDestinationNodeID() & 0xFFFF];
                     if (connection.equals(tmp)) {
                         m_connections[connection.getDestinationNodeID() & 0xFFFF] = null;
                         m_openConnections--;
                     }
-                    m_connectionCreationLock.unlock();
+                    connectionLock.unlock();
 
                     // Trigger failure handling for remote node over faulty connection
                     if (m_listener != null) {
