@@ -47,6 +47,39 @@ class IBFlowControl extends AbstractFlowControl {
         m_writeInterestManager = p_writeInterestManager;
     }
 
+    // get but don't remove flow control data before not confirmed sent
+    // get the number of windows to confirm
+    public byte getFlowControlData() {
+        byte ret;
+
+        // not using CAS here requires this to be called by a single thread, only
+        ret = (byte) (m_receivedBytes.get() / m_flowControlWindowSizeThreshold);
+        if (ret == 0) {
+            return 0;
+        }
+
+        // #if LOGGER >= TRACE
+        LOGGER.trace("getFlowControlData (%X): %d", m_destinationNodeID, ret);
+        // #endif /* LOGGER >= TRACE */
+
+        return ret;
+    }
+
+    // confirm that fc data was confirmed posted/sent
+    public void flowControlDataSendConfirmed(final byte p_fcData) {
+        int bytesLeft;
+
+        bytesLeft = m_receivedBytes.addAndGet(-(m_flowControlWindowSizeThreshold * p_fcData));
+
+        if (bytesLeft < 0) {
+            throw new IllegalStateException("Negative flow control");
+        }
+
+        // #if LOGGER >= TRACE
+        LOGGER.trace("flowControlDataSendConfirmed (%X): state fc left %d", m_destinationNodeID, bytesLeft);
+        // #endif /* LOGGER >= TRACE */
+    }
+
     @Override
     public void flowControlWrite() throws NetworkException {
         m_writeInterestManager.pushBackFcInterest(getDestinationNodeId());
@@ -54,36 +87,6 @@ class IBFlowControl extends AbstractFlowControl {
 
     @Override
     public byte getAndResetFlowControlData() {
-        int bytesLeft;
-
-        // not using CAS here requires this to be called by a single thread, only
-        int curFcData = m_receivedBytes.get();
-
-        if (curFcData < m_flowControlWindowSizeThreshold) {
-            return 0;
-        }
-
-        bytesLeft = m_receivedBytes.addAndGet(-m_flowControlWindowSizeThreshold);
-
-        if (bytesLeft < 0) {
-            throw new IllegalStateException("Negative flow control");
-        }
-
-        if (bytesLeft >= m_flowControlWindowSizeThreshold) {
-            try {
-                flowControlWrite();
-            } catch (final NetworkException e) {
-                // #if LOGGER >= ERROR
-                LOGGER.error("Could not send flow control message", e);
-                // #endif /* LOGGER >= ERROR */
-            }
-        }
-
-        // #if LOGGER >= TRACE
-        LOGGER.trace("getAndResetFlowControlData (%X): %d", m_destinationNodeID, bytesLeft);
-        // #endif /* LOGGER >= TRACE */
-
-        //return m_flowControlWindowSizeThreshold;
-        return (byte) 1;
+        throw new IllegalStateException("IB has to handle FC data in two phases, don't call this function");
     }
 }
