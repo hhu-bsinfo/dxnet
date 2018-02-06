@@ -24,6 +24,7 @@ import java.net.SocketException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Locale;
@@ -220,6 +221,7 @@ public final class DXNetMain implements MessageReceiver {
                     ms_dxnet.sendMessage(resp);
                 } catch (NetworkException e) {
                     LockSupport.parkNanos(100);
+                    continue;
                 }
 
                 break;
@@ -598,18 +600,23 @@ public final class DXNetMain implements MessageReceiver {
 
         @Override
         public void run() {
+            // TODO apply this to other benchmarks workloads as well -> common function
+            // generate random order when for sending messages to nodes for every thread
+            ArrayList<Short> destinationList = new ArrayList<>(ms_targetNodeIds);
+            Collections.shuffle(destinationList);
+
             long messageCount = ms_sendCount / ms_threads;
             if (Integer.parseInt(Thread.currentThread().getName()) == ms_threads - 1) {
                 messageCount += ms_sendCount % ms_threads;
             }
 
-            BenchmarkMessage[] messages = new BenchmarkMessage[ms_targetNodeIds.size()];
-            for (int i = 0; i < messages.length; i++) {
-                messages[i] = new BenchmarkMessage(ms_targetNodeIds.get(i), ms_size);
+            BenchmarkMessage[] messages = new BenchmarkMessage[destinationList.size()];
+            for (int i = 0; i < destinationList.size(); i++) {
+                messages[i] = new BenchmarkMessage(destinationList.get(i), ms_size);
             }
 
             for (int i = 0; i < messageCount; i++) {
-                for (int j = 0; j < ms_targetNodeIds.size(); j++) {
+                for (int j = 0; j < messages.length; j++) {
                     try {
                         ms_dxnet.sendMessage(messages[j]);
 
@@ -668,14 +675,19 @@ public final class DXNetMain implements MessageReceiver {
 
         @Override
         public void run() {
+            // TODO apply this to other benchmarks workloads as well -> common function
+            // generate random order when for sending messages to nodes for every thread
+            ArrayList<Short> destinationList = new ArrayList<>(ms_targetNodeIds);
+            Collections.shuffle(destinationList);
+            
             long messageCount = ms_sendCount / ms_threads;
             if (Integer.parseInt(Thread.currentThread().getName()) == ms_threads - 1) {
                 messageCount += ms_sendCount % ms_threads;
             }
 
-            BenchmarkRequest[] requests = new BenchmarkRequest[ms_targetNodeIds.size()];
+            BenchmarkRequest[] requests = new BenchmarkRequest[destinationList.size()];
             for (int i = 0; i < requests.length; i++) {
-                requests[i] = new BenchmarkRequest(ms_targetNodeIds.get(i), ms_size);
+                requests[i] = new BenchmarkRequest(destinationList.get(i), ms_size);
             }
 
             for (int i = 0; i < messageCount; i++) {
