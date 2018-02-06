@@ -49,17 +49,14 @@ class IBPipeIn extends AbstractPipeIn {
         super(p_ownNodeId, p_destinationNodeId, p_messageHeaderPool, p_flowControl, p_messageDirectory, p_requestMap, p_messageHandlers);
     }
 
-    /**
-     * Handle incoming flow control data from the remote connection
-     */
-    void handleFlowControlData() {
-        getFlowControl().handleFlowControlData((byte) 1);
+    void handleFlowControlData(final byte p_confirmedWindows) {
+        getFlowControl().handleFlowControlData(p_confirmedWindows);
     }
 
     @Override
     public void returnProcessedBuffer(final Object p_obj, final long p_bufferHandle) {
         // p_obj unused
-        JNIIbdxnet.returnRecvBuffer(p_bufferHandle);
+        MsgrcJNIBinding.returnRecvBuffer(p_bufferHandle);
     }
 
     @Override

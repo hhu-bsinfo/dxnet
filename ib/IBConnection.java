@@ -64,7 +64,7 @@ class IBConnection extends AbstractConnection<IBPipeIn, IBPipeOut> {
             final IBWriteInterestManager p_writeInterestManager) throws NetworkDestinationUnreachableException {
         super(p_ownNodeId);
 
-        long sendBufferAddr = JNIIbdxnet.getSendBufferAddress(p_destinationNodeId);
+        long sendBufferAddr = MsgrcJNIBinding.getSendBufferAddress(p_destinationNodeId);
         if (sendBufferAddr == -1) {
             // might happen on disconnect or if connection is not established in the ibnet subsystem
             throw new NetworkDestinationUnreachableException(p_destinationNodeId);

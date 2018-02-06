@@ -45,6 +45,8 @@ class IBPipeOut extends AbstractPipeOut {
         m_writeInterestManager = p_writeInterestManager;
     }
 
+    // TODO adjust doc, this returns pointers which can wrap around the ring buffer
+    // which needs to be handled in the native SendThread
     /**
      * Get the next available buffer/chunk of data to write to the connection
      *
@@ -56,13 +58,17 @@ class IBPipeOut extends AbstractPipeOut {
         return ((IBOutgoingRingBuffer) getOutgoingQueue()).popBack();
     }
 
-    /**
-     * Get flow control data to write to the connection
-     *
-     * @return Flow control bytes
-     */
-    int getFlowControlToWrite() {
-        return getFlowControl().getAndResetFlowControlData();
+    // TODO doc wrapper for outgoing ring buffer method
+    void dataSendConfirmed(final int p_numBytesPosted) {
+        ((IBOutgoingRingBuffer) getOutgoingQueue()).dataSendConfirmed(p_numBytesPosted);
+    }
+
+    byte getFlowControlData() {
+        return ((IBFlowControl) getFlowControl()).getFlowControlData();
+    }
+
+    void flowControlDataSendConfirmed(final byte p_fcData) {
+        ((IBFlowControl) getFlowControl()).flowControlDataSendConfirmed(p_fcData);
     }
 
     @Override
