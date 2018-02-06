@@ -36,10 +36,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 
-import de.hhu.bsinfo.dxnet.main.messages.LoginRequest;
-import de.hhu.bsinfo.dxnet.main.messages.LoginResponse;
-import de.hhu.bsinfo.dxnet.main.messages.Messages;
-import de.hhu.bsinfo.dxnet.main.messages.StartMessage;
+import de.hhu.bsinfo.dxutils.RandomUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -48,6 +45,10 @@ import de.hhu.bsinfo.dxnet.core.NetworkException;
 import de.hhu.bsinfo.dxnet.main.messages.BenchmarkMessage;
 import de.hhu.bsinfo.dxnet.main.messages.BenchmarkRequest;
 import de.hhu.bsinfo.dxnet.main.messages.BenchmarkResponse;
+import de.hhu.bsinfo.dxnet.main.messages.LoginRequest;
+import de.hhu.bsinfo.dxnet.main.messages.LoginResponse;
+import de.hhu.bsinfo.dxnet.main.messages.Messages;
+import de.hhu.bsinfo.dxnet.main.messages.StartMessage;
 import de.hhu.bsinfo.dxutils.StorageUnitGsonSerializer;
 import de.hhu.bsinfo.dxutils.TimeUnitGsonSerializer;
 import de.hhu.bsinfo.dxutils.serialization.ObjectSizeUtil;
@@ -125,6 +126,17 @@ public final class DXNetMain implements MessageReceiver {
         // now setup DXNet which already opens receiving
         setupDXNet();
         coordinateStartupAndWait();
+
+        // depending on the node id, start nodes one by one now.
+        // otherwise, this results in extremely fluctuating throughput
+        // and latency and not getting any good throughput/latency at all
+
+        System.out.printf("Waiting %d before starting workload...", ms_ownNodeId);
+        try {
+            Thread.sleep(100 * RandomUtils.getRandomValue(0, 100));
+        } catch (InterruptedException ignored) {
+
+        }
 
         LOGGER.info("Starting workload (%d threads)", ms_threads);
         ProgressThread progressThread = new ProgressThread(1000);
