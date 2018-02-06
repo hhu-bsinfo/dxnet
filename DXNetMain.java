@@ -600,7 +600,6 @@ public final class DXNetMain implements MessageReceiver {
 
         @Override
         public void run() {
-            // TODO apply this to other benchmarks workloads as well -> common function
             // generate random order when for sending messages to nodes for every thread
             ArrayList<Short> destinationList = new ArrayList<>(ms_targetNodeIds);
             Collections.shuffle(destinationList);
@@ -639,15 +638,19 @@ public final class DXNetMain implements MessageReceiver {
 
         @Override
         public void run() {
+            // generate random order when for sending messages to nodes for every thread
+            ArrayList<Short> destinationList = new ArrayList<>(ms_targetNodeIds);
+            Collections.shuffle(destinationList);
+
             long messageCount = ms_sendCount / ms_threads;
             if (Integer.parseInt(Thread.currentThread().getName()) == ms_threads - 1) {
                 messageCount += ms_sendCount % ms_threads;
             }
 
             for (int i = 0; i < messageCount; i++) {
-                for (int j = 0; j < ms_targetNodeIds.size(); j++) {
+                for (int j = 0; j < destinationList.size(); j++) {
                     try {
-                        BenchmarkMessage message = new BenchmarkMessage(ms_targetNodeIds.get(j), ms_size);
+                        BenchmarkMessage message = new BenchmarkMessage(destinationList.get(j), ms_size);
                         ms_dxnet.sendMessage(message);
 
                         ms_messagesSent.incrementAndGet();
@@ -675,7 +678,6 @@ public final class DXNetMain implements MessageReceiver {
 
         @Override
         public void run() {
-            // TODO apply this to other benchmarks workloads as well -> common function
             // generate random order when for sending messages to nodes for every thread
             ArrayList<Short> destinationList = new ArrayList<>(ms_targetNodeIds);
             Collections.shuffle(destinationList);
@@ -729,15 +731,19 @@ public final class DXNetMain implements MessageReceiver {
 
         @Override
         public void run() {
+            // generate random order when for sending messages to nodes for every thread
+            ArrayList<Short> destinationList = new ArrayList<>(ms_targetNodeIds);
+            Collections.shuffle(destinationList);
+
             long messageCount = ms_sendCount / ms_threads;
             if (Integer.parseInt(Thread.currentThread().getName()) == ms_threads - 1) {
                 messageCount += ms_sendCount % ms_threads;
             }
 
             for (int i = 0; i < messageCount; i++) {
-                for (int j = 0; j < ms_targetNodeIds.size(); j++) {
+                for (int j = 0; j < destinationList.size(); j++) {
                     try {
-                        BenchmarkRequest request = new BenchmarkRequest(ms_targetNodeIds.get(j), ms_size);
+                        BenchmarkRequest request = new BenchmarkRequest(destinationList.get(j), ms_size);
 
                         long start = System.nanoTime();
 
