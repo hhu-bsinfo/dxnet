@@ -274,7 +274,7 @@ public final class DXNetMain implements MessageReceiver {
                 }
             }
 
-            if (ms_messagesRecived.incrementAndGet() == ms_recvCount) {
+            if (ms_messagesReceived.incrementAndGet() == ms_recvCount) {
                 ms_timeEndReceiver = System.nanoTime();
                 ms_remoteFinished = true;
             }
