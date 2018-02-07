@@ -17,7 +17,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import de.hhu.bsinfo.dxnet.MessageHandlers;
-import de.hhu.bsinfo.dxnet.NetworkDestinationUnreachableException;
 import de.hhu.bsinfo.dxnet.core.AbstractConnection;
 import de.hhu.bsinfo.dxnet.core.AbstractExporterPool;
 import de.hhu.bsinfo.dxnet.core.LocalMessageHeaderPool;
@@ -41,6 +40,8 @@ class IBConnection extends AbstractConnection<IBPipeIn, IBPipeOut> {
      *         Node id of the current node
      * @param p_destinationNodeId
      *         Node id of the destination connected to with this connection
+     * @param p_sendBufferNativeAddr
+     *         Native memory address of the send buffer to use for the ORB
      * @param p_outBufferSize
      *         Size of the outgoing (ring) buffer
      * @param p_flowControlWindowSize
@@ -58,20 +59,14 @@ class IBConnection extends AbstractConnection<IBPipeIn, IBPipeOut> {
      * @param p_writeInterestManager
      *         Write interest manager instance
      */
-    IBConnection(final short p_ownNodeId, final short p_destinationNodeId, final int p_outBufferSize, final int p_flowControlWindowSize,
-            final float p_flowControlWindowThreshold, final LocalMessageHeaderPool p_messageHeaderPool, final MessageDirectory p_messageDirectory,
-            final RequestMap p_requestMap, final AbstractExporterPool p_exporterPool, final MessageHandlers p_messageHandlers,
-            final IBWriteInterestManager p_writeInterestManager) throws NetworkDestinationUnreachableException {
+    IBConnection(final short p_ownNodeId, final short p_destinationNodeId, final long p_sendBufferNativeAddr, final int p_outBufferSize,
+            final int p_flowControlWindowSize, final float p_flowControlWindowThreshold, final LocalMessageHeaderPool p_messageHeaderPool,
+            final MessageDirectory p_messageDirectory, final RequestMap p_requestMap, final AbstractExporterPool p_exporterPool,
+            final MessageHandlers p_messageHandlers, final IBWriteInterestManager p_writeInterestManager) {
         super(p_ownNodeId);
 
-        long sendBufferAddr = MsgrcJNIBinding.getSendBufferAddress(p_destinationNodeId);
-        if (sendBufferAddr == -1) {
-            // might happen on disconnect or if connection is not established in the ibnet subsystem
-            throw new NetworkDestinationUnreachableException(p_destinationNodeId);
-        }
-
         IBFlowControl flowControl = new IBFlowControl(p_destinationNodeId, p_flowControlWindowSize, p_flowControlWindowThreshold, p_writeInterestManager);
-        IBOutgoingRingBuffer outgoingBuffer = new IBOutgoingRingBuffer(sendBufferAddr, p_outBufferSize, p_exporterPool);
+        IBOutgoingRingBuffer outgoingBuffer = new IBOutgoingRingBuffer(p_sendBufferNativeAddr, p_outBufferSize, p_exporterPool);
         IBPipeIn pipeIn = new IBPipeIn(p_ownNodeId, p_destinationNodeId, p_messageHeaderPool, flowControl, p_messageDirectory, p_requestMap, p_messageHandlers);
         IBPipeOut pipeOut = new IBPipeOut(p_ownNodeId, p_destinationNodeId, flowControl, outgoingBuffer, p_writeInterestManager);
 

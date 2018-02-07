@@ -64,7 +64,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
 
     private final IBWriteInterestManager m_writeInterestManager;
 
-    private final boolean[] m_nodeConnected;
+    private final boolean[] m_nodeDiscovered;
 
     private NextWorkPackage m_nextWorkPackage;
     private PrevWorkPackageResults m_prevWorkPackageResults;
@@ -112,7 +112,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
 
         m_writeInterestManager = new IBWriteInterestManager();
 
-        m_nodeConnected = new boolean[NodeID.MAX_ID];
+        m_nodeDiscovered = new boolean[NodeID.MAX_ID];
     }
 
     /**
@@ -121,19 +121,10 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
     public void init() {
 
         // can't call this in the constructor because it relies on the implemented interfaces for callbacks
-        if (!MsgrcJNIBinding.init(this,
-                m_config.getPinSendRecvThreads(),
-                m_config.getEnableSignalHandler(),
-                m_config.getStatisticsThreadPrintIntervalMs(),
-                m_coreConfig.getOwnNodeId(),
-                (int) m_config.getConnectionCreationTimeout().getMs(),
-                m_config.getMaxConnections(),
-                m_config.getSendQueueSize(),
-                m_config.getSharedReceiveQueueSize(),
-                m_config.getSharedSendCompletionQueueSize(),
-                m_config.getSharedReceiveCompletionQueueSize(),
-                (int) m_config.getOugoingRingBufferSize().getBytes(),
-                m_config.getIncomingBufferPoolTotalSize().getBytes(),
+        if (!MsgrcJNIBinding.init(this, m_config.getPinSendRecvThreads(), m_config.getEnableSignalHandler(), m_config.getStatisticsThreadPrintIntervalMs(),
+                m_coreConfig.getOwnNodeId(), (int) m_config.getConnectionCreationTimeout().getMs(), m_config.getMaxConnections(), m_config.getSendQueueSize(),
+                m_config.getSharedReceiveQueueSize(), m_config.getSharedSendCompletionQueueSize(), m_config.getSharedReceiveCompletionQueueSize(),
+                (int) m_config.getOugoingRingBufferSize().getBytes(), m_config.getIncomingBufferPoolTotalSize().getBytes(),
                 (int) m_config.getIncomingBufferSize().getBytes())) {
 
             // #if LOGGER >= DEBUG
@@ -176,7 +167,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
     protected AbstractConnection createConnection(final short p_destination, final AbstractConnection p_existingConnection) throws NetworkException {
         IBConnection connection;
 
-        if (!m_nodeConnected[p_destination & 0xFFFF]) {
+        if (!m_nodeDiscovered[p_destination & 0xFFFF]) {
             throw new NetworkDestinationUnreachableException(p_destination);
         }
 
@@ -188,7 +179,37 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             dismissRandomConnection();
         }
 
-        connection = new IBConnection(m_coreConfig.getOwnNodeId(), p_destination, (int) m_config.getOugoingRingBufferSize().getBytes(),
+        // force connection creation in native subsystem
+        int res = MsgrcJNIBinding.createConnection(p_destination);
+
+        if (res != 0) {
+            if (res == 1) {
+                // #if LOGGER >= DEBUG
+                LOGGER.debug("Connection creation (0x%X) time-out. Interval %s ms might be to small", p_destination, m_config.getConnectionCreationTimeout());
+                // #endif /* LOGGER >= DEBUG */
+
+                throw new NetworkException("Connection creation timeout occurred");
+            } else {
+                // #if LOGGER >= ERROR
+                LOGGER.error("Connection creation (0x%X) failed", p_destination);
+                // #endif /* LOGGER >= ERROR */
+
+                throw new NetworkException("Connection creation failed");
+            }
+        }
+
+        long sendBufferAddr = MsgrcJNIBinding.getSendBufferAddress(p_destination);
+
+        if (sendBufferAddr == -1) {
+            // might happen on disconnect or if connection is not established in the ibnet subsystem
+            throw new NetworkDestinationUnreachableException(p_destination);
+        }
+
+        // #if LOGGER >= DEBUG
+        LOGGER.debug("Node connected 0x%X, ORB native addr 0x%X", p_destination, sendBufferAddr);
+        // #endif /* LOGGER >= DEBUG */
+
+        connection = new IBConnection(m_coreConfig.getOwnNodeId(), p_destination, sendBufferAddr, (int) m_config.getOugoingRingBufferSize().getBytes(),
                 (int) m_config.getFlowControlWindow().getBytes(), m_config.getFlowControlWindowThreshold(), m_messageHeaderPool, m_messageDirectory,
                 m_requestMap, m_exporterPool, m_messageHandlers, m_writeInterestManager);
 
@@ -228,7 +249,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         LOGGER.debug("Node discovered 0x%X", p_nodeId);
         // #endif /* LOGGER >= DEBUG */
 
-        m_nodeConnected[p_nodeId & 0xFFFF] = true;
+        m_nodeDiscovered[p_nodeId & 0xFFFF] = true;
     }
 
     @Override
@@ -237,14 +258,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         LOGGER.debug("Node invalidated 0x%X", p_nodeId);
         // #endif /* LOGGER >= DEBUG */
 
-        m_nodeConnected[p_nodeId & 0xFFFF] = false;
-    }
-
-    @Override
-    public void nodeConnected(final short p_nodeId) {
-        // #if LOGGER >= DEBUG
-        LOGGER.debug("Node connected 0x%X", p_nodeId);
-        // #endif /* LOGGER >= DEBUG */
+        m_nodeDiscovered[p_nodeId & 0xFFFF] = false;
     }
 
     @Override
@@ -513,8 +527,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         private static final int SIZE_FIELD_FLOW_CONTROL_DATA = Byte.BYTES;
         private static final int SIZE_FIELD_NODE_ID = Short.BYTES;
 
-        private static final int SIZE = SIZE_FIELD_POS_BACK_REL + SIZE_FIELD_POS_FRONT_REL +
-            SIZE_FIELD_FLOW_CONTROL_DATA + SIZE_FIELD_NODE_ID;
+        private static final int SIZE = SIZE_FIELD_POS_BACK_REL + SIZE_FIELD_POS_FRONT_REL + SIZE_FIELD_FLOW_CONTROL_DATA + SIZE_FIELD_NODE_ID;
 
         private static final int IDX_POS_BACK_REL = 0;
         private static final int IDX_POS_FRONT_REL = IDX_POS_BACK_REL + SIZE_FIELD_POS_BACK_REL;
@@ -566,8 +579,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         private static final int SIZE_FIELD_FC_DATA_POSTED = Byte.BYTES;
         private static final int SIZE_FIELD_FC_DATA_NOT_POSTED = Byte.BYTES;
 
-        private static final int SIZE = SIZE_FIELD_NODE_ID + SIZE_FIELD_NUM_BYTES_POSTED +
-            SIZE_FIELD_NUM_BYTES_NOT_POSTED + SIZE_FIELD_FC_DATA_POSTED + SIZE_FIELD_FC_DATA_NOT_POSTED;
+        private static final int SIZE =
+                SIZE_FIELD_NODE_ID + SIZE_FIELD_NUM_BYTES_POSTED + SIZE_FIELD_NUM_BYTES_NOT_POSTED + SIZE_FIELD_FC_DATA_POSTED + SIZE_FIELD_FC_DATA_NOT_POSTED;
 
         private static final int IDX_NODE_ID = 0;
         private static final int IDX_NUM_BYTES_POSTED = IDX_NODE_ID + SIZE_FIELD_NODE_ID;
@@ -672,8 +685,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         private static final int SIZE_FIELD_ENTRY_DATA_RAW = Long.BYTES;
         private static final int SIZE_FIELD_DATA_LENGTH = Integer.BYTES;
 
-        private static final int SIZE_ENTRY_STRUCT = SIZE_FIELD_ENTRY_SOURCE_NODE_ID + SIZE_FIELD_ENTRY_FC_DATA +
-            SIZE_FIELD_ENTRY_DATA + SIZE_FIELD_ENTRY_DATA_RAW + SIZE_FIELD_DATA_LENGTH;
+        private static final int SIZE_ENTRY_STRUCT =
+                SIZE_FIELD_ENTRY_SOURCE_NODE_ID + SIZE_FIELD_ENTRY_FC_DATA + SIZE_FIELD_ENTRY_DATA + SIZE_FIELD_ENTRY_DATA_RAW + SIZE_FIELD_DATA_LENGTH;
 
         // depends on the shared recv queue size, must be initializated in the constructor
         private final int SIZE;

@@ -47,6 +47,7 @@ class IBPipeOut extends AbstractPipeOut {
 
     // TODO adjust doc, this returns pointers which can wrap around the ring buffer
     // which needs to be handled in the native SendThread
+
     /**
      * Get the next available buffer/chunk of data to write to the connection
      *

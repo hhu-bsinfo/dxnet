@@ -20,14 +20,6 @@ public class MsgrcJNIBinding {
         void nodeInvalidated(final short p_nodeId);
 
         /**
-         * Called when a node is connected, i.e. an actual infiniband connection was established
-         *
-         * @param p_nodeId
-         *         Node id of connected node
-         */
-        void nodeConnected(final short p_nodeId);
-
-        /**
          * Called when a node disconnected, e.g. the infiniband connection is no longer available
          *
          * @param p_nodeId
@@ -59,6 +51,8 @@ public class MsgrcJNIBinding {
      *         IPV4 of the node
      */
     public static native void addNode(final int p_ipv4);
+
+    public static native int createConnection(final short p_nodeId);
 
     /**
      * Get the (unsafe) address for the outgoing ring buffer to use. This allows us to serialize
