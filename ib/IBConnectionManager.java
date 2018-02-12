@@ -367,8 +367,21 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         short nodeId = m_prevWorkPackageResults.getNodeId();
 
         if (nodeId != NodeID.INVALID_ID) {
+            int numBytesPosted = m_prevWorkPackageResults.getNumBytesPosted();
             int numBytesNotPosted = m_prevWorkPackageResults.getNumBytesNotPosted();
-            int fcDataNotPosted = m_prevWorkPackageResults.getFcDataNotPosted();
+            byte fcDataPosted = m_prevWorkPackageResults.getFcDataPosted();
+            byte fcDataNotPosted = m_prevWorkPackageResults.getFcDataNotPosted();
+
+            try {
+                IBConnection prevConnection = (IBConnection) getConnection(nodeId);
+
+                prevConnection.getPipeOut().dataSendPosted(numBytesPosted);
+                prevConnection.getPipeOut().flowControlDataSendPosted(fcDataPosted);
+            } catch (final NetworkException e) {
+                // #if LOGGER >= ERROR
+                LOGGER.error("Getting connection 0x%X for processing prev results failed", nodeId);
+                // #endif /* LOGGER >= ERROR */
+            }
 
             // SendThread could not process all bytes because the queue
             // was full. don't lose the data interest because there is

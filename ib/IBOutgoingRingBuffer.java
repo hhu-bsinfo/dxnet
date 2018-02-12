@@ -45,7 +45,7 @@ class IBOutgoingRingBuffer extends OutgoingRingBuffer {
     // which marks this position so we don't send data from the ORB twice
     // because the callback when the data is actually sent (which has to move the
     // ORBs real back pointer) comes way later
-    public void dataSendConfirmed(final int p_bytesPosted) {
+    public void dataSendPosted(final int p_bytesPosted) {
         // wipe sign to avoid bugs on overflows
         m_posBackDataPosted = m_posBackDataPosted + p_bytesPosted & 0x7FFFFFFF;
     }

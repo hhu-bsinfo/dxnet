@@ -59,13 +59,21 @@ class IBPipeOut extends AbstractPipeOut {
         return ((IBOutgoingRingBuffer) getOutgoingQueue()).popBack();
     }
 
+    void dataSendPosted(final int p_numBytesPosted) {
+        ((IBOutgoingRingBuffer) getOutgoingQueue()).dataSendPosted(p_numBytesPosted);
+    }
+
     // TODO doc wrapper for outgoing ring buffer method
     void dataSendConfirmed(final int p_numBytesPosted) {
-        ((IBOutgoingRingBuffer) getOutgoingQueue()).dataSendConfirmed(p_numBytesPosted);
+        getOutgoingQueue().shiftBack(p_numBytesPosted);
     }
 
     byte getFlowControlData() {
         return ((IBFlowControl) getFlowControl()).getFlowControlData();
+    }
+
+    void flowControlDataSendPosted(final byte p_fcDataPosted) {
+        ((IBFlowControl) getFlowControl()).flowControlDataSendPosted(p_fcDataPosted);
     }
 
     void flowControlDataSendConfirmed(final byte p_fcData) {

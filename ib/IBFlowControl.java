@@ -29,6 +29,8 @@ class IBFlowControl extends AbstractFlowControl {
 
     private final IBWriteInterestManager m_writeInterestManager;
 
+    private int m_fcDataPosted;
+
     /**
      * Constructor
      *
@@ -55,6 +57,10 @@ class IBFlowControl extends AbstractFlowControl {
         // not using CAS here requires this to be called by a single thread, only
         ret = (byte) (m_receivedBytes.get() / m_flowControlWindowSizeThreshold);
         if (ret == 0) {
+            if (m_fcDataPosted > 0) {
+                throw new IllegalStateException("No fc data available but said to be posted");
+            }
+
             return 0;
         }
 
@@ -62,7 +68,11 @@ class IBFlowControl extends AbstractFlowControl {
         LOGGER.trace("getFlowControlData (%X): %d", m_destinationNodeID, ret);
         // #endif /* LOGGER >= TRACE */
 
-        return ret;
+        return (byte) (ret - m_fcDataPosted);
+    }
+
+    public void flowControlDataSendPosted(final byte p_fcData) {
+        m_fcDataPosted += p_fcData;
     }
 
     // confirm that fc data was confirmed posted/sent
@@ -73,6 +83,12 @@ class IBFlowControl extends AbstractFlowControl {
 
         if (bytesLeft < 0) {
             throw new IllegalStateException("Negative flow control");
+        }
+
+        m_fcDataPosted -= p_fcData;
+
+        if (m_fcDataPosted < 0) {
+            throw new IllegalStateException("FC data posted state negative");
         }
 
         // #if LOGGER >= TRACE
