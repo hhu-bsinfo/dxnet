@@ -727,23 +727,23 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         }
 
         public short getSourceNodeId(final int p_idx) {
-            return m_struct.getShort(IDX_ENTRIES + p_idx * IDX_ENTRY_SOURCE_NODE_ID);
+            return m_struct.getShort(IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_SOURCE_NODE_ID);
         }
 
         public byte getFcData(final int p_idx) {
-            return m_struct.get(IDX_ENTRIES + p_idx * IDX_ENTRY_FC_DATA);
+            return m_struct.get(IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_FC_DATA);
         }
 
         public long getData(final int p_idx) {
-            return m_struct.getLong(IDX_ENTRIES + p_idx * IDX_ENTRY_PTR_DATA);
+            return m_struct.getLong(IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_PTR_DATA);
         }
 
         public long getDataRaw(final int p_idx) {
-            return m_struct.getLong(IDX_ENTRIES + p_idx * IDX_ENTRY_PTR_DATA_RAW);
+            return m_struct.getLong(IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_PTR_DATA_RAW);
         }
 
         public int getDataLength(final int p_idx) {
-            return m_struct.getInt(IDX_ENTRIES + p_idx * IDX_ENTRY_DATA_LENGTH);
+            return m_struct.getInt(IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_DATA_LENGTH);
         }
     }
 }
