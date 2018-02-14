@@ -25,6 +25,9 @@ public class MessageImporterCollection {
     private MessageImporterUnderflow m_importerUnderflow;
     private MessageImporterUnderOverflow m_importerUnderOverflow;
 
+    private AbstractMessageImporter m_currentUsed;
+    private AbstractMessageImporter m_prevUsed;
+
     /**
      * Constructor
      */
@@ -40,7 +43,8 @@ public class MessageImporterCollection {
     @Override
     public String toString() {
         return "m_importer [" + m_importer + "]\nm_importerOverflow [" + m_importerOverflow + "]\nm_importerUnderflow [" + m_importerUnderflow +
-                "]\nm_importerUnderOverflow [" + m_importerUnderOverflow + ']';
+                "]\nm_importerUnderOverflow [" + m_importerUnderOverflow + "]\nCurrent used (" + m_currentUsed.getClass().getSimpleName() + ") [" +
+                m_currentUsed + "]\nPrev used (" + m_prevUsed.getClass().getSimpleName() + ") [" + m_prevUsed + ']';
     }
 
     /**
@@ -74,6 +78,12 @@ public class MessageImporterCollection {
         } else {
             ret = m_importer;
         }
+
+        m_prevUsed = m_currentUsed;
+        m_currentUsed = ret;
+
+        ret.incrementUsed();
+
         // mirror ByteBuffer position and limit (range) to importer
         ret.setBuffer(p_addr, p_bufferSize, p_position);
         ret.setUnfinishedOperation(p_unfinishedOperation);
