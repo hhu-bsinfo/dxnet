@@ -572,14 +572,26 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         }
 
         public void setPosBackRel(final int p_pos) {
+            if (p_pos < 0) {
+                throw new IllegalStateException("NextWorkPackage posBackRel < 0: " + p_pos);
+            }
+
             m_struct.putInt(IDX_POS_BACK_REL, p_pos);
         }
 
         public void setPosFrontRel(final int p_pos) {
+            if (p_pos < 0) {
+                throw new IllegalStateException("NextWorkPackage posFrontRel < 0: " + p_pos);
+            }
+
             m_struct.putInt(IDX_POS_FRONT_REL, p_pos);
         }
 
         public void setFlowControlData(final byte p_data) {
+            if (p_data < 0) {
+                throw new IllegalStateException("NextWorkPackage fcData < 0: " + p_data);
+            }
+
             m_struct.put(IDX_FLOW_CONTROL_DATA, p_data);
         }
 
@@ -624,19 +636,43 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         }
 
         public int getNumBytesPosted() {
-            return m_struct.getInt(IDX_NUM_BYTES_POSTED);
+            int tmp = m_struct.getInt(IDX_NUM_BYTES_POSTED);
+
+            if (tmp < 0) {
+                throw new IllegalStateException("PrevWorkPackageResults numBytesPosted < 0: " + tmp);
+            }
+
+            return tmp;
         }
 
         public int getNumBytesNotPosted() {
-            return m_struct.getInt(IDX_NUM_BYTES_NOT_POSTED);
+            int tmp = m_struct.getInt(IDX_NUM_BYTES_NOT_POSTED);
+
+            if (tmp < 0) {
+                throw new IllegalStateException("PrevWorkPackageResults numBytesNotPosted < 0: " + tmp);
+            }
+
+            return tmp;
         }
 
         public byte getFcDataPosted() {
-            return m_struct.get(IDX_FC_DATA_POSTED);
+            byte tmp = m_struct.get(IDX_FC_DATA_POSTED);
+
+            if (tmp < 0) {
+                throw new IllegalStateException("PrevWorkPackageResults fcDataPosted < 0: " + tmp);
+            }
+
+            return tmp;
         }
 
         public byte getFcDataNotPosted() {
-            return m_struct.get(IDX_FC_DATA_NOT_POSTED);
+            byte tmp = m_struct.get(IDX_FC_DATA_NOT_POSTED);
+
+            if (tmp < 0) {
+                throw new IllegalStateException("PrevWorkPackageResults fcDataNotPosted < 0: " + tmp);
+            }
+
+            return tmp;
         }
     }
 
@@ -679,11 +715,23 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         }
 
         public int getNumBytesWritten(final int p_idx) {
-            return m_struct.getInt(IDX_BYTES_WRITTEN + p_idx * SIZE_FIELD_NUM_BYTES_WRITTEN);
+            int tmp = m_struct.getInt(IDX_BYTES_WRITTEN + p_idx * SIZE_FIELD_NUM_BYTES_WRITTEN);
+
+            if (tmp < 0) {
+                throw new IllegalStateException("CompletedWorkList bytesWritten < 0: " + tmp);
+            }
+
+            return tmp;
         }
 
         public byte getFcDataWritten(final int p_idx) {
-            return m_struct.get(IDX_FC_DATA_WRITTEN + p_idx * SIZE_FIELD_FC_DATA_WRITTEN);
+            byte tmp = m_struct.get(IDX_FC_DATA_WRITTEN + p_idx * SIZE_FIELD_FC_DATA_WRITTEN);
+
+            if (tmp < 0) {
+                throw new IllegalStateException("CompletedWorkList fcData < 0: " + tmp);
+            }
+
+            return tmp;
         }
 
         public short getNodeId(final int p_idx) {
@@ -739,7 +787,13 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         }
 
         public int getCount() {
-            return m_struct.getInt(IDX_COUNT);
+            int tmp = m_struct.getInt(IDX_COUNT);
+
+            if (tmp < 0) {
+                throw new IllegalStateException("RecvPackage count < 0: " + tmp);
+            }
+
+            return tmp;
         }
 
         public short getSourceNodeId(final int p_idx) {
@@ -747,7 +801,13 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         }
 
         public byte getFcData(final int p_idx) {
-            return m_struct.get(IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_FC_DATA);
+            byte tmp = m_struct.get(IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_FC_DATA);
+
+            if (tmp < 0) {
+                throw new IllegalStateException("RecvPackage fcData < 0: " + tmp);
+            }
+
+            return tmp;
         }
 
         public long getData(final int p_idx) {
@@ -759,7 +819,13 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         }
 
         public int getDataLength(final int p_idx) {
-            return m_struct.getInt(IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_DATA_LENGTH);
+            int tmp = m_struct.getInt(IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_DATA_LENGTH);
+
+            if (tmp < 0) {
+                throw new IllegalStateException("RecvPackage data length < 0: " + tmp);
+            }
+
+            return tmp;
         }
     }
 }
