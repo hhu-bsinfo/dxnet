@@ -739,7 +739,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         }
 
         public int getCount() {
-            return m_struct.get(IDX_COUNT);
+            return m_struct.getInt(IDX_COUNT);
         }
 
         public short getSourceNodeId(final int p_idx) {
