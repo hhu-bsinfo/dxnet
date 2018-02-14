@@ -21,11 +21,20 @@ import de.hhu.bsinfo.dxutils.serialization.Importer;
  * @author Kevin Beineke, kevin.beineke@hhu.de, 05.07.2017
  */
 public abstract class AbstractMessageImporter implements Importer {
+    private long m_usedCounter;
 
     /**
      * Constructor
      */
     protected AbstractMessageImporter() {
+    }
+
+    public long getUsedCounter() {
+        return m_usedCounter;
+    }
+
+    public void incrementUsed() {
+        m_usedCounter++;
     }
 
     /**
