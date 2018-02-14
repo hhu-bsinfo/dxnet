@@ -414,8 +414,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             // also notify that previous data has been processed (if connection is still available)
             for (int i = 0; i < numItems; i++) {
                 short nodeId = m_completedWorkList.getNodeId(i);
-                int processedBytes = m_completedWorkList.getNumBytesWritten(i);
-                byte processedFcData = m_completedWorkList.getFcDataWritten(i);
+                int processedBytes = m_completedWorkList.getNumBytesWritten(nodeId);
+                byte processedFcData = m_completedWorkList.getFcDataWritten(nodeId);
 
                 try {
                     IBConnection prevConnection = (IBConnection) getConnection(nodeId);
