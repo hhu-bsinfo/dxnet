@@ -489,6 +489,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
 
         int dataInterests = (int) interests;
         int fcInterests = (int) (interests >> 32L);
+        boolean nothingToSend = true;
 
         // process data interests
         if (dataInterests > 0) {
@@ -505,11 +506,12 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                 // #if LOGGER >= TRACE
                 LOGGER.trace("Next data write on node 0x%X, relPosBackRel %d, relPosFrontRel %d", nodeId, relPosBackRel, relPosFrontRel);
                 // #endif /* LOGGER >= TRACE */
+
+                nothingToSend = false;
+            } else {
+                // we got an interest but no data is available because the data was already sent with the previous
+                // interest (non harmful data race between ORB and interest manager)
             }
-            // else {
-            // we got an interest but no data is available because the data was already sent with the previous
-            // interest (non harmful data race between ORB and interest manager)
-            // }
         }
 
         // process flow control interests
@@ -522,11 +524,16 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                 // #if LOGGER >= TRACE
                 LOGGER.trace("Next flow control write on node 0x%X, fc data %d", nodeId, fcData);
                 // #endif /* LOGGER >= TRACE */
+
+                nothingToSend = false;
+            } else {
+                // and again, we got an interest but no FC data is available because the FC data was already sent with the previous
+                // interest (non harmful data race between ORB/flow control and interest manager)
             }
-            // else {
-            // and again, we got an interest but no FC data is available because the FC data was already sent with the previous
-            // interest (non harmful data race between ORB/flow control and interest manager)
-            // }
+        }
+
+        if (nothingToSend) {
+            m_nextWorkPackage.reset();
         }
     }
 
