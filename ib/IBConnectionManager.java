@@ -481,11 +481,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         // interest queue and interest count MUST stay on sync. otherwise, something's not right with the
         // interest manager (bug)
         if (interests == 0) {
-            // #if LOGGER >= ERROR
-            LOGGER.error("No interests available but interest manager has write interest set, probably a bug");
-            // #endif /* LOGGER >= ERROR */
-
-            return;
+            throw new IllegalStateException("No interests available but interest manager has write interest set");
         }
 
         // sets the current work request valid
