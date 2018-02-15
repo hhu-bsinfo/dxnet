@@ -61,6 +61,11 @@ public abstract class AbstractFlowControl {
 
         m_unconfirmedBytes = new AtomicInteger(0);
         m_receivedBytes = new AtomicInteger(0);
+
+        // #if LOGGER >= DEBUG
+        LOGGER.debug("Flow control settings for node 0x%X: window size %d, threshold %f", p_destinationNodeID, p_flowControlWindowSize,
+                p_flowControlWindowThreshold);
+        // #endif /* LOGGER >= DEBUG */
     }
 
     /**
