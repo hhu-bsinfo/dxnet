@@ -77,8 +77,8 @@ import de.hhu.bsinfo.dxutils.unit.TimeUnit;
  * @author Stefan Nothaas, stefan.nothaas@hhu.de, 20.12.2017
  */
 public final class DXNetMain implements MessageReceiver {
-    public static final String GIT_COMMIT = "Not Available"; //@GITCOMMIT@
-    public static final String BUILD_TYPE = "Not Available"; //@BUILDTYPE@
+    private static final String GIT_COMMIT = "Not Available"; //@GITCOMMIT@
+    private static final String BUILD_TYPE = "Not Available"; //@BUILDTYPE@
 
     private static final Logger LOGGER = LogManager.getFormatterLogger(DXNetMain.class.getSimpleName());
 
@@ -106,7 +106,6 @@ public final class DXNetMain implements MessageReceiver {
     private static boolean ms_objectPooling;
     private static volatile boolean ms_remoteFinished = false;
 
-    private static long ms_sendPerThread;
     private static volatile long ms_timeStart;
     private static volatile long ms_timeEndReceiver;
     private static AtomicLong ms_messagesReceived = new AtomicLong(0);
