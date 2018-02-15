@@ -109,7 +109,8 @@ public final class DXNetMain implements MessageReceiver {
     private static boolean ms_objectPooling;
     private static volatile boolean ms_remoteFinished = false;
 
-    private static volatile long ms_timeStart;
+    private static volatile long ms_timeStartSend;
+    private static volatile long ms_timeStartRecv;
     private static volatile long ms_timeEndReceiver;
     private static AtomicLong ms_messagesReceived = new AtomicLong(0);
     private static AtomicLong ms_messagesSent = new AtomicLong(0);
@@ -161,7 +162,7 @@ public final class DXNetMain implements MessageReceiver {
 
         progressThread.start();
 
-        ms_timeStart = System.nanoTime();
+        ms_timeStartSend = System.nanoTime();
 
         for (int i = 0; i < ms_threads; i++) {
             threadArray[i].start();
@@ -214,8 +215,8 @@ public final class DXNetMain implements MessageReceiver {
 
         PrintStatistics.printStatisticsToOutput(System.out);
         ExportStatistics.writeStatisticsTablesToStdout();
-        printResults("SEND", timeEndSender - ms_timeStart, minRttNs, maxRttNs, ms_sendCount * ms_targetNodeIds.size());
-        printResults("RECV", ms_timeEndReceiver - ms_timeStart, 0, 0, ms_recvCount);
+        printResults("SEND", timeEndSender - ms_timeStartSend, minRttNs, maxRttNs, ms_sendCount * ms_targetNodeIds.size());
+        printResults("RECV", ms_timeEndReceiver - ms_timeStartRecv, 0, 0, ms_recvCount);
 
         try {
             Thread.sleep(3000);
@@ -276,6 +277,12 @@ public final class DXNetMain implements MessageReceiver {
             System.out.println("Starting benchmark (start signal)");
             ms_startBenchmark = true;
         } else {
+            long count = ms_messagesReceived.incrementAndGet();
+
+            if (count == 1) {
+                ms_timeStartRecv = System.nanoTime();
+            }
+
             if (p_message.getSubtype() == Messages.SUBTYPE_BENCHMARK_REQUEST) {
                 BenchmarkResponse response;
                 if (ms_objectPooling) {
@@ -293,7 +300,7 @@ public final class DXNetMain implements MessageReceiver {
                 }
             }
 
-            if (ms_messagesReceived.incrementAndGet() == ms_recvCount) {
+            if (count == ms_recvCount) {
                 ms_timeEndReceiver = System.nanoTime();
                 ms_remoteFinished = true;
             }
@@ -366,7 +373,7 @@ public final class DXNetMain implements MessageReceiver {
         ms_ownNodeId = Short.parseShort(p_args[6]);
 
         ms_size = ms_messagePayloadSize + ObjectSizeUtil.sizeofCompactedNumber(ms_messagePayloadSize) + 10;
-        
+
         StringBuilder targets = new StringBuilder();
 
         for (int i = 7; i < p_args.length; i++) {
@@ -858,14 +865,16 @@ public final class DXNetMain implements MessageReceiver {
                 long messagesSent = ms_messagesSent.get();
                 long messagesRecv = ms_messagesReceived.get();
 
-                long timeDiff = System.nanoTime() - ms_timeStart;
+                long time = System.nanoTime();
+                long timeDiffSend = ms_timeStartSend != 0 ? time - ms_timeStartSend : 1;
+                long timeDiffRecv = ms_timeStartRecv != 0 ? time - ms_timeStartRecv : 1;
                 System.out.printf("[PROGRESS] %d sec: Sent %d%% (%d), Recv %d%% (%d), Sent-Recv-Diff %d, TX %f, RX %f, TXP %f, RXP %f, ReqRespTimeouts: %d\n",
-                        timeDiff / 1000 / 1000 / 1000, ms_sendCount != 0 ? (int) ((float) messagesSent / ms_sendCount / ms_targetNodeIds.size() * 100) : 0,
+                        timeDiffSend / 1000 / 1000 / 1000, ms_sendCount != 0 ? (int) ((float) messagesSent / ms_sendCount / ms_targetNodeIds.size() * 100) : 0,
                         messagesSent, ms_recvCount != 0 ? (int) ((float) messagesRecv / ms_recvCount * 100) : 0, messagesRecv, messagesSent - messagesRecv,
-                        (double) messagesSent * ms_size / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000),
-                        (double) messagesRecv * ms_size / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000),
-                        (double) messagesSent * ms_messagePayloadSize / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000),
-                        (double) messagesRecv * ms_messagePayloadSize / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000), ms_reqRespTimeouts.get());
+                        (double) messagesSent * ms_size / 1024 / 1024 / ((double) timeDiffSend / 1000 / 1000 / 1000),
+                        (double) messagesRecv * ms_size / 1024 / 1024 / ((double) timeDiffRecv / 1000 / 1000 / 1000),
+                        (double) messagesSent * ms_messagePayloadSize / 1024 / 1024 / ((double) timeDiffSend / 1000 / 1000 / 1000),
+                        (double) messagesRecv * ms_messagePayloadSize / 1024 / 1024 / ((double) timeDiffRecv / 1000 / 1000 / 1000), ms_reqRespTimeouts.get());
             }
         }
     }
