@@ -41,19 +41,19 @@ public class IBConfig {
     private float m_flowControlWindowThreshold = 0.8f;
 
     @Expose
-    private StorageUnit m_outgoingRingBufferSize = new StorageUnit(1, StorageUnit.MB);
+    private StorageUnit m_outgoingRingBufferSize = new StorageUnit(4, StorageUnit.MB);
 
     @Expose
     private int m_ibqMaxCapacityBufferCount = 8 * 1024;
 
     @Expose
-    private StorageUnit m_ibqMaxCapacitySize = new StorageUnit(32, StorageUnit.MB);
+    private StorageUnit m_ibqMaxCapacitySize = new StorageUnit(64, StorageUnit.MB);
 
     @Expose
     private StorageUnit m_incomingBufferSize = new StorageUnit(32, StorageUnit.KB);
 
     @Expose
-    private StorageUnit m_incomingBufferPoolTotalSize = new StorageUnit(512, StorageUnit.MB);
+    private StorageUnit m_incomingBufferPoolTotalSize = new StorageUnit(1, StorageUnit.GB);
 
     @Expose
     private int m_sqSize = 20;
