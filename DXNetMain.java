@@ -52,6 +52,7 @@ import de.hhu.bsinfo.dxnet.main.messages.LoginRequest;
 import de.hhu.bsinfo.dxnet.main.messages.LoginResponse;
 import de.hhu.bsinfo.dxnet.main.messages.Messages;
 import de.hhu.bsinfo.dxnet.main.messages.StartMessage;
+import de.hhu.bsinfo.dxutils.ManifestHelper;
 import de.hhu.bsinfo.dxutils.RandomUtils;
 import de.hhu.bsinfo.dxutils.StorageUnitGsonSerializer;
 import de.hhu.bsinfo.dxutils.TimeUnitGsonSerializer;
@@ -122,6 +123,9 @@ public final class DXNetMain implements MessageReceiver {
 
         System.out.println("Build type: " + BUILD_TYPE);
         System.out.println("Git commit: " + GIT_COMMIT);
+        System.out.println("Build date: " + ManifestHelper.getProperty(DXNetMain.class, "BuildDate"));
+        System.out.println("Build user: " + ManifestHelper.getProperty(DXNetMain.class, "BuildUser"));
+        System.out.println("Cwd: " + System.getProperty("user.dir"));
 
         processArgs(p_arguments);
         setupNodeMappings();
