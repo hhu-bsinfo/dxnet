@@ -36,11 +36,14 @@ public class MessageCreationCoordinator extends Thread {
     /**
      * Creates an instance of MessageCreationCoordinator
      *
-     * @param p_maxIncomingBufferSize
-     *         the max incoming buffer size
+     * @param p_incomingQueueMaxCapacityBufferCount
+     *         the max capacity of buffers (count) for the incoming queue
+     * @param p_incomingQueueMaxCapacitySize
+     *         the max capacity of all buffers aggregated sizes for the incoming queue
      */
-    public MessageCreationCoordinator(final int p_maxIncomingBufferSize, final boolean p_overprovisioning) {
-        m_bufferQueue = new IncomingBufferQueue(p_maxIncomingBufferSize);
+    public MessageCreationCoordinator(final int p_incomingQueueMaxCapacityBufferCount, final int p_incomingQueueMaxCapacitySize,
+            final boolean p_overprovisioning) {
+        m_bufferQueue = new IncomingBufferQueue(p_incomingQueueMaxCapacityBufferCount, p_incomingQueueMaxCapacitySize);
         m_overprovisioning = p_overprovisioning;
     }
 

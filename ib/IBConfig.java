@@ -44,6 +44,12 @@ public class IBConfig {
     private StorageUnit m_outgoingRingBufferSize = new StorageUnit(1, StorageUnit.MB);
 
     @Expose
+    private int m_ibqMaxCapacityBufferCount = 8 * 1024;
+
+    @Expose
+    private StorageUnit m_ibqMaxCapacitySize = new StorageUnit(32, StorageUnit.MB);
+
+    @Expose
     private StorageUnit m_incomingBufferSize = new StorageUnit(32, StorageUnit.KB);
 
     @Expose
@@ -117,6 +123,20 @@ public class IBConfig {
      */
     public StorageUnit getOugoingRingBufferSize() {
         return m_outgoingRingBufferSize;
+    }
+
+    /**
+     * Max number of buffers allowed in the incoming buffer queue
+     */
+    public int getIbqMaxCapacityBufferCount() {
+        return m_ibqMaxCapacityBufferCount;
+    }
+
+    /**
+     * Max number of bytes of all buffers aggregated allowed in the incoming buffer queue
+     */
+    public StorageUnit getIbqMaxCapacitySize() {
+        return m_ibqMaxCapacitySize;
     }
 
     /**
