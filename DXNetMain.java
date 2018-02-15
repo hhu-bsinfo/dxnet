@@ -17,6 +17,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
@@ -27,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
@@ -37,7 +40,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 
-import de.hhu.bsinfo.dxutils.RandomUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -50,6 +52,7 @@ import de.hhu.bsinfo.dxnet.main.messages.LoginRequest;
 import de.hhu.bsinfo.dxnet.main.messages.LoginResponse;
 import de.hhu.bsinfo.dxnet.main.messages.Messages;
 import de.hhu.bsinfo.dxnet.main.messages.StartMessage;
+import de.hhu.bsinfo.dxutils.RandomUtils;
 import de.hhu.bsinfo.dxutils.StorageUnitGsonSerializer;
 import de.hhu.bsinfo.dxutils.TimeUnitGsonSerializer;
 import de.hhu.bsinfo.dxutils.serialization.ObjectSizeUtil;
@@ -109,6 +112,8 @@ public final class DXNetMain implements MessageReceiver {
 
     public static void main(final String[] p_arguments) {
         Locale.setDefault(new Locale("en", "US"));
+        printJVMArgs();
+        printCmdArgs(p_arguments);
 
         processArgs(p_arguments);
         setupNodeMappings();
@@ -283,6 +288,40 @@ public final class DXNetMain implements MessageReceiver {
         }
     }
 
+    /**
+     * Print all cmd args specified on startup
+     *
+     * @param p_args
+     *         Main arguments
+     */
+    private static void printCmdArgs(final String[] p_args) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("Cmd arguments: ");
+
+        for (String arg : p_args) {
+            builder.append(arg);
+        }
+
+        System.out.println(builder);
+    }
+
+    /**
+     * Print all JVM args specified on startup
+     */
+    private static void printJVMArgs() {
+        RuntimeMXBean runtimeMxBean = ManagementFactory.getRuntimeMXBean();
+        List<String> args = runtimeMxBean.getInputArguments();
+
+        StringBuilder builder = new StringBuilder();
+        builder.append("JVM arguments: ");
+
+        for (String arg : args) {
+            builder.append(arg);
+        }
+
+        System.out.println(builder);
+    }
+
     private static void processArgs(final String[] p_args) {
         // Parse command line arguments
         if (p_args.length < 1) {
@@ -328,9 +367,8 @@ public final class DXNetMain implements MessageReceiver {
         ms_context = new DXNetConfig();
         File file = new File(p_configPath);
 
-        Gson gson = new GsonBuilder().setPrettyPrinting().excludeFieldsWithoutExposeAnnotation()
-                .registerTypeAdapter(StorageUnit.class, new StorageUnitGsonSerializer()).registerTypeAdapter(TimeUnit.class, new TimeUnitGsonSerializer())
-                .create();
+        Gson gson = new GsonBuilder().setPrettyPrinting().excludeFieldsWithoutExposeAnnotation().registerTypeAdapter(StorageUnit.class,
+                new StorageUnitGsonSerializer()).registerTypeAdapter(TimeUnit.class, new TimeUnitGsonSerializer()).create();
 
         if (!file.exists()) {
             try {
@@ -539,23 +577,25 @@ public final class DXNetMain implements MessageReceiver {
 
     private static void printResults(final String p_name, final long p_timeDiffNs, final long p_minRttNs, final long p_maxRttNs, final long p_totalMessages) {
         if (p_minRttNs != 0 && p_maxRttNs != 0) {
-            System.out.printf("[%s RESULTS]\n" + "[%s WORKLOAD] %d\n" + "[%s MSG SIZE] %d\n" + "[%s THREADS] %d\n" + "[%s MSG HANDLERS] %d\n" +
-                            "[%s RUNTIME] %d ms\n" + "[%s TIME PER MESSAGE] %d ns\n" + "[%s THROUGHPUT] %f MB/s\n" + "[%s THROUGHPUT OVERHEAD] %f MB/s\n" +
-                            "[RTT REQ-RESP AVG] %d us\n" + "[RTT REQ-RESP MIN] %d us\n" + "[RTT REQ-RESP MAX] %d us\n", p_name, p_name, ms_workload, p_name, ms_size,
-                    p_name, ms_threads, p_name, ms_context.getCoreConfig().getNumMessageHandlerThreads(), p_name, p_timeDiffNs / 1000 / 1000, p_name,
+            System.out.printf(
+                    "[%s RESULTS]\n" + "[%s WORKLOAD] %d\n" + "[%s MSG SIZE] %d\n" + "[%s THREADS] %d\n" + "[%s MSG HANDLERS] %d\n" + "[%s RUNTIME] %d ms\n" +
+                            "[%s TIME PER MESSAGE] %d ns\n" + "[%s THROUGHPUT] %f MB/s\n" + "[%s THROUGHPUT OVERHEAD] %f MB/s\n" +
+                            "[RTT REQ-RESP AVG] %d us\n" + "[RTT REQ-RESP MIN] %d us\n" + "[RTT REQ-RESP MAX] %d us\n", p_name, p_name, ms_workload, p_name,
+                    ms_size, p_name, ms_threads, p_name, ms_context.getCoreConfig().getNumMessageHandlerThreads(), p_name, p_timeDiffNs / 1000 / 1000, p_name,
                     p_totalMessages != 0 ? p_timeDiffNs / p_totalMessages : 0, p_name,
                     p_totalMessages != 0 ? (double) p_totalMessages * ms_size / 1024 / 1024 / ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0, p_name,
                     p_totalMessages != 0 ? (double) p_totalMessages * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
-                            ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0, ms_reqRespRTTSumNs.get() / ms_messagesSent.get() / 1000, p_minRttNs / 1000,
-                    p_maxRttNs / 1000);
+                                                   ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0, ms_reqRespRTTSumNs.get() / ms_messagesSent.get() / 1000,
+                    p_minRttNs / 1000, p_maxRttNs / 1000);
         } else {
-            System.out.printf("[%s RESULTS]\n" + "[%s WORKLOAD] %d\n" + "[%s MSG SIZE] %d\n" + "[%s THREADS] %d\n" + "[%s MSG HANDLERS] %d\n" +
-                            "[%s RUNTIME] %d ms\n" + "[%s TIME PER MESSAGE] %d ns\n" + "[%s THROUGHPUT] %f MB/s\n" + "[%s THROUGHPUT OVERHEAD] %f MB/s\n", p_name,
-                    p_name, ms_workload, p_name, ms_size, p_name, ms_threads, p_name, ms_context.getCoreConfig().getNumMessageHandlerThreads(), p_name,
-                    p_timeDiffNs / 1000 / 1000, p_name, p_totalMessages != 0 ? p_timeDiffNs / p_totalMessages : p_totalMessages, p_name,
+            System.out.printf(
+                    "[%s RESULTS]\n" + "[%s WORKLOAD] %d\n" + "[%s MSG SIZE] %d\n" + "[%s THREADS] %d\n" + "[%s MSG HANDLERS] %d\n" + "[%s RUNTIME] %d ms\n" +
+                            "[%s TIME PER MESSAGE] %d ns\n" + "[%s THROUGHPUT] %f MB/s\n" + "[%s THROUGHPUT OVERHEAD] %f MB/s\n", p_name, p_name, ms_workload,
+                    p_name, ms_size, p_name, ms_threads, p_name, ms_context.getCoreConfig().getNumMessageHandlerThreads(), p_name, p_timeDiffNs / 1000 / 1000,
+                    p_name, p_totalMessages != 0 ? p_timeDiffNs / p_totalMessages : p_totalMessages, p_name,
                     p_totalMessages != 0 ? (double) p_totalMessages * ms_size / 1024 / 1024 / ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0, p_name,
                     p_totalMessages != 0 ? (double) p_totalMessages * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
-                            ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0);
+                                                   ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0);
         }
     }
 
@@ -681,7 +721,7 @@ public final class DXNetMain implements MessageReceiver {
             // generate random order when for sending messages to nodes for every thread
             ArrayList<Short> destinationList = new ArrayList<>(ms_targetNodeIds);
             Collections.shuffle(destinationList);
-            
+
             long messageCount = ms_sendCount / ms_threads;
             if (Integer.parseInt(Thread.currentThread().getName()) == ms_threads - 1) {
                 messageCount += ms_sendCount % ms_threads;
@@ -807,9 +847,9 @@ public final class DXNetMain implements MessageReceiver {
                         (double) messagesSent * ms_size / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000),
                         (double) messagesRecv * ms_size / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000),
                         (double) messagesSent * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
-                                ((double) timeDiff / 1000 / 1000 / 1000),
-                        (double) messagesRecv * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
-                                ((double) timeDiff / 1000 / 1000 / 1000));
+                                ((double) timeDiff / 1000 / 1000 / 1000), (double) messagesRecv * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) +
+                                                                                                           10) / 1024 / 1024 /
+                                                                                  ((double) timeDiff / 1000 / 1000 / 1000));
             }
         }
     }
