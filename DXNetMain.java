@@ -77,6 +77,9 @@ import de.hhu.bsinfo.dxutils.unit.TimeUnit;
  * @author Stefan Nothaas, stefan.nothaas@hhu.de, 20.12.2017
  */
 public final class DXNetMain implements MessageReceiver {
+    public static final String GIT_COMMIT = "Not Available"; //@GITCOMMIT@
+    public static final String BUILD_TYPE = "Not Available"; //@BUILDTYPE@
+
     private static final Logger LOGGER = LogManager.getFormatterLogger(DXNetMain.class.getSimpleName());
 
     private static DXNet ms_dxnet;
@@ -114,6 +117,9 @@ public final class DXNetMain implements MessageReceiver {
         Locale.setDefault(new Locale("en", "US"));
         printJVMArgs();
         printCmdArgs(p_arguments);
+
+        System.out.println("Build type: " + BUILD_TYPE);
+        System.out.println("Git commit: " + GIT_COMMIT);
 
         processArgs(p_arguments);
         setupNodeMappings();
