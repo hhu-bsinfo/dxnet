@@ -276,6 +276,9 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             // wrap on the first callback, native address is always the same
             if (m_receivedPackage == null) {
                 m_receivedPackage = new ReceivedPackage(p_recvPackage, m_config.getSharedReceiveQueueSize());
+
+                // for debugging purpose
+                Thread.currentThread().setName("IBRecv-native");
             }
 
             int receiveCount = m_receivedPackage.getCount();
@@ -362,6 +365,9 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         // wrap on the first callback, native address is always the same
         if (m_prevWorkPackageResults == null) {
             m_prevWorkPackageResults = new PrevWorkPackageResults(p_prevResults);
+
+            // for debugging purpose
+            Thread.currentThread().setName("IBSend-native");
         }
 
         short nodeId = m_prevWorkPackageResults.getNodeId();
