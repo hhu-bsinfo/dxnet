@@ -592,24 +592,24 @@ public final class DXNetMain implements MessageReceiver {
 
     private static void printResults(final String p_name, final long p_timeDiffNs, final long p_minRttNs, final long p_maxRttNs, final long p_totalMessages) {
         if (p_minRttNs != 0 && p_maxRttNs != 0) {
-            System.out.printf("[%s RESULTS]\n[%s WORKLOAD] %d\n[%s MSG SIZE] %d\n[%s THREADS] %d\n[%s MSG HANDLERS] %d\n[%s RUNTIME] %d ms\n" +
-                            "[%s TIME PER MESSAGE] %d ns\n[%s THROUGHPUT] %f MB/s\n[%s THROUGHPUT OVERHEAD] %f MB/s\n[RTT REQ-RESP AVG] %d us\n" +
-                            "[RTT REQ-RESP MIN] %d us\n[RTT REQ-RESP MAX] %d us\n[TIMEOUTS REQ-RESP] %d\n", p_name, p_name, ms_workload, p_name, ms_size, p_name,
-                    ms_threads, p_name, ms_context.getCoreConfig().getNumMessageHandlerThreads(), p_name, p_timeDiffNs / 1000 / 1000, p_name,
-                    p_totalMessages != 0 ? p_timeDiffNs / p_totalMessages : 0, p_name,
-                    p_totalMessages != 0 ? (double) p_totalMessages * ms_size / 1024 / 1024 / ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0, p_name,
-                    p_totalMessages != 0 ? (double) p_totalMessages * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
-                            ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0, ms_reqRespRTTSumNs.get() / ms_messagesSent.get() / 1000, p_minRttNs / 1000,
-                    p_maxRttNs / 1000, ms_reqRespTimeouts.get());
+            System.out.printf(
+                    "[%s RESULTS]\n[%s WORKLOAD] %d\n[%s MSG SIZE] %d\n[%s MSG PAYLOAD SIZE] %d\n[%s THREADS] %d\n[%s MSG HANDLERS] %d\n[%s RUNTIME] %d ms\n" +
+                            "[%s TIME PER MESSAGE] %d ns\n[%s THROUGHPUT PAYLOAD] %f MB/s\n[%s THROUGHPUT] %f MB/s\n[RTT REQ-RESP AVG] %d us\n" +
+                            "[RTT REQ-RESP MIN] %d us\n[RTT REQ-RESP MAX] %d us\n[%s TIMEOUTS REQ-RESP] %d\n", p_name, p_name, ms_workload, p_name, ms_size,
+                    p_name, ms_messagePayloadSize, p_name, ms_threads, p_name, ms_context.getCoreConfig().getNumMessageHandlerThreads(), p_name,
+                    p_timeDiffNs / 1000 / 1000, p_name, p_totalMessages != 0 ? p_timeDiffNs / p_totalMessages : 0, p_name,
+                    p_totalMessages != 0 ? (double) p_totalMessages * ms_messagePayloadSize / 1024 / 1024 / ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0,
+                    p_name, p_totalMessages != 0 ? (double) p_totalMessages * ms_size / 1024 / 1024 / ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0,
+                    ms_reqRespRTTSumNs.get() / ms_messagesSent.get() / 1000, p_minRttNs / 1000, p_maxRttNs / 1000, p_name, ms_reqRespTimeouts.get());
         } else {
             System.out.printf(
-                    "[%s RESULTS]\n" + "[%s WORKLOAD] %d\n" + "[%s MSG SIZE] %d\n" + "[%s THREADS] %d\n" + "[%s MSG HANDLERS] %d\n" + "[%s RUNTIME] %d ms\n" +
-                            "[%s TIME PER MESSAGE] %d ns\n" + "[%s THROUGHPUT] %f MB/s\n" + "[%s THROUGHPUT OVERHEAD] %f MB/s\n", p_name, p_name, ms_workload,
-                    p_name, ms_size, p_name, ms_threads, p_name, ms_context.getCoreConfig().getNumMessageHandlerThreads(), p_name, p_timeDiffNs / 1000 / 1000,
-                    p_name, p_totalMessages != 0 ? p_timeDiffNs / p_totalMessages : p_totalMessages, p_name,
-                    p_totalMessages != 0 ? (double) p_totalMessages * ms_size / 1024 / 1024 / ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0, p_name,
-                    p_totalMessages != 0 ? (double) p_totalMessages * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
-                            ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0);
+                    "[%s RESULTS]\n" + "[%s WORKLOAD] %d\n" + "[%s MSG SIZE] %d\n[%s MSG PAYLOAD SIZE] %d\n" + "[%s THREADS] %d\n" + "[%s MSG HANDLERS] %d\n" +
+                            "[%s RUNTIME] %d ms\n" + "[%s TIME PER MESSAGE] %d ns\n" + "[%s THROUGHPUT PAYLOAD] %f MB/s\n" + "[%s THROUGHPUT] %f MB/s\n",
+                    p_name, p_name, ms_workload, p_name, ms_size, p_name, ms_messagePayloadSize, p_name, ms_threads, p_name,
+                    ms_context.getCoreConfig().getNumMessageHandlerThreads(), p_name, p_timeDiffNs / 1000 / 1000, p_name,
+                    p_totalMessages != 0 ? p_timeDiffNs / p_totalMessages : p_totalMessages, p_name,
+                    p_totalMessages != 0 ? (double) p_totalMessages * ms_messagePayloadSize / 1024 / 1024 / ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0,
+                    p_name, p_totalMessages != 0 ? (double) p_totalMessages * ms_size / 1024 / 1024 / ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0);
         }
     }
 
@@ -665,7 +665,7 @@ public final class DXNetMain implements MessageReceiver {
 
             BenchmarkMessage[] messages = new BenchmarkMessage[destinationList.size()];
             for (int i = 0; i < destinationList.size(); i++) {
-                messages[i] = new BenchmarkMessage(destinationList.get(i), ms_size);
+                messages[i] = new BenchmarkMessage(destinationList.get(i), ms_messagePayloadSize);
             }
 
             for (int i = 0; i < messageCount; i++) {
@@ -704,7 +704,7 @@ public final class DXNetMain implements MessageReceiver {
             for (int i = 0; i < messageCount; i++) {
                 for (int j = 0; j < destinationList.size(); j++) {
                     try {
-                        BenchmarkMessage message = new BenchmarkMessage(destinationList.get(j), ms_size);
+                        BenchmarkMessage message = new BenchmarkMessage(destinationList.get(j), ms_messagePayloadSize);
                         ms_dxnet.sendMessage(message);
 
                         ms_messagesSent.incrementAndGet();
@@ -743,7 +743,7 @@ public final class DXNetMain implements MessageReceiver {
 
             BenchmarkRequest[] requests = new BenchmarkRequest[destinationList.size()];
             for (int i = 0; i < requests.length; i++) {
-                requests[i] = new BenchmarkRequest(destinationList.get(i), ms_size);
+                requests[i] = new BenchmarkRequest(destinationList.get(i), ms_messagePayloadSize);
             }
 
             for (int i = 0; i < messageCount; i++) {
@@ -798,7 +798,7 @@ public final class DXNetMain implements MessageReceiver {
             for (int i = 0; i < messageCount; i++) {
                 for (int j = 0; j < destinationList.size(); j++) {
                     try {
-                        BenchmarkRequest request = new BenchmarkRequest(destinationList.get(j), ms_size);
+                        BenchmarkRequest request = new BenchmarkRequest(destinationList.get(j), ms_messagePayloadSize);
 
                         long start = System.nanoTime();
 
@@ -857,14 +857,13 @@ public final class DXNetMain implements MessageReceiver {
                 long messagesRecv = ms_messagesReceived.get();
 
                 long timeDiff = System.nanoTime() - ms_timeStart;
-                System.out.printf("[PROGRESS] %d sec: Sent %d%% (%d), Recv %d%% (%d), Sent-Recv-Diff %d, TX %f, RX %f, TXO %f, RXO %f, ReqRespTimeouts: %d\n",
+                System.out.printf("[PROGRESS] %d sec: Sent %d%% (%d), Recv %d%% (%d), Sent-Recv-Diff %d, TXP %f, RXP %f, TX %f, RX %f, ReqRespTimeouts: %d\n",
                         timeDiff / 1000 / 1000 / 1000, ms_sendCount != 0 ? (int) ((float) messagesSent / ms_sendCount / ms_targetNodeIds.size() * 100) : 0,
                         messagesSent, ms_recvCount != 0 ? (int) ((float) messagesRecv / ms_recvCount * 100) : 0, messagesRecv, messagesSent - messagesRecv,
+                        (double) messagesSent * ms_messagePayloadSize / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000),
+                        (double) messagesRecv * ms_messagePayloadSize / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000),
                         (double) messagesSent * ms_size / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000),
-                        (double) messagesRecv * ms_size / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000),
-                        (double) messagesSent * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
-                                ((double) timeDiff / 1000 / 1000 / 1000), (double) messagesRecv * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) +
-                                10) / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000), ms_reqRespTimeouts.get());
+                        (double) messagesRecv * ms_size / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000), ms_reqRespTimeouts.get());
             }
         }
     }
