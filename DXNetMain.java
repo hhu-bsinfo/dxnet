@@ -86,7 +86,7 @@ public final class DXNetMain implements MessageReceiver {
     private static short ms_ownNodeId;
     private static ArrayList<Short> ms_targetNodeIds = new ArrayList<>();
 
-    private static DXNetContext ms_context;
+    private static DXNetConfig ms_context;
 
     private static int ms_totalNumNodes;
     private static DXNetNodeMap ms_nodeMap;
@@ -325,7 +325,7 @@ public final class DXNetMain implements MessageReceiver {
 
     private static void loadConfiguration(final String p_configPath) {
         LOGGER.info("Loading configuration '%s'...", p_configPath);
-        ms_context = new DXNetContext();
+        ms_context = new DXNetConfig();
         File file = new File(p_configPath);
 
         Gson gson = new GsonBuilder().setPrettyPrinting().excludeFieldsWithoutExposeAnnotation()
@@ -369,7 +369,7 @@ public final class DXNetMain implements MessageReceiver {
         }
 
         try {
-            ms_context = gson.fromJson(element, DXNetContext.class);
+            ms_context = gson.fromJson(element, DXNetConfig.class);
         } catch (final Exception e) {
             LOGGER.error("Loading configuration '%s' failed: %s", p_configPath, e.getMessage());
             System.exit(-1);
@@ -393,7 +393,7 @@ public final class DXNetMain implements MessageReceiver {
 
         // search for own node id mapping
         boolean found = false;
-        for (DXNetContext.NodeEntry entry : ms_context.getNodeList()) {
+        for (DXNetConfig.NodeEntry entry : ms_context.getNodeList()) {
             if (entry.getNodeId() == ms_ownNodeId) {
                 found = true;
             }
@@ -411,7 +411,7 @@ public final class DXNetMain implements MessageReceiver {
         for (Short targetNodeId : ms_targetNodeIds) {
 
             // find in node config
-            for (DXNetContext.NodeEntry entry : ms_context.getNodeList()) {
+            for (DXNetConfig.NodeEntry entry : ms_context.getNodeList()) {
                 if (entry.getNodeId() == targetNodeId) {
                     found = true;
                     break;

@@ -28,12 +28,12 @@ import de.hhu.bsinfo.dxnet.nio.NIOConfig;
 import de.hhu.bsinfo.dxutils.unit.IPV4Unit;
 
 /**
- * Context object with settings for DXNet
+ * Configuration object with settings for DXNet
  *
  * @author Kevin Beineke, kevin.beineke@hhu.de, 21.09.2017
  */
-public class DXNetContext {
-    private static final Logger LOGGER = LogManager.getFormatterLogger(DXNetContext.class.getSimpleName());
+public class DXNetConfig {
+    private static final Logger LOGGER = LogManager.getFormatterLogger(DXNetConfig.class.getSimpleName());
 
     /**
      * DXNet specific settings
@@ -65,7 +65,7 @@ public class DXNetContext {
     /**
      * Constructor
      */
-    DXNetContext() {
+    DXNetConfig() {
 
     }
 
