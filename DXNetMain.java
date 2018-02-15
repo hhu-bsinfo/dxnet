@@ -94,6 +94,8 @@ public final class DXNetMain implements MessageReceiver {
 
     private static DXNetConfig ms_context;
 
+    private static int ms_messagePayloadSize;
+
     private static int ms_totalNumNodes;
     private static DXNetNodeMap ms_nodeMap;
 
@@ -340,7 +342,8 @@ public final class DXNetMain implements MessageReceiver {
 
         if (p_args.length < 7) {
             System.out.println("To execute benchmarks with a valid configuration file:");
-            System.out.println("Args: <config_file> <workload> <send count> <recv count> <size> <send/app threads> <node id> [send target node ids ...]");
+            System.out.println("Args: <config_file> <workload> <send count> <recv count> <size (full message: header + payload)> <send/app threads> <node id>" +
+                    " [send target node ids ...]");
             System.exit(-1);
         }
 
@@ -356,6 +359,12 @@ public final class DXNetMain implements MessageReceiver {
         ms_threads = Integer.parseInt(p_args[5]);
         ms_ownNodeId = Short.parseShort(p_args[6]);
 
+        ms_messagePayloadSize = ms_size - 10;
+
+        while (ms_messagePayloadSize + ObjectSizeUtil.sizeofCompactedNumber(ms_messagePayloadSize) + 10 != ms_size) {
+            ms_messagePayloadSize--;
+        }
+
         StringBuilder targets = new StringBuilder();
 
         for (int i = 7; i < p_args.length; i++) {
@@ -364,8 +373,8 @@ public final class DXNetMain implements MessageReceiver {
             targets.append(" ");
         }
 
-        System.out.printf("Parameters: workload %d, send count %d (per target), recv count %d (all), size %d, threads %d, own node id 0x%X, targets %s\n",
-                ms_workload, ms_sendCount, ms_recvCount, ms_size, ms_threads, ms_ownNodeId, targets.toString());
+        System.out.printf("Parameters: workload %d, send count %d (per target), recv count %d (all), size %d (payload size %d), threads %d, own node id 0x%X," +
+                " targets %s\n", ms_workload, ms_sendCount, ms_recvCount, ms_size, ms_messagePayloadSize, ms_threads, ms_ownNodeId, targets.toString());
     }
 
     private static void loadConfiguration(final String p_configPath) {
@@ -584,14 +593,14 @@ public final class DXNetMain implements MessageReceiver {
     private static void printResults(final String p_name, final long p_timeDiffNs, final long p_minRttNs, final long p_maxRttNs, final long p_totalMessages) {
         if (p_minRttNs != 0 && p_maxRttNs != 0) {
             System.out.printf("[%s RESULTS]\n[%s WORKLOAD] %d\n[%s MSG SIZE] %d\n[%s THREADS] %d\n[%s MSG HANDLERS] %d\n[%s RUNTIME] %d ms\n" +
-                                      "[%s TIME PER MESSAGE] %d ns\n[%s THROUGHPUT] %f MB/s\n[%s THROUGHPUT OVERHEAD] %f MB/s\n[RTT REQ-RESP AVG] %d us\n" +
-                                      "[RTT REQ-RESP MIN] %d us\n[RTT REQ-RESP MAX] %d us\n[TIMEOUTS REQ-RESP] %d\n", p_name, p_name, ms_workload, p_name,
-                    ms_size, p_name, ms_threads, p_name, ms_context.getCoreConfig().getNumMessageHandlerThreads(), p_name, p_timeDiffNs / 1000 / 1000, p_name,
+                            "[%s TIME PER MESSAGE] %d ns\n[%s THROUGHPUT] %f MB/s\n[%s THROUGHPUT OVERHEAD] %f MB/s\n[RTT REQ-RESP AVG] %d us\n" +
+                            "[RTT REQ-RESP MIN] %d us\n[RTT REQ-RESP MAX] %d us\n[TIMEOUTS REQ-RESP] %d\n", p_name, p_name, ms_workload, p_name, ms_size, p_name,
+                    ms_threads, p_name, ms_context.getCoreConfig().getNumMessageHandlerThreads(), p_name, p_timeDiffNs / 1000 / 1000, p_name,
                     p_totalMessages != 0 ? p_timeDiffNs / p_totalMessages : 0, p_name,
                     p_totalMessages != 0 ? (double) p_totalMessages * ms_size / 1024 / 1024 / ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0, p_name,
                     p_totalMessages != 0 ? (double) p_totalMessages * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
-                                                   ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0, ms_reqRespRTTSumNs.get() / ms_messagesSent.get() / 1000,
-                    p_minRttNs / 1000, p_maxRttNs / 1000, ms_reqRespTimeouts.get());
+                            ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0, ms_reqRespRTTSumNs.get() / ms_messagesSent.get() / 1000, p_minRttNs / 1000,
+                    p_maxRttNs / 1000, ms_reqRespTimeouts.get());
         } else {
             System.out.printf(
                     "[%s RESULTS]\n" + "[%s WORKLOAD] %d\n" + "[%s MSG SIZE] %d\n" + "[%s THREADS] %d\n" + "[%s MSG HANDLERS] %d\n" + "[%s RUNTIME] %d ms\n" +
@@ -600,7 +609,7 @@ public final class DXNetMain implements MessageReceiver {
                     p_name, p_totalMessages != 0 ? p_timeDiffNs / p_totalMessages : p_totalMessages, p_name,
                     p_totalMessages != 0 ? (double) p_totalMessages * ms_size / 1024 / 1024 / ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0, p_name,
                     p_totalMessages != 0 ? (double) p_totalMessages * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
-                                                   ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0);
+                            ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0);
         }
     }
 
@@ -855,8 +864,7 @@ public final class DXNetMain implements MessageReceiver {
                         (double) messagesRecv * ms_size / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000),
                         (double) messagesSent * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
                                 ((double) timeDiff / 1000 / 1000 / 1000), (double) messagesRecv * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) +
-                                                                                                           10) / 1024 / 1024 /
-                                                                                  ((double) timeDiff / 1000 / 1000 / 1000), ms_reqRespTimeouts.get());
+                                10) / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000), ms_reqRespTimeouts.get());
             }
         }
     }
