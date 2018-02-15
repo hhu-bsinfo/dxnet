@@ -112,6 +112,7 @@ public final class DXNetMain implements MessageReceiver {
     private static AtomicLong ms_messagesReceived = new AtomicLong(0);
     private static AtomicLong ms_messagesSent = new AtomicLong(0);
     private static AtomicLong ms_reqRespRTTSumNs = new AtomicLong(0);
+    private static AtomicLong ms_reqRespTimeouts = new AtomicLong(0);
 
     public static void main(final String[] p_arguments) {
         Locale.setDefault(new Locale("en", "US"));
@@ -583,16 +584,15 @@ public final class DXNetMain implements MessageReceiver {
 
     private static void printResults(final String p_name, final long p_timeDiffNs, final long p_minRttNs, final long p_maxRttNs, final long p_totalMessages) {
         if (p_minRttNs != 0 && p_maxRttNs != 0) {
-            System.out.printf(
-                    "[%s RESULTS]\n" + "[%s WORKLOAD] %d\n" + "[%s MSG SIZE] %d\n" + "[%s THREADS] %d\n" + "[%s MSG HANDLERS] %d\n" + "[%s RUNTIME] %d ms\n" +
-                            "[%s TIME PER MESSAGE] %d ns\n" + "[%s THROUGHPUT] %f MB/s\n" + "[%s THROUGHPUT OVERHEAD] %f MB/s\n" +
-                            "[RTT REQ-RESP AVG] %d us\n" + "[RTT REQ-RESP MIN] %d us\n" + "[RTT REQ-RESP MAX] %d us\n", p_name, p_name, ms_workload, p_name,
+            System.out.printf("[%s RESULTS]\n[%s WORKLOAD] %d\n[%s MSG SIZE] %d\n[%s THREADS] %d\n[%s MSG HANDLERS] %d\n[%s RUNTIME] %d ms\n" +
+                                      "[%s TIME PER MESSAGE] %d ns\n[%s THROUGHPUT] %f MB/s\n[%s THROUGHPUT OVERHEAD] %f MB/s\n[RTT REQ-RESP AVG] %d us\n" +
+                                      "[RTT REQ-RESP MIN] %d us\n[RTT REQ-RESP MAX] %d us\n[TIMEOUTS REQ-RESP] %d\n", p_name, p_name, ms_workload, p_name,
                     ms_size, p_name, ms_threads, p_name, ms_context.getCoreConfig().getNumMessageHandlerThreads(), p_name, p_timeDiffNs / 1000 / 1000, p_name,
                     p_totalMessages != 0 ? p_timeDiffNs / p_totalMessages : 0, p_name,
                     p_totalMessages != 0 ? (double) p_totalMessages * ms_size / 1024 / 1024 / ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0, p_name,
                     p_totalMessages != 0 ? (double) p_totalMessages * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
                                                    ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0, ms_reqRespRTTSumNs.get() / ms_messagesSent.get() / 1000,
-                    p_minRttNs / 1000, p_maxRttNs / 1000);
+                    p_minRttNs / 1000, p_maxRttNs / 1000, ms_reqRespTimeouts.get());
         } else {
             System.out.printf(
                     "[%s RESULTS]\n" + "[%s WORKLOAD] %d\n" + "[%s MSG SIZE] %d\n" + "[%s THREADS] %d\n" + "[%s MSG HANDLERS] %d\n" + "[%s RUNTIME] %d ms\n" +
@@ -762,6 +762,7 @@ public final class DXNetMain implements MessageReceiver {
                     } catch (NetworkException e) {
                         // repeat until successful
                         --j;
+                        ms_reqRespTimeouts.incrementAndGet();
                     }
                 }
             }
@@ -810,6 +811,7 @@ public final class DXNetMain implements MessageReceiver {
                     } catch (NetworkException e) {
                         // repeat until successful
                         --j;
+                        ms_reqRespTimeouts.incrementAndGet();
                     }
                 }
             }
@@ -847,7 +849,7 @@ public final class DXNetMain implements MessageReceiver {
                 long messagesRecv = ms_messagesReceived.get();
 
                 long timeDiff = System.nanoTime() - ms_timeStart;
-                System.out.printf("[PROGRESS] %d sec: Sent %d%% (%d), Recv %d%% (%d), Sent-Recv-Diff %d, TX %f, RX %f, TXO %f, RXO %f\n",
+                System.out.printf("[PROGRESS] %d sec: Sent %d%% (%d), Recv %d%% (%d), Sent-Recv-Diff %d, TX %f, RX %f, TXO %f, RXO %f, ReqRespTimeouts: %d\n",
                         timeDiff / 1000 / 1000 / 1000, ms_sendCount != 0 ? (int) ((float) messagesSent / ms_sendCount / ms_targetNodeIds.size() * 100) : 0,
                         messagesSent, ms_recvCount != 0 ? (int) ((float) messagesRecv / ms_recvCount * 100) : 0, messagesRecv, messagesSent - messagesRecv,
                         (double) messagesSent * ms_size / 1024 / 1024 / ((double) timeDiff / 1000 / 1000 / 1000),
@@ -855,7 +857,7 @@ public final class DXNetMain implements MessageReceiver {
                         (double) messagesSent * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) + 10) / 1024 / 1024 /
                                 ((double) timeDiff / 1000 / 1000 / 1000), (double) messagesRecv * (ms_size + ObjectSizeUtil.sizeofCompactedNumber(ms_size) +
                                                                                                            10) / 1024 / 1024 /
-                                                                                  ((double) timeDiff / 1000 / 1000 / 1000));
+                                                                                  ((double) timeDiff / 1000 / 1000 / 1000), ms_reqRespTimeouts.get());
             }
         }
     }
