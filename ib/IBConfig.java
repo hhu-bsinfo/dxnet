@@ -35,7 +35,7 @@ public class IBConfig {
     private TimeUnit m_requestTimeOut = new TimeUnit(100, TimeUnit.MS);
 
     @Expose
-    private StorageUnit m_flowControlWindow = new StorageUnit(8, StorageUnit.MB);
+    private StorageUnit m_flowControlWindow = new StorageUnit(16, StorageUnit.MB);
 
     @Expose
     private float m_flowControlWindowThreshold = 0.8f;
