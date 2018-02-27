@@ -32,13 +32,13 @@ public class LoopbackConfig {
     private TimeUnit m_connectionTimeOut = new TimeUnit(333, TimeUnit.MS);
 
     @Expose
-    private StorageUnit m_flowControlWindow = new StorageUnit(512, StorageUnit.KB);
+    private StorageUnit m_flowControlWindow = new StorageUnit(80, StorageUnit.MB);
 
     @Expose
-    private float m_flowControlWindowThreshold = 0.8f;
+    private float m_flowControlWindowThreshold = 0.5f;
 
     @Expose
-    private StorageUnit m_outgoingRingBufferSize = new StorageUnit(2, StorageUnit.MB);
+    private StorageUnit m_outgoingRingBufferSize = new StorageUnit(4, StorageUnit.MB);
 
     /**
      * Default constructor
