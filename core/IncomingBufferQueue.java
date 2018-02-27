@@ -37,9 +37,6 @@ public class IncomingBufferQueue {
     private static final String RECORDER = "DXNet-IBQ";
     private static final StatisticsOperation SOP_WAIT_PUSH = StatisticsRecorderManager.getOperation(RECORDER, "WaitPush");
 
-    // must be a power of two to work with wrap around
-    private static final int SIZE = 2 * 2 * 1024;
-
     private AbstractConnection[] m_connectionBuffer;
     private BufferPool.DirectBufferWrapper[] m_directBuffers;
     private long[] m_bufferHandleBuffer;
@@ -47,7 +44,9 @@ public class IncomingBufferQueue {
     private int[] m_sizeBuffer;
     private IncomingBuffer m_incomingBuffer;
 
-    private final int m_maxBytes;
+    private final int m_maxCapacityBufferCount;
+    private final int m_maxCapacitySize;
+
     private AtomicInteger m_currentBytes;
 
     // single producer, single consumer lock free queue (posBack and posFront are synchronized with fences and byte counter)
@@ -59,20 +58,26 @@ public class IncomingBufferQueue {
     /**
      * Creates an instance of IncomingBufferQueue
      *
-     * @param p_maxIncomingBufferSize
-     *         the max incoming buffer size
+     * @param p_maxCapacityBufferCount
+     *         the max capacity of buffers (count) for the queue
+     * @param p_maxCapacitySize
+     *         the max capacity of all buffers aggregated sizes for the queue
      */
-    IncomingBufferQueue(final int p_maxIncomingBufferSize) {
-        if ((SIZE & SIZE - 1) != 0) {
-            throw new NetworkRuntimeException("Incoming buffer queue size must be a power of 2!");
+    IncomingBufferQueue(final int p_maxCapacityBufferCount, final int p_maxCapacitySize) {
+        m_maxCapacityBufferCount = p_maxCapacityBufferCount;
+        m_maxCapacitySize = p_maxCapacitySize;
+
+        // must be a power of two to work with wrap around
+        if ((m_maxCapacityBufferCount & m_maxCapacityBufferCount - 1) != 0) {
+            throw new NetworkRuntimeException("Incoming max buffer queue capacity must be a power of 2!");
         }
 
-        m_connectionBuffer = new AbstractConnection[SIZE];
-        m_directBuffers = new BufferPool.DirectBufferWrapper[SIZE];
-        m_bufferHandleBuffer = new long[SIZE];
-        m_addrBuffer = new long[SIZE];
-        m_sizeBuffer = new int[SIZE];
-        m_maxBytes = p_maxIncomingBufferSize * 8;
+        m_connectionBuffer = new AbstractConnection[m_maxCapacityBufferCount];
+        m_directBuffers = new BufferPool.DirectBufferWrapper[m_maxCapacityBufferCount];
+        m_bufferHandleBuffer = new long[m_maxCapacityBufferCount];
+        m_addrBuffer = new long[m_maxCapacityBufferCount];
+        m_sizeBuffer = new int[m_maxCapacityBufferCount];
+
         m_currentBytes = new AtomicInteger(0);
 
         m_posBack = 0;
@@ -87,7 +92,7 @@ public class IncomingBufferQueue {
      * Returns whether the ring-buffer is full or not.
      */
     public boolean isFull() {
-        return m_currentBytes.get() >= m_maxBytes || (m_posBack + SIZE & 0x7FFFFFFF) == m_posFront;
+        return m_currentBytes.get() >= m_maxCapacitySize || (m_posBack + m_maxCapacityBufferCount & 0x7FFFFFFF) == m_posFront;
     }
 
     /**
@@ -100,7 +105,7 @@ public class IncomingBufferQueue {
             return null;
         }
 
-        int back = m_posBack % SIZE;
+        int back = m_posBack % m_maxCapacityBufferCount;
         int size = m_sizeBuffer[back];
         m_incomingBuffer.set(m_connectionBuffer[back].getPipeIn(), m_directBuffers[back], m_bufferHandleBuffer[back], m_addrBuffer[back], size);
 
@@ -137,14 +142,19 @@ public class IncomingBufferQueue {
             return;
         }
 
-        if (m_currentBytes.get() >= m_maxBytes || (m_posBack + SIZE & 0x7FFFFFFF) == m_posFront) {
+        int curBytes = m_currentBytes.get();
+        int posBack = m_posBack;
+        int posFront = m_posFront;
+
+        if (curBytes >= m_maxCapacitySize || (posBack + m_maxCapacityBufferCount & 0x7FFFFFFF) == posFront) {
             // Avoid congestion by not allowing more than a predefined number of buffers to be cached for importing
 
             // avoid flooding the log
             if (m_queueFullCounter.getAndIncrement() % 100000 == 0) {
                 // #if LOGGER == WARN
-                LOGGER.warn("IBQ is full, count: %d. If this message appears often (with a high counter) you should consider increasing the number of " +
-                        "message handlers to avoid performance penalties", m_queueFullCounter.get());
+                LOGGER.warn("IBQ is full (curBytes %d, posBack %d, posFront %d), count: %d. If this message appears often (with a high counter) you should " +
+                                "consider increasing the number message handlers to avoid performance penalties", curBytes, posBack, posFront,
+                        m_queueFullCounter.get());
                 // #endif /* LOGGER == WARN */
             }
 
@@ -152,7 +162,7 @@ public class IncomingBufferQueue {
             SOP_WAIT_PUSH.enter();
             // #endif /* STATISTICS */
 
-            while (m_currentBytes.get() >= m_maxBytes || (m_posBack + SIZE & 0x7FFFFFFF) == m_posFront) {
+            while (m_currentBytes.get() >= m_maxCapacitySize || (m_posBack + m_maxCapacityBufferCount & 0x7FFFFFFF) == m_posFront) {
                 LockSupport.parkNanos(100);
             }
 
@@ -161,7 +171,7 @@ public class IncomingBufferQueue {
             // #endif /* STATISTICS */
         }
 
-        front = m_posFront % SIZE;
+        front = m_posFront % m_maxCapacityBufferCount;
 
         m_connectionBuffer[front] = p_connection;
         m_directBuffers[front] = p_directBufferWrapper;

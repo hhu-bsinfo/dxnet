@@ -24,6 +24,7 @@ import de.hhu.bsinfo.dxutils.unit.TimeUnit;
  * @author Stefan Nothaas, stefan.nothaas@hhu.de, 28.07.2017
  */
 public class IBConfig {
+
     @Expose
     private int m_maxConnections = 100;
 
@@ -34,28 +35,46 @@ public class IBConfig {
     private TimeUnit m_requestTimeOut = new TimeUnit(100, TimeUnit.MS);
 
     @Expose
-    private StorageUnit m_flowControlWindow = new StorageUnit(8, StorageUnit.MB);
+    private StorageUnit m_flowControlWindow = new StorageUnit(16, StorageUnit.MB);
 
     @Expose
     private float m_flowControlWindowThreshold = 0.8f;
 
     @Expose
-    private StorageUnit m_outgoingRingBufferSize = new StorageUnit(1, StorageUnit.MB);
+    private StorageUnit m_outgoingRingBufferSize = new StorageUnit(4, StorageUnit.MB);
+
+    @Expose
+    private int m_ibqMaxCapacityBufferCount = 8 * 1024;
+
+    @Expose
+    private StorageUnit m_ibqMaxCapacitySize = new StorageUnit(64, StorageUnit.MB);
 
     @Expose
     private StorageUnit m_incomingBufferSize = new StorageUnit(32, StorageUnit.KB);
 
     @Expose
-    private StorageUnit m_incomingBufferPoolTotalSize = new StorageUnit(512, StorageUnit.MB);
+    private StorageUnit m_incomingBufferPoolTotalSize = new StorageUnit(1, StorageUnit.GB);
 
     @Expose
-    private int m_maxSendReqs = 10;
+    private int m_sqSize = 20;
 
     @Expose
-    private int m_maxRecvReqs = 100;
+    private int m_srqSize = m_sqSize * m_maxConnections;
+
+    @Expose
+    private int m_sharedSCQSize = m_srqSize;
+
+    @Expose
+    private int m_sharedRCQSize = m_srqSize;
 
     @Expose
     private boolean m_enableSignalHandler = false;
+
+    @Expose
+    private boolean m_pinSendRecvThreads = true;
+
+    @Expose
+    private int m_statisticsThreadPrintIntervalMs = 0;
 
     /**
      * Default constructor
@@ -107,6 +126,20 @@ public class IBConfig {
     }
 
     /**
+     * Max number of buffers allowed in the incoming buffer queue
+     */
+    public int getIbqMaxCapacityBufferCount() {
+        return m_ibqMaxCapacityBufferCount;
+    }
+
+    /**
+     * Max number of bytes of all buffers aggregated allowed in the incoming buffer queue
+     */
+    public StorageUnit getIbqMaxCapacitySize() {
+        return m_ibqMaxCapacitySize;
+    }
+
+    /**
      * Size of a single buffer to store incoming data (or slices of data) to
      */
     public StorageUnit getIncomingBufferSize() {
@@ -121,17 +154,31 @@ public class IBConfig {
     }
 
     /**
-     * Infiniband send queue size for buffers/data (per connection)
+     * Get the size of the send queue (size for each connection)
      */
-    public int getMaxSendReqs() {
-        return m_maxSendReqs;
+    public int getSendQueueSize() {
+        return m_sqSize;
     }
 
     /**
-     * Infiniband recv queue size for buffers/data (shared across all connections)
+     * Get the size of the shared receive queue (shared with every connection)
      */
-    public int getMaxRecvReqs() {
-        return m_maxRecvReqs;
+    public int getSharedReceiveQueueSize() {
+        return m_srqSize;
+    }
+
+    /**
+     * Get the size of the shared send completion queue
+     */
+    public int getSharedSendCompletionQueueSize() {
+        return m_sharedSCQSize;
+    }
+
+    /**
+     * Get the size of the shared receive completion queue
+     */
+    public int getSharedReceiveCompletionQueueSize() {
+        return m_sharedRCQSize;
     }
 
     /**
@@ -140,5 +187,20 @@ public class IBConfig {
      */
     public boolean getEnableSignalHandler() {
         return m_enableSignalHandler;
+    }
+
+    /**
+     * Pin the daemon send and recv threads to cores 0 and 1. This enhances performance but you might consider disabling
+     * it if you don't have a machine with many cores (at least 4)
+     */
+    public boolean getPinSendRecvThreads() {
+        return m_pinSendRecvThreads;
+    }
+
+    /**
+     * If > 0, a dedicated thread prints statistics of the Ibdxnet subsystem every X ms (for debugging purpose)
+     */
+    public int getStatisticsThreadPrintIntervalMs() {
+        return m_statisticsThreadPrintIntervalMs;
     }
 }

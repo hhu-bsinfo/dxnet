@@ -39,7 +39,7 @@ public class OutgoingRingBuffer {
     private static final int MAX_CONCURRENT_THREADS = 1000;
 
     // multiple producer, single consumer
-    private volatile int m_posBack;
+    protected volatile int m_posBack;
 
     // Upper 32 bits: front position in m_uncommittedMessageSizes; lower 32 bits: current front producer pointer in ring buffer
     protected final AtomicLong m_posFrontProducer;
@@ -52,7 +52,7 @@ public class OutgoingRingBuffer {
 
     private final int[] m_uncommittedMessageSizes;
     private long m_bufferAddr;
-    private int m_bufferSize;
+    protected int m_bufferSize;
 
     private AbstractExporterPool m_exporterPool;
 

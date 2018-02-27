@@ -23,6 +23,8 @@ import de.hhu.bsinfo.dxnet.core.OutgoingRingBuffer;
  */
 class IBOutgoingRingBuffer extends OutgoingRingBuffer {
 
+    private int m_posBackDataPosted;
+
     /**
      * Constructor
      *
@@ -39,14 +41,23 @@ class IBOutgoingRingBuffer extends OutgoingRingBuffer {
         setBuffer(p_bufferAddr, p_bufferSize);
     }
 
-    /**
-     * Get the next currently available slice of data to send out
-     *
-     * @return Long holding the current relative position of the front pointer
-     * (lower 32-bit) and the relative position of the back pointer
-     * (higher 32-bit) of the ring buffer
-     */
-    long popFront() {
-        return popBack();
+    // TODO doc: posted but NOT processed: we have to introduce another back pointer
+    // which marks this position so we don't send data from the ORB twice
+    // because the callback when the data is actually sent (which has to move the
+    // ORBs real back pointer) comes way later
+    public void dataSendPosted(final int p_bytesPosted) {
+        // wipe sign to avoid bugs on overflows
+        m_posBackDataPosted = m_posBackDataPosted + p_bytesPosted & 0x7FFFFFFF;
+    }
+
+    // TODO doc, native SendThread handles wrap around, so we also allow it to happen
+    protected long popBack() {
+        int posFrontRelative;
+        int posBackRelative;
+
+        posFrontRelative = ((int) m_posFrontConsumer.get()) % m_bufferSize;
+        posBackRelative = m_posBackDataPosted % m_bufferSize;
+
+        return (long) posFrontRelative << 32 | (long) posBackRelative;
     }
 }

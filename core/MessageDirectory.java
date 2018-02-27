@@ -151,6 +151,10 @@ public final class MessageDirectory {
         boolean result;
         final Constructor<?>[][] constructors = m_constructors;
 
+        if (p_type < 0 || p_subtype < 0) {
+            return false;
+        }
+
         result = constructors.length > p_type && !(constructors[p_type] == null || constructors[p_type].length <= p_subtype) &&
                 constructors[p_type][p_subtype] != null;
 

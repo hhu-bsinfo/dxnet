@@ -145,11 +145,14 @@ public final class DXNet {
         // #endif /* LOGGER >= INFO */
 
         if ("Ethernet".equals(m_coreConfig.getDevice())) {
-            m_messageCreationCoordinator = new MessageCreationCoordinator((int) m_nioConfig.getOugoingRingBufferSize().getBytes(), m_overprovisioning);
+            m_messageCreationCoordinator = new MessageCreationCoordinator(2 * 2 * 1024, (int) m_nioConfig.getOugoingRingBufferSize().getBytes() * 8,
+                    m_overprovisioning);
         } else if ("Infiniband".equals(m_coreConfig.getDevice())) {
-            m_messageCreationCoordinator = new MessageCreationCoordinator((int) m_ibConfig.getOugoingRingBufferSize().getBytes(), m_overprovisioning);
+            m_messageCreationCoordinator = new MessageCreationCoordinator(m_ibConfig.getIbqMaxCapacityBufferCount(),
+                    (int) m_ibConfig.getIbqMaxCapacitySize().getBytes(), m_overprovisioning);
         } else {
-            m_messageCreationCoordinator = new MessageCreationCoordinator((int) m_loopbackConfig.getOugoingRingBufferSize().getBytes(), m_overprovisioning);
+            m_messageCreationCoordinator = new MessageCreationCoordinator(2 * 2 * 1024, (int) m_loopbackConfig.getOugoingRingBufferSize().getBytes() * 8,
+                    m_overprovisioning);
         }
 
         m_messageCreationCoordinator.setName("Network: MessageCreationCoordinator");
@@ -339,7 +342,7 @@ public final class DXNet {
 
             // #if LOGGER >= INFO
             LOGGER.info("Overprovisioning detected (%d network threads and >= %d application threads on %d cores)." +
-                            "Activating parking strategy for network threads.", m_coreConfig.getNumMessageHandlerThreads() + 2, m_sendThreads.get(),
+                                "Activating parking strategy for network threads.", m_coreConfig.getNumMessageHandlerThreads() + 2, m_sendThreads.get(),
                     Runtime.getRuntime().availableProcessors());
             // #endif /* LOGGER >= INFO */
         }

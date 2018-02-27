@@ -11,22 +11,31 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-package de.hhu.bsinfo.dxnet.core.messages;
+package de.hhu.bsinfo.dxnet.main.messages;
+
+import de.hhu.bsinfo.dxnet.core.Response;
 
 /**
- * Message types reserved for the network subsystem
+ * This is a benchmark response which is used in DXNetMain.
  *
- * @author Stefan Nothaas, stefan.nothaas@hhu.de, 05.07.2017
+ * @author Kevin Beineke, kevin.beineke@hhu.de, 11.10.2017
  */
-public final class Messages {
-    public static final byte DEFAULT_MESSAGES_TYPE = 0;
-
-    public static final byte SUBTYPE_INVALID_MESSAGE = 0;
-    public static final byte SUBTYPE_DEFAULT_MESSAGE = 1;
+public class BenchmarkResponse extends Response {
 
     /**
-     * Hidden constructor
+     * Creates an instance of BenchmarkResponse.
      */
-    private Messages() {
+    public BenchmarkResponse() {
+        super();
+    }
+
+    /**
+     * Creates an instance of BenchmarkResponse
+     *
+     * @param p_request
+     *         the BenchmarkRequest
+     */
+    public BenchmarkResponse(final BenchmarkRequest p_request) {
+        super(p_request, Messages.SUBTYPE_BENCHMARK_RESPONSE);
     }
 }

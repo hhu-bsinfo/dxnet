@@ -11,49 +11,49 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-package de.hhu.bsinfo.dxnet.core.messages;
+package de.hhu.bsinfo.dxnet.main.messages;
 
 import de.hhu.bsinfo.dxnet.core.AbstractMessageExporter;
 import de.hhu.bsinfo.dxnet.core.AbstractMessageImporter;
-import de.hhu.bsinfo.dxnet.core.Message;
+import de.hhu.bsinfo.dxnet.core.Request;
 import de.hhu.bsinfo.dxutils.serialization.ObjectSizeUtil;
 
 /**
- * This is a benchmark message which is used in DXNetMain.
+ * This is a benchmark request which is used in DXNetMain.
  *
- * @author Kevin Beineke, kevin.beineke@hhu.de, 16.09.2017
+ * @author Kevin Beineke, kevin.beineke@hhu.de, 11.10.2017
  */
-public class BenchmarkMessage extends Message {
+public class BenchmarkRequest extends Request {
 
     private byte[] m_data;
 
     /**
-     * Creates an instance of BenchmarkMessage.
+     * Creates an instance of BenchmarkRequest.
      */
-    public BenchmarkMessage() {
+    public BenchmarkRequest() {
         super();
     }
 
     /**
-     * Creates an instance of BenchmarkMessage
+     * Creates an instance of BenchmarkRequest
      *
      * @param p_destination
      *         the destination nodeID
      */
-    public BenchmarkMessage(final short p_destination, final int p_size) {
-        super(p_destination, Messages.DEFAULT_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_MESSAGE);
+    public BenchmarkRequest(final short p_destination, final int p_size) {
+        super(p_destination, Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_REQUEST);
 
         m_data = new byte[p_size];
     }
 
     /**
-     * Creates an instance of DefaultMessage
+     * Creates an instance of BenchmarkRequest
      *
      * @param p_destination
      *         the destination nodeID
      */
-    public BenchmarkMessage(final short p_destination, final byte[] p_data) {
-        super(p_destination, Messages.DEFAULT_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_MESSAGE);
+    public BenchmarkRequest(final short p_destination, final byte[] p_data) {
+        super(p_destination, Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_REQUEST);
 
         m_data = p_data;
     }
