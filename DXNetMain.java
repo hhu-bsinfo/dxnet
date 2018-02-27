@@ -568,6 +568,11 @@ public final class DXNetMain implements MessageReceiver {
     }
 
     private static void coordinateStartupAndWait() {
+        // Loopback doesn't need any startup coordination
+        if (ms_context.getCoreConfig().isDeviceLoopback()) {
+            return;
+        }
+
         if (!ms_isLoginCoordinator) {
             LoginRequest req = new LoginRequest((short) 0);
 
