@@ -86,4 +86,25 @@ public class CoreConfig {
     public String getDevice() {
         return m_device;
     }
+
+    /**
+     * Check if the device name is set to ethernet
+     */
+    public boolean isDeviceEthernet() {
+        return m_device.toLowerCase().equals("ethernet");
+    }
+
+    /**
+     * Check if the device name is set to infiniband
+     */
+    public boolean isDeviceInfiniband() {
+        return m_device.toLowerCase().equals("infiniband");
+    }
+
+    /**
+     * Check if the device name is set to loopback
+     */
+    public boolean isDeviceLoopback() {
+        return m_device.toLowerCase().equals("loopback");
+    }
 }
