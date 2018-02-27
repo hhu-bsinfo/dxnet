@@ -308,6 +308,26 @@ class MessageImporterUnderflow extends AbstractMessageImporter {
     }
 
     @Override
+    public int readBytes(final long p_byteBufferAddress, final int p_offset, final int p_length) {
+        if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
+            // Full skip, bytes were read before
+            m_skippedBytes += p_length;
+        } else if (m_skippedBytes < m_skipBytes) {
+            // Bytes were partly de-serialized -> continue
+            int bytesCopied = m_skipBytes - m_skippedBytes;
+            UnsafeMemory.copyBytes(m_bufferAddress + m_currentPosition, p_byteBufferAddress + p_offset + bytesCopied, p_length - bytesCopied);
+            m_currentPosition += p_length - bytesCopied;
+            m_skippedBytes = m_skipBytes;
+        } else {
+            // Read bytes normally as all previously read bytes have been skipped already
+            UnsafeMemory.copyBytes(m_bufferAddress + m_currentPosition, p_byteBufferAddress + p_offset, p_length);
+            m_currentPosition += p_length;
+        }
+
+        return p_length;
+    }
+
+    @Override
     public int readShorts(short[] p_array, int p_offset, int p_length) {
         for (int i = 0; i < p_length; i++) {
             p_array[p_offset + i] = readShort(p_array[p_offset + i]);

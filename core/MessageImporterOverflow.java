@@ -291,6 +291,29 @@ class MessageImporterOverflow extends AbstractMessageImporter {
     }
 
     @Override
+    public int readBytes(final long p_byteBufferAddress, final int p_offset, final int p_length) {
+        if (m_currentPosition == m_bufferSize) {
+            m_unfinishedOperation.setIndex(m_currentPosition - m_startPosition);
+            throw m_exception;
+        }
+
+        if (m_currentPosition + p_length >= m_bufferSize) {
+            UnsafeMemory.copyBytes(m_bufferAddress + m_currentPosition, p_byteBufferAddress + p_offset, m_bufferSize - m_currentPosition);
+
+            // Do not store unfinished operation as partly de-serialized array will be passed anyway
+            m_unfinishedOperation.setIndex(m_currentPosition - m_startPosition);
+
+            m_currentPosition = m_bufferSize;
+            throw m_exception;
+        }
+
+        UnsafeMemory.copyBytes(m_bufferAddress + m_currentPosition, p_byteBufferAddress + p_offset, p_length);
+        m_currentPosition += p_length;
+
+        return p_length;
+    }
+
+    @Override
     public int readShorts(final short[] p_array, final int p_offset, final int p_length) {
         if (m_currentPosition == m_bufferSize) {
             m_unfinishedOperation.setIndex(m_currentPosition - m_startPosition);

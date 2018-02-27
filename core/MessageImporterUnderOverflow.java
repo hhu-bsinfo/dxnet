@@ -439,6 +439,53 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
     }
 
     @Override
+    public int readBytes(final long p_byteBufferAddress, final int p_offset, final int p_length) {
+        if (m_currentPosition == m_bufferSize) {
+            // Overflow
+            m_unfinishedOperation.setIndex(m_skippedBytes + m_currentPosition);
+            throw m_exception;
+        }
+
+        if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
+            // Bytes were read before
+            m_skippedBytes += p_length;
+            return p_length;
+        } else if (m_skippedBytes < m_skipBytes) {
+            // Bytes were partly de-serialized -> continue
+            int bytesCopied = m_skipBytes - m_skippedBytes;
+
+            if (m_currentPosition + p_length - bytesCopied >= m_bufferSize) {
+                // Overflow
+                UnsafeMemory.copyBytes(m_bufferAddress + m_currentPosition, p_byteBufferAddress + p_offset + bytesCopied, m_bufferSize - m_currentPosition);
+                m_unfinishedOperation.setIndex(m_skippedBytes);
+                m_currentPosition = m_bufferSize;
+                m_skippedBytes = m_skipBytes;
+                throw m_exception;
+            }
+
+            UnsafeMemory.copyBytes(m_bufferAddress + m_currentPosition, p_byteBufferAddress + p_offset + bytesCopied, p_length - bytesCopied);
+            m_currentPosition += p_length - bytesCopied;
+            m_skippedBytes = m_skipBytes;
+
+            return p_length;
+        } else {
+            if (m_currentPosition + p_length >= m_bufferSize) {
+                // Overflow
+                UnsafeMemory.copyBytes(m_bufferAddress + m_currentPosition, p_byteBufferAddress + p_offset, m_bufferSize - m_currentPosition);
+                m_unfinishedOperation.setIndex(m_skippedBytes + m_currentPosition);
+                m_currentPosition = m_bufferSize;
+                throw m_exception;
+            }
+
+            // Read bytes normally as all previously read bytes have been skipped already
+            UnsafeMemory.copyBytes(m_bufferAddress + m_currentPosition, p_byteBufferAddress + p_offset, p_length);
+            m_currentPosition += p_length;
+
+            return p_length;
+        }
+    }
+
+    @Override
     public int readShorts(short[] p_array, int p_offset, int p_length) {
         if (m_currentPosition == m_bufferSize) {
             // Overflow

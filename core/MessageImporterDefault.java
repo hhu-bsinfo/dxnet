@@ -21,7 +21,7 @@ import de.hhu.bsinfo.dxutils.serialization.Importable;
  *
  * @author Kevin Beineke, kevin.beineke@hhu.de, 12.07.2017
  */
-class MessageImporterDefault extends AbstractMessageImporter {
+public class MessageImporterDefault extends AbstractMessageImporter {
 
     private long m_bufferAddress;
     private int m_currentPosition;
@@ -30,8 +30,18 @@ class MessageImporterDefault extends AbstractMessageImporter {
     /**
      * Constructor
      */
-    MessageImporterDefault() {
+    public MessageImporterDefault() {
 
+    }
+
+    /**
+     * Set the position externally.
+     *
+     * @param p_position
+     *         the new position
+     */
+    public void setPosition(final int p_position) {
+        m_currentPosition = p_position;
     }
 
     @Override
@@ -172,9 +182,17 @@ class MessageImporterDefault extends AbstractMessageImporter {
     @Override
     public int readBytes(final byte[] p_array, final int p_offset, final int p_length) {
         int ret = UnsafeMemory.readBytes(m_bufferAddress + m_currentPosition, p_array, p_offset, p_length);
-        m_currentPosition += ret * Byte.BYTES;
+        m_currentPosition += ret;
 
         return ret;
+    }
+
+    @Override
+    public int readBytes(final long p_byteBufferAddress, final int p_offset, final int p_length) {
+        UnsafeMemory.copyBytes(m_bufferAddress + m_currentPosition, p_byteBufferAddress + p_offset, p_length);
+        m_currentPosition += p_length;
+
+        return p_length;
     }
 
     @Override
