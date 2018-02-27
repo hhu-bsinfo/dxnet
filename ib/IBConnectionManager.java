@@ -710,7 +710,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
 
         public CompletedWorkList(final long p_addr, final int p_numNodes) {
             SIZE_FIELD_NODE_IDS_ARRAY = SIZE_FIELD_NODE_ID * p_numNodes;
-            SIZE = SIZE_FIELD_NUM_NODES + SIZE_FIELD_NUM_BYTES_WRITTEN_ARRAY + SIZE_FIELD_FC_DATA_WRITTEN_ARRAY + SIZE_FIELD_NODE_ID;
+            SIZE = SIZE_FIELD_NUM_NODES + SIZE_FIELD_NUM_BYTES_WRITTEN_ARRAY + SIZE_FIELD_FC_DATA_WRITTEN_ARRAY + SIZE_FIELD_NODE_IDS_ARRAY;
 
             m_struct = ByteBufferHelper.wrap(p_addr, SIZE);
             m_struct.order(ByteOrder.nativeOrder());
