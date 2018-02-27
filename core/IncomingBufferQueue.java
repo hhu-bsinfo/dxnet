@@ -25,7 +25,7 @@ import de.hhu.bsinfo.dxutils.stats.StatisticsOperation;
 import de.hhu.bsinfo.dxutils.stats.StatisticsRecorderManager;
 
 /**
- * The IncomingBufferQueue stored incoming buffers from all connections.
+ * The IncomingBufferQueue stores incoming buffers from all connections.
  * Uses a ring-buffer implementation for incoming buffers.
  * One producer (network thread) and one consumer (message creation coordinator).
  *

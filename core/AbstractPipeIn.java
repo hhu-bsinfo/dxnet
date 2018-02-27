@@ -393,8 +393,7 @@ public abstract class AbstractPipeIn {
             // just drop the response because the data for it is already skipped
             if (request == null) {
                 // cleanup
-                updateBufferSlot(p_slot);
-                p_messageHeaderPool.returnHeader(p_header);
+                finishHeader(p_header, p_slot, p_messageHeaderPool);
 
                 return null;
             }
@@ -414,8 +413,7 @@ public abstract class AbstractPipeIn {
                             " bytes (including header). Check getPayloadLength method of message type " + message.getClass().getSimpleName());
         }
 
-        updateBufferSlot(p_slot);
-        p_messageHeaderPool.returnHeader(p_header);
+        finishHeader(p_header, p_slot, p_messageHeaderPool);
 
         if (message.isResponse()) {
             if (request == null) {
@@ -450,6 +448,21 @@ public abstract class AbstractPipeIn {
         } else {
             return message;
         }
+    }
+
+    /**
+     * Update metadata after processing message/header.
+     *
+     * @param p_header
+     *         the message header
+     * @param p_slot
+     *         the slot
+     * @param p_messageHeaderPool
+     *         the local message header pool
+     */
+    void finishHeader(final MessageHeader p_header, final int p_slot, final LocalMessageHeaderPool p_messageHeaderPool) {
+        updateBufferSlot(p_slot);
+        p_messageHeaderPool.returnHeader(p_header);
     }
 
     /**

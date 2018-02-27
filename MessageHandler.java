@@ -32,7 +32,7 @@ import de.hhu.bsinfo.dxutils.stats.StatisticsRecorderManager;
  *
  * @author Kevin Beineke, kevin.beineke@hhu.de, 19.07.2016
  */
-final class MessageHandler extends Thread {
+class MessageHandler extends Thread {
     private static final Logger LOGGER = LogManager.getFormatterLogger(MessageHandler.class.getSimpleName());
     private static final String RECORDER = "DXNet-MessageHandler";
     private static final StatisticsOperation SOP_CREATE = StatisticsRecorderManager.getOperation(RECORDER, "CreateAndImport");
@@ -42,9 +42,12 @@ final class MessageHandler extends Thread {
     private static final int THRESHOLD_TIME_CHECK = 100000;
 
     private final MessageReceiverStore m_messageReceivers;
-    private final MessageHeaderStore m_defaultMessages;
+    private final MessageHeaderStore m_messages;
     private final MessageImporterCollection m_importers;
     private final LocalMessageHeaderPool m_messageHeaderPool;
+
+    private byte m_specialReceiveType = -1;
+    private byte m_specialReceiveSubtype = -1;
 
     private volatile boolean m_overprovisioning;
     private volatile boolean m_shutdown;
@@ -60,7 +63,7 @@ final class MessageHandler extends Thread {
     MessageHandler(final MessageReceiverStore p_messageReceivers, final MessageHeaderStore p_queue, final MessageHeaderPool p_messageHeaderPool,
             final boolean p_overprovisioning) {
         m_messageReceivers = p_messageReceivers;
-        m_defaultMessages = p_queue;
+        m_messages = p_queue;
         m_importers = new MessageImporterCollection();
         m_messageHeaderPool = new LocalMessageHeaderPool(p_messageHeaderPool);
 
@@ -81,6 +84,25 @@ final class MessageHandler extends Thread {
         m_overprovisioning = true;
     }
 
+    /**
+     * Registers a special receive message type
+     *
+     * @param p_type
+     *         the unique type
+     * @param p_subtype
+     *         the unique subtype
+     */
+    void registerSpecialReceiveMessageType(final byte p_type, final byte p_subtype) {
+        if (m_specialReceiveType == -1 && m_specialReceiveSubtype == -1) {
+            m_specialReceiveType = p_type;
+            m_specialReceiveSubtype = p_subtype;
+        } else {
+            // #if LOGGER >= ERROR
+            LOGGER.error("Special receive type already registered: %d, %d!", p_type, p_subtype);
+            // #endif /* LOGGER >= ERROR */
+        }
+    }
+
     // Methods
     @Override
     public void run() {
@@ -89,9 +111,11 @@ final class MessageHandler extends Thread {
         MessageHeader header;
         Message message;
         MessageReceiver messageReceiver;
+        byte type;
+        byte subtype;
 
         while (!m_shutdown) {
-            header = m_defaultMessages.popMessageHeader();
+            header = m_messages.popMessageHeader();
 
             if (header == null) {
                 if (++counter >= THRESHOLD_TIME_CHECK) {
@@ -113,6 +137,37 @@ final class MessageHandler extends Thread {
             SOP_CREATE.enter();
             // #endif /* STATISTICS */
 
+            type = header.getType();
+            subtype = header.getSubtype();
+            if (type == m_specialReceiveType && subtype == m_specialReceiveSubtype) {
+                // This is a special case for DXRAM's logging to deserialize the message's chunks directly into the write buffer.
+                // Do not use this method without considering all other possibilities!
+                if (!header.isIncomplete()) {
+                    messageReceiver = m_messageReceivers.getReceiver(type, subtype);
+                    if (messageReceiver != null) {
+                        // #ifdef STATISTICS
+                        SOP_EXECUTE.enter();
+                        // #endif /* STATISTICS */
+
+                        ((SpecialMessageReceiver) messageReceiver).onIncomingHeader(header);
+                        header.finishHeader(m_messageHeaderPool);
+
+                        // #ifdef STATISTICS
+                        SOP_EXECUTE.leave();
+                        // #endif /* STATISTICS */
+                    } else {
+                        // #if LOGGER >= ERROR
+                        LOGGER.error("No message receiver was registered for %d, %d!", type, subtype);
+                        // #endif /* LOGGER >= ERROR */
+                    }
+                    continue;
+                } else {
+                    // If header is incomplete, the deserialization was already started and a message object
+                    // created by the MessageCreationCoordinator. In this case use the default way by continuing
+                    // the deserialization and finishing the message object.
+                }
+            }
+
             try {
                 message = header.createAndImportMessage(m_importers, m_messageHeaderPool);
             } catch (NetworkException e) {
@@ -125,7 +180,7 @@ final class MessageHandler extends Thread {
             // #endif /* STATISTICS */
 
             if (message != null) {
-                messageReceiver = m_messageReceivers.getReceiver(message.getType(), message.getSubtype());
+                messageReceiver = m_messageReceivers.getReceiver(type, subtype);
                 if (messageReceiver != null) {
                     // #ifdef STATISTICS
                     SOP_EXECUTE.enter();
@@ -138,7 +193,7 @@ final class MessageHandler extends Thread {
                     // #endif /* STATISTICS */
                 } else {
                     // #if LOGGER >= ERROR
-                    LOGGER.error("No message receiver was registered for %d, %d!", message.getType(), message.getSubtype());
+                    LOGGER.error("No message receiver was registered for %d, %d!", type, subtype);
                     // #endif /* LOGGER >= ERROR */
                 }
             }

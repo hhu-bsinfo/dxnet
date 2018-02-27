@@ -77,6 +77,18 @@ public final class MessageHandlers {
     }
 
     /**
+     * Registers a special receive message type
+     *
+     * @param p_type
+     *         the unique type
+     * @param p_subtype
+     *         the unique subtype
+     */
+    void registerSpecialReceiveMessageType(final byte p_type, final byte p_subtype) {
+        m_exclusiveMessageHandler.registerSpecialReceiveMessageType(p_type, p_subtype);
+    }
+
+    /**
      * Add a new message header. Pool locally first, write through when thread-local pool is full.
      *
      * @param p_header

@@ -77,6 +77,15 @@ public class MessageHeader implements Importable {
     }
 
     /**
+     * Returns the source node ID
+     *
+     * @return the source node ID
+     */
+    public short getSource() {
+        return m_pipeIn.getDestinationNodeID();
+    }
+
+    /**
      * Type of message (normal message or request)
      */
     byte getMessageType() {
@@ -95,6 +104,36 @@ public class MessageHeader implements Importable {
      */
     int getPayloadSize() {
         return m_payloadSize;
+    }
+
+    /**
+     * Was the deserialization started by the MessageCreationCoordinator because the message is split to more than one buffer?
+     *
+     * @return whether this message is split or not
+     */
+    public boolean isIncomplete() {
+        return !m_unfinishedOperation.isEmpty();
+    }
+
+    /**
+     * Initializes an external message importer.
+     *
+     * @param p_importer
+     *         the external importer
+     */
+    public void initExternalImporter(final MessageImporterDefault p_importer) {
+        p_importer.setBuffer(m_address, m_bytesAvailable, m_currentPosition);
+        p_importer.setNumberOfReadBytes(0);
+    }
+
+    /**
+     * Finish header if message was deserialized externally.
+     *
+     * @param p_messageHeaderPool
+     *         the local message header pool
+     */
+    public void finishHeader(final LocalMessageHeaderPool p_messageHeaderPool) {
+        m_pipeIn.finishHeader(this, m_slot, p_messageHeaderPool);
     }
 
     /**

@@ -232,6 +232,18 @@ public final class DXNet {
     }
 
     /**
+     * Registers a special receive message type
+     *
+     * @param p_type
+     *         the unique type
+     * @param p_subtype
+     *         the unique subtype
+     */
+    public void registerSpecialReceiveMessageType(final byte p_type, final byte p_subtype) {
+        m_messageHandlers.registerSpecialReceiveMessageType(p_type, p_subtype);
+    }
+
+    /**
      * Closes the network
      */
     public void close() {
