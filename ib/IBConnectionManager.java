@@ -604,6 +604,11 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         public void setNodeId(final short p_nodeId) {
             m_struct.putShort(IDX_NODE_ID, p_nodeId);
         }
+
+        @Override
+        protected void finalize() {
+            ByteBufferHelper.unwrap(m_struct);
+        }
     }
 
     private class PrevWorkPackageResults {
@@ -680,6 +685,11 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
 
             return tmp;
         }
+
+        @Override
+        protected void finalize() {
+            ByteBufferHelper.unwrap(m_struct);
+        }
     }
 
     private class CompletedWorkList {
@@ -742,6 +752,11 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
 
         public short getNodeId(final int p_idx) {
             return m_struct.getShort(IDX_NODE_IDS + p_idx * SIZE_FIELD_NODE_ID);
+        }
+
+        @Override
+        protected void finalize() {
+            ByteBufferHelper.unwrap(m_struct);
         }
     }
 
@@ -832,6 +847,11 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             }
 
             return tmp;
+        }
+
+        @Override
+        protected void finalize() {
+            ByteBufferHelper.unwrap(m_struct);
         }
     }
 }
