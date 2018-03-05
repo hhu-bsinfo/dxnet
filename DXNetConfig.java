@@ -26,6 +26,7 @@ import de.hhu.bsinfo.dxnet.ib.IBConfig;
 import de.hhu.bsinfo.dxnet.loopback.LoopbackConfig;
 import de.hhu.bsinfo.dxnet.nio.NIOConfig;
 import de.hhu.bsinfo.dxutils.unit.IPV4Unit;
+import de.hhu.bsinfo.dxutils.unit.TimeUnit;
 
 /**
  * Configuration object with settings for DXNet
@@ -40,6 +41,12 @@ public class DXNetConfig {
      */
     @Expose
     private String m_jniPath = "jni";
+
+    @Expose
+    private String m_perfTimerForceType = "auto";
+
+    @Expose
+    private TimeUnit m_statisticsManagerPrintInterval = new TimeUnit(0, TimeUnit.SEC);
 
     @Expose
     private ArrayList<NodeEntry> m_nodesConfig = new ArrayList<NodeEntry>() {
@@ -76,6 +83,21 @@ public class DXNetConfig {
      */
     String getJNIPath() {
         return m_jniPath;
+    }
+
+    /**
+     * Get the type of timer to force (if desired). Valid force types are:
+     * rdtscp, rdtsc, nanotime. Everything else defaults to auto select
+     */
+    String getPerfTimerForceType() {
+        return m_perfTimerForceType;
+    }
+
+    /**
+     * Get the interval for the statistics manager to print the current stats to stdout (0 to disable)
+     */
+    TimeUnit getStatisticsManagerPrintInterval() {
+        return m_statisticsManagerPrintInterval;
     }
 
     /**
@@ -134,9 +156,9 @@ public class DXNetConfig {
             return false;
         }
 
-        if (m_nodesConfig.size() < 2) {
+        if (m_nodesConfig.size() < 2 && !m_coreConfig.isDeviceLoopback()) {
             // #if LOGGER >= ERROR
-            LOGGER.error("Less than two nodes found in nodes config. At least two nodes required");
+            LOGGER.error("Less than two nodes found in nodes config. At least two nodes required (non loopback)");
             // #endif /* LOGGER >= ERROR */
             return false;
         }

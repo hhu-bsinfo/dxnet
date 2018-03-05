@@ -129,6 +129,7 @@ public final class DXNetMain implements MessageReceiver {
         System.out.println("Cwd: " + System.getProperty("user.dir"));
 
         processArgs(p_arguments);
+        commonSetup();
         setupNodeMappings();
         deviceLoadAndCheck();
 
@@ -446,6 +447,39 @@ public final class DXNetMain implements MessageReceiver {
         if (!ms_context.verify()) {
             System.exit(-1);
         }
+    }
+
+    private static void commonSetup() {
+        LOGGER.debug("Loading jni libs: %s", ms_context.getJNIPath());
+
+        File jniPath = new File(ms_context.getJNIPath());
+        File[] files = jniPath.listFiles();
+
+        if (files != null) {
+            for (File file : files) {
+                LOGGER.info("Loading jni file %s...", file);
+                System.load(file.getAbsolutePath());
+            }
+        }
+
+        switch (ms_context.getPerfTimerForceType().toLowerCase()) {
+            case "rdtscp":
+                PerfTimer.init(PerfTimer.Type.RDTSCP);
+                break;
+            case "rdtsc":
+                PerfTimer.init(PerfTimer.Type.RDTSC);
+                break;
+            case "nanotime":
+                PerfTimer.init(PerfTimer.Type.SYSTEM_NANO_TIME);
+                break;
+            default:
+                PerfTimer.init();
+                break;
+        }
+
+        LOGGER.info("Perf timer type initialized: %s", PerfTimer.getType());
+
+        StatisticsManager.get().setPrintInterval((int) ms_context.getStatisticsManagerPrintInterval().getMs());
     }
 
     private static void setupNodeMappings() {
