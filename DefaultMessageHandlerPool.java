@@ -20,8 +20,8 @@ import org.apache.logging.log4j.Logger;
 
 import de.hhu.bsinfo.dxnet.core.MessageHeader;
 import de.hhu.bsinfo.dxnet.core.MessageHeaderPool;
-import de.hhu.bsinfo.dxutils.stats.StatisticsOperation;
-import de.hhu.bsinfo.dxutils.stats.StatisticsRecorderManager;
+import de.hhu.bsinfo.dxutils.stats.StatisticsManager;
+import de.hhu.bsinfo.dxutils.stats.Time;
 
 /**
  * Distributes incoming default messages
@@ -30,9 +30,14 @@ import de.hhu.bsinfo.dxutils.stats.StatisticsRecorderManager;
  */
 final class DefaultMessageHandlerPool {
     private static final Logger LOGGER = LogManager.getFormatterLogger(DefaultMessageHandlerPool.class.getSimpleName());
-    private static final String RECORDER = "DXNet-MessageHeaderStore";
-    private static final StatisticsOperation SOP_PUSH = StatisticsRecorderManager.getOperation(RECORDER, "Push");
-    private static final StatisticsOperation SOP_WAIT = StatisticsRecorderManager.getOperation(RECORDER, "Wait");
+
+    private static final Time SOP_PUSH = new Time(DefaultMessageHandlerPool.class, "Push");
+    private static final Time SOP_WAIT = new Time(DefaultMessageHandlerPool.class, "Wait");
+
+    static {
+        StatisticsManager.get().registerOperation(DefaultMessageHandlerPool.class, SOP_PUSH);
+        StatisticsManager.get().registerOperation(DefaultMessageHandlerPool.class, SOP_WAIT);
+    }
 
     // must be a power of two to work with wrap around
     private static final int SIZE_MESSAGE_STORE = 16 * 1024;
@@ -47,7 +52,8 @@ final class DefaultMessageHandlerPool {
      * @param p_numMessageHandlerThreads
      *         the number of default message handler
      */
-    DefaultMessageHandlerPool(final MessageReceiverStore p_messageReceivers, final MessageHeaderPool p_messageHeaderPool, final int p_numMessageHandlerThreads,
+    DefaultMessageHandlerPool(final MessageReceiverStore p_messageReceivers,
+            final MessageHeaderPool p_messageHeaderPool, final int p_numMessageHandlerThreads,
             final boolean p_overprovisioning) {
         m_defaultMessageHeaders = new MessageHeaderStore(SIZE_MESSAGE_STORE);
 
@@ -58,7 +64,8 @@ final class DefaultMessageHandlerPool {
         MessageHandler t;
         m_threads = new MessageHandler[p_numMessageHandlerThreads];
         for (int i = 0; i < m_threads.length; i++) {
-            t = new MessageHandler(p_messageReceivers, m_defaultMessageHeaders, p_messageHeaderPool, p_overprovisioning);
+            t = new MessageHandler(p_messageReceivers, m_defaultMessageHeaders, p_messageHeaderPool,
+                    p_overprovisioning);
             t.setName("Network: MessageHandler " + (i + 1));
             m_threads[i] = t;
             t.start();
@@ -108,14 +115,14 @@ final class DefaultMessageHandlerPool {
      */
     void newHeaders(final MessageHeader[] p_headers, final int p_messages) {
         // #ifdef STATISTICS
-        SOP_PUSH.enter();
+        SOP_PUSH.start();
         // #endif /* STATISTICS */
 
         if (!m_defaultMessageHeaders.pushMessageHeaders(p_headers, p_messages)) {
             for (int i = 0; i < p_messages; i++) {
                 if (!m_defaultMessageHeaders.pushMessageHeader(p_headers[i])) {
                     // #ifdef STATISTICS
-                    SOP_WAIT.enter();
+                    SOP_WAIT.start();
                     // #endif /* STATISTICS */
 
                     while (!m_defaultMessageHeaders.pushMessageHeader(p_headers[i])) {
@@ -123,14 +130,14 @@ final class DefaultMessageHandlerPool {
                     }
 
                     // #ifdef STATISTICS
-                    SOP_WAIT.leave();
+                    SOP_WAIT.stop();
                     // #endif /* STATISTICS */
                 }
             }
         }
 
         // #ifdef STATISTICS
-        SOP_PUSH.leave();
+        SOP_PUSH.stop();
         // #endif /* STATISTICS */
     }
 }

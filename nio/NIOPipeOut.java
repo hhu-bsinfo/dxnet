@@ -25,8 +25,8 @@ import de.hhu.bsinfo.dxnet.core.AbstractFlowControl;
 import de.hhu.bsinfo.dxnet.core.AbstractPipeOut;
 import de.hhu.bsinfo.dxnet.core.NetworkException;
 import de.hhu.bsinfo.dxnet.core.OutgoingRingBuffer;
-import de.hhu.bsinfo.dxutils.stats.StatisticsOperation;
-import de.hhu.bsinfo.dxutils.stats.StatisticsRecorderManager;
+import de.hhu.bsinfo.dxutils.stats.StatisticsManager;
+import de.hhu.bsinfo.dxutils.stats.Time;
 
 /**
  * Enables communication with a remote node over a socket channel. The socket channel's write stream is used to send data and the read stream is for
@@ -37,9 +37,13 @@ import de.hhu.bsinfo.dxutils.stats.StatisticsRecorderManager;
 public class NIOPipeOut extends AbstractPipeOut {
     private static final Logger LOGGER = LogManager.getFormatterLogger(NIOPipeOut.class.getSimpleName());
 
-    private static final String RECORDER = "DXNet-NIO";
-    private static final StatisticsOperation SOP_WRITE = StatisticsRecorderManager.getOperation(RECORDER, "Write");
-    private static final StatisticsOperation SOP_READ_FLOW_CONTROL = StatisticsRecorderManager.getOperation(RECORDER, "ReadFC");
+    private static final Time SOP_WRITE = new Time(NIOPipeOut.class, "Write");
+    private static final Time SOP_READ_FLOW_CONTROL = new Time(NIOPipeOut.class, "ReadFC");
+
+    static {
+        StatisticsManager.get().registerOperation(NIOPipeOut.class, SOP_WRITE);
+        StatisticsManager.get().registerOperation(NIOPipeOut.class, SOP_READ_FLOW_CONTROL);
+    }
 
     private final int m_bufferSize;
 
@@ -70,8 +74,10 @@ public class NIOPipeOut extends AbstractPipeOut {
      * @param p_parentConnection
      *         the NIO connection this PipeOut belongs to.
      */
-    NIOPipeOut(final short p_ownNodeId, final short p_destinationNodeId, final int p_bufferSize, final AbstractFlowControl p_flowControl,
-            final OutgoingRingBuffer p_outgoingBuffer, final NIOSelector p_nioSelector, final NodeMap p_nodeMap, final NIOConnection p_parentConnection) {
+    NIOPipeOut(final short p_ownNodeId, final short p_destinationNodeId, final int p_bufferSize,
+            final AbstractFlowControl p_flowControl,
+            final OutgoingRingBuffer p_outgoingBuffer, final NIOSelector p_nioSelector, final NodeMap p_nodeMap,
+            final NIOConnection p_parentConnection) {
         super(p_ownNodeId, p_destinationNodeId, p_flowControl, p_outgoingBuffer);
 
         m_bufferSize = p_bufferSize;
@@ -103,7 +109,8 @@ public class NIOPipeOut extends AbstractPipeOut {
             int sendBufferSize = m_outgoingChannel.socket().getSendBufferSize();
             if (sendBufferSize < m_bufferSize) {
                 // #if LOGGER >= WARN
-                LOGGER.warn("Send buffer size could not be set properly. Check OS settings! Requested: %d, actual: %d", m_bufferSize, sendBufferSize);
+                LOGGER.warn("Send buffer size could not be set properly. Check OS settings! Requested: %d, actual: %d",
+                        m_bufferSize, sendBufferSize);
                 // #endif /* LOGGER >= WARN */
             }
 
@@ -158,7 +165,7 @@ public class NIOPipeOut extends AbstractPipeOut {
         ByteBuffer buffer;
 
         // #ifdef STATISTICS
-        SOP_WRITE.enter();
+        SOP_WRITE.start();
         // #endif /* STATISTICS */
 
         buffer = ((NIOOutgoingRingBuffer) getOutgoingQueue()).pop();
@@ -177,7 +184,7 @@ public class NIOPipeOut extends AbstractPipeOut {
         }
 
         // #ifdef STATISTICS
-        SOP_WRITE.leave();
+        SOP_WRITE.stop();
         // #endif /* STATISTICS */
 
         return ret;
@@ -190,7 +197,7 @@ public class NIOPipeOut extends AbstractPipeOut {
         int readBytes;
 
         // #ifdef STATISTICS
-        SOP_READ_FLOW_CONTROL.enter();
+        SOP_READ_FLOW_CONTROL.start();
         // #endif /* STATISTICS */
 
         // This is a flow control byte
@@ -206,7 +213,7 @@ public class NIOPipeOut extends AbstractPipeOut {
                 // Channel was closed
 
                 // #ifdef STATISTICS
-                SOP_READ_FLOW_CONTROL.leave();
+                SOP_READ_FLOW_CONTROL.stop();
                 // #endif /* STATISTICS */
 
                 return;
@@ -216,7 +223,7 @@ public class NIOPipeOut extends AbstractPipeOut {
         getFlowControl().handleFlowControlData(m_flowControlByte.get(0));
 
         // #ifdef STATISTICS
-        SOP_READ_FLOW_CONTROL.leave();
+        SOP_READ_FLOW_CONTROL.stop();
         // #endif /* STATISTICS */
     }
 }

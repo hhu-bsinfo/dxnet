@@ -37,8 +37,8 @@ import de.hhu.bsinfo.dxnet.core.RequestMap;
 import de.hhu.bsinfo.dxnet.core.StaticExporterPool;
 import de.hhu.bsinfo.dxutils.ByteBufferHelper;
 import de.hhu.bsinfo.dxutils.NodeID;
-import de.hhu.bsinfo.dxutils.stats.StatisticsOperation;
-import de.hhu.bsinfo.dxutils.stats.StatisticsRecorderManager;
+import de.hhu.bsinfo.dxutils.stats.StatisticsManager;
+import de.hhu.bsinfo.dxutils.stats.Time;
 
 /**
  * Connection manager for infiniband (note: this is the main class for the IB subsystem in the java space)
@@ -48,7 +48,11 @@ import de.hhu.bsinfo.dxutils.stats.StatisticsRecorderManager;
 public class IBConnectionManager extends AbstractConnectionManager implements MsgrcJNIBinding.CallbackHandler {
     private static final Logger LOGGER = LogManager.getFormatterLogger(IBConnectionManager.class.getSimpleName());
 
-    private static final StatisticsOperation SOP_SEND_NEXT_DATA = StatisticsRecorderManager.getOperation("DXNet-IBConnectionManager", "SendNextData");
+    private static final Time SOP_SEND_NEXT_DATA = new Time(IBConnectionManager.class, "NextDataToSend");
+
+    static {
+        StatisticsManager.get().registerOperation(IBConnectionManager.class, SOP_SEND_NEXT_DATA);
+    }
 
     private final CoreConfig m_coreConfig;
     private final IBConfig m_config;
@@ -89,8 +93,10 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
      * @param p_messageHandlers
      *         Message handlers instance
      */
-    public IBConnectionManager(final CoreConfig p_coreConfig, final IBConfig p_config, final NodeMap p_nodeMap, final MessageDirectory p_messageDirectory,
-            final RequestMap p_requestMap, final IncomingBufferQueue p_incomingBufferQueue, final LocalMessageHeaderPool p_messageHeaderPool,
+    public IBConnectionManager(final CoreConfig p_coreConfig, final IBConfig p_config, final NodeMap p_nodeMap,
+            final MessageDirectory p_messageDirectory,
+            final RequestMap p_requestMap, final IncomingBufferQueue p_incomingBufferQueue,
+            final LocalMessageHeaderPool p_messageHeaderPool,
             final MessageHandlers p_messageHandlers, final boolean p_overprovisioning) {
         super(p_config.getMaxConnections(), p_overprovisioning);
 
@@ -121,10 +127,14 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
     public void init() {
 
         // can't call this in the constructor because it relies on the implemented interfaces for callbacks
-        if (!MsgrcJNIBinding.init(this, m_config.getPinSendRecvThreads(), m_config.getEnableSignalHandler(), m_config.getStatisticsThreadPrintIntervalMs(),
-                m_coreConfig.getOwnNodeId(), (int) m_config.getConnectionCreationTimeout().getMs(), m_config.getMaxConnections(), m_config.getSendQueueSize(),
-                m_config.getSharedReceiveQueueSize(), m_config.getSharedSendCompletionQueueSize(), m_config.getSharedReceiveCompletionQueueSize(),
-                (int) m_config.getOugoingRingBufferSize().getBytes(), m_config.getIncomingBufferPoolTotalSize().getBytes(),
+        if (!MsgrcJNIBinding.init(this, m_config.getPinSendRecvThreads(), m_config.getEnableSignalHandler(),
+                m_config.getStatisticsThreadPrintIntervalMs(),
+                m_coreConfig.getOwnNodeId(), (int) m_config.getConnectionCreationTimeout().getMs(),
+                m_config.getMaxConnections(), m_config.getSendQueueSize(),
+                m_config.getSharedReceiveQueueSize(), m_config.getSharedSendCompletionQueueSize(),
+                m_config.getSharedReceiveCompletionQueueSize(),
+                (int) m_config.getOugoingRingBufferSize().getBytes(),
+                m_config.getIncomingBufferPoolTotalSize().getBytes(),
                 (int) m_config.getIncomingBufferSize().getBytes())) {
 
             // #if LOGGER >= DEBUG
@@ -146,7 +156,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
 
             if (!"/255.255.255.255".equals(addr.getAddress().toString())) {
                 byte[] bytes = addr.getAddress().getAddress();
-                int val = (int) (((long) bytes[0] & 0xFF) << 24 | ((long) bytes[1] & 0xFF) << 16 | ((long) bytes[2] & 0xFF) << 8 | bytes[3] & 0xFF);
+                int val = (int) (((long) bytes[0] & 0xFF) << 24 | ((long) bytes[1] & 0xFF) << 16 |
+                        ((long) bytes[2] & 0xFF) << 8 | bytes[3] & 0xFF);
                 MsgrcJNIBinding.addNode(val);
             }
         }
@@ -164,7 +175,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
     }
 
     @Override
-    protected AbstractConnection createConnection(final short p_destination, final AbstractConnection p_existingConnection) throws NetworkException {
+    protected AbstractConnection createConnection(final short p_destination,
+            final AbstractConnection p_existingConnection) throws NetworkException {
         IBConnection connection;
 
         if (!m_nodeDiscovered[p_destination & 0xFFFF]) {
@@ -185,7 +197,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         if (res != 0) {
             if (res == 1) {
                 // #if LOGGER >= DEBUG
-                LOGGER.debug("Connection creation (0x%X) time-out. Interval %s ms might be to small", p_destination, m_config.getConnectionCreationTimeout());
+                LOGGER.debug("Connection creation (0x%X) time-out. Interval %s ms might be to small", p_destination,
+                        m_config.getConnectionCreationTimeout());
                 // #endif /* LOGGER >= DEBUG */
 
                 throw new NetworkException("Connection creation timeout occurred");
@@ -209,8 +222,10 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         LOGGER.debug("Node connected 0x%X, ORB native addr 0x%X", p_destination, sendBufferAddr);
         // #endif /* LOGGER >= DEBUG */
 
-        connection = new IBConnection(m_coreConfig.getOwnNodeId(), p_destination, sendBufferAddr, (int) m_config.getOugoingRingBufferSize().getBytes(),
-                (int) m_config.getFlowControlWindow().getBytes(), m_config.getFlowControlWindowThreshold(), m_messageHeaderPool, m_messageDirectory,
+        connection = new IBConnection(m_coreConfig.getOwnNodeId(), p_destination, sendBufferAddr,
+                (int) m_config.getOugoingRingBufferSize().getBytes(),
+                (int) m_config.getFlowControlWindow().getBytes(), m_config.getFlowControlWindowThreshold(),
+                m_messageHeaderPool, m_messageDirectory,
                 m_requestMap, m_exporterPool, m_messageHandlers, m_writeInterestManager);
 
         connection.setPipeInConnected(true);
@@ -295,9 +310,11 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                 int dataLength = m_receivedPackage.getDataLength(i);
 
                 // sanity checks
-                if (sourceNodeId == NodeID.INVALID_ID || fcData == 0 && (ptrDataHandle == 0 || ptrData == 0 || dataLength == 0)) {
+                if (sourceNodeId == NodeID.INVALID_ID ||
+                        fcData == 0 && (ptrDataHandle == 0 || ptrData == 0 || dataLength == 0)) {
                     // #if LOGGER >= ERROR
-                    LOGGER.error("Illegal state, invalid receive package: 0x%X %d 0x%X 0x%X %d", sourceNodeId, fcData, ptrDataHandle, ptrData, dataLength);
+                    LOGGER.error("Illegal state, invalid receive package: 0x%X %d 0x%X 0x%X %d", sourceNodeId, fcData,
+                            ptrDataHandle, ptrData, dataLength);
                     // #endif /* LOGGER >= ERROR */
 
                     // skip package
@@ -338,18 +355,16 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
     @Override
     public void getNextDataToSend(final long p_nextWorkPackage, final long p_prevResults, final long p_completionList) {
         try {
-            // FIXME see fixme above for leave
             // #ifdef STATISTICS
-            //SOP_SEND_NEXT_DATA.enter();
+            SOP_SEND_NEXT_DATA.start();
             // #endif /* STATISTICS */
 
             processPrevResults(p_prevResults);
             processSendCompletions(p_completionList);
             prepareNextDataToSend(p_nextWorkPackage);
 
-            // FIXME getting a nullptr exception here when turning on exception checking on env return in native handler
             // #ifdef STATISTICS
-            //SOP_SEND_NEXT_DATA.leave();
+            SOP_SEND_NEXT_DATA.stop();
             // #endif /* STATISTICS */
         } catch (Exception e) {
             // print error because we disabled exception handling when executing jni calls
@@ -510,7 +525,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                 m_nextWorkPackage.setPosFrontRel(relPosFrontRel);
 
                 // #if LOGGER >= TRACE
-                LOGGER.trace("Next data write on node 0x%X, relPosBackRel %d, relPosFrontRel %d", nodeId, relPosBackRel, relPosFrontRel);
+                LOGGER.trace("Next data write on node 0x%X, relPosBackRel %d, relPosFrontRel %d", nodeId, relPosBackRel,
+                        relPosFrontRel);
                 // #endif /* LOGGER >= TRACE */
 
                 nothingToSend = false;
@@ -549,7 +565,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         private static final int SIZE_FIELD_FLOW_CONTROL_DATA = Byte.BYTES;
         private static final int SIZE_FIELD_NODE_ID = Short.BYTES;
 
-        private static final int SIZE = SIZE_FIELD_POS_BACK_REL + SIZE_FIELD_POS_FRONT_REL + SIZE_FIELD_FLOW_CONTROL_DATA + SIZE_FIELD_NODE_ID;
+        private static final int SIZE =
+                SIZE_FIELD_POS_BACK_REL + SIZE_FIELD_POS_FRONT_REL + SIZE_FIELD_FLOW_CONTROL_DATA + SIZE_FIELD_NODE_ID;
 
         private static final int IDX_POS_BACK_REL = 0;
         private static final int IDX_POS_FRONT_REL = IDX_POS_BACK_REL + SIZE_FIELD_POS_BACK_REL;
@@ -619,7 +636,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         private static final int SIZE_FIELD_FC_DATA_NOT_POSTED = Byte.BYTES;
 
         private static final int SIZE =
-                SIZE_FIELD_NODE_ID + SIZE_FIELD_NUM_BYTES_POSTED + SIZE_FIELD_NUM_BYTES_NOT_POSTED + SIZE_FIELD_FC_DATA_POSTED + SIZE_FIELD_FC_DATA_NOT_POSTED;
+                SIZE_FIELD_NODE_ID + SIZE_FIELD_NUM_BYTES_POSTED + SIZE_FIELD_NUM_BYTES_NOT_POSTED +
+                        SIZE_FIELD_FC_DATA_POSTED + SIZE_FIELD_FC_DATA_NOT_POSTED;
 
         private static final int IDX_NODE_ID = 0;
         private static final int IDX_NUM_BYTES_POSTED = IDX_NODE_ID + SIZE_FIELD_NODE_ID;
@@ -720,7 +738,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
 
         public CompletedWorkList(final long p_addr, final int p_numNodes) {
             SIZE_FIELD_NODE_IDS_ARRAY = SIZE_FIELD_NODE_ID * p_numNodes;
-            SIZE = SIZE_FIELD_NUM_NODES + SIZE_FIELD_NUM_BYTES_WRITTEN_ARRAY + SIZE_FIELD_FC_DATA_WRITTEN_ARRAY + SIZE_FIELD_NODE_IDS_ARRAY;
+            SIZE = SIZE_FIELD_NUM_NODES + SIZE_FIELD_NUM_BYTES_WRITTEN_ARRAY + SIZE_FIELD_FC_DATA_WRITTEN_ARRAY +
+                    SIZE_FIELD_NODE_IDS_ARRAY;
 
             m_struct = ByteBufferHelper.wrap(p_addr, SIZE);
             m_struct.order(ByteOrder.nativeOrder());
@@ -771,7 +790,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         private static final int SIZE_FIELD_DATA_LENGTH = Integer.BYTES;
 
         private static final int SIZE_ENTRY_STRUCT =
-                SIZE_FIELD_ENTRY_SOURCE_NODE_ID + SIZE_FIELD_ENTRY_FC_DATA + SIZE_FIELD_ENTRY_DATA + SIZE_FIELD_ENTRY_DATA_RAW + SIZE_FIELD_DATA_LENGTH;
+                SIZE_FIELD_ENTRY_SOURCE_NODE_ID + SIZE_FIELD_ENTRY_FC_DATA + SIZE_FIELD_ENTRY_DATA +
+                        SIZE_FIELD_ENTRY_DATA_RAW + SIZE_FIELD_DATA_LENGTH;
 
         // depends on the shared recv queue size, must be initializated in the constructor
         private final int SIZE;

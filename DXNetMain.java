@@ -57,10 +57,10 @@ import de.hhu.bsinfo.dxutils.RandomUtils;
 import de.hhu.bsinfo.dxutils.StorageUnitGsonSerializer;
 import de.hhu.bsinfo.dxutils.TimeUnitGsonSerializer;
 import de.hhu.bsinfo.dxutils.serialization.ObjectSizeUtil;
-import de.hhu.bsinfo.dxutils.stats.ExportStatistics;
-import de.hhu.bsinfo.dxutils.stats.PrintStatistics;
+import de.hhu.bsinfo.dxutils.stats.StatisticsManager;
 import de.hhu.bsinfo.dxutils.unit.StorageUnit;
 import de.hhu.bsinfo.dxutils.unit.TimeUnit;
+import de.hhu.bsinfo.pt.PerfTimer;
 
 /**
  * DXNet benchmark test application. Use this to run various types of
@@ -214,9 +214,8 @@ public final class DXNetMain implements MessageReceiver {
             }
         }
 
-        PrintStatistics.printStatisticsToOutput(System.out);
-        ExportStatistics.writeStatisticsTablesToStdout();
-        printResults("SEND", timeEndSender - ms_timeStartSend, minRttNs, maxRttNs, ms_sendCount * ms_targetNodeIds.size());
+        printResults("SEND", timeEndSender - ms_timeStartSend, minRttNs, maxRttNs,
+                ms_sendCount * ms_targetNodeIds.size());
         printResults("RECV", ms_timeEndReceiver - ms_timeStartRecv, 0, 0, ms_recvCount);
 
         try {
@@ -226,6 +225,10 @@ public final class DXNetMain implements MessageReceiver {
         }
 
         ms_dxnet.close();
+
+        StatisticsManager.get().stopPeriodicPrinting();
+        StatisticsManager.get().printStatistics(System.out);
+        StatisticsManager.get().printStatisticTables(System.out);
 
         System.exit(0);
     }
@@ -264,7 +267,8 @@ public final class DXNetMain implements MessageReceiver {
                             System.out.printf("Send start message to %X...\n", targetNodeId);
                             ms_dxnet.sendMessage(start);
                         } catch (NetworkException e) {
-                            System.out.printf("ERROR sending start message to node %X: %s\n", targetNodeId, e.getMessage());
+                            System.out.printf("ERROR sending start message to node %X: %s\n", targetNodeId,
+                                    e.getMessage());
                         }
                     }
 
@@ -356,8 +360,9 @@ public final class DXNetMain implements MessageReceiver {
 
         if (p_args.length < 7) {
             System.out.println("To execute benchmarks with a valid configuration file:");
-            System.out.println("Args: <config_file> <workload> <send count> <recv count> <size (full message: header + payload)> <send/app threads> <node id>" +
-                    " [send target node ids ...]");
+            System.out.println(
+                    "Args: <config_file> <workload> <send count> <recv count> <size (full message: header + payload)> <send/app threads> <node id>" +
+                            " [send target node ids ...]");
             System.exit(-1);
         }
 
@@ -383,8 +388,10 @@ public final class DXNetMain implements MessageReceiver {
             targets.append(" ");
         }
 
-        System.out.printf("Parameters: workload %d, send count %d (per target), recv count %d (all), size %d (payload size %d), threads %d, own node id 0x%X," +
-                " targets %s\n", ms_workload, ms_sendCount, ms_recvCount, ms_size, ms_messagePayloadSize, ms_threads, ms_ownNodeId, targets.toString());
+        System.out.printf(
+                "Parameters: workload %d, send count %d (per target), recv count %d (all), size %d (payload size %d), threads %d, own node id 0x%X," +
+                        " targets %s\n", ms_workload, ms_sendCount, ms_recvCount, ms_size, ms_messagePayloadSize,
+                ms_threads, ms_ownNodeId, targets.toString());
     }
 
     private static void loadConfiguration(final String p_configPath) {
@@ -392,8 +399,10 @@ public final class DXNetMain implements MessageReceiver {
         ms_context = new DXNetConfig();
         File file = new File(p_configPath);
 
-        Gson gson = new GsonBuilder().setPrettyPrinting().excludeFieldsWithoutExposeAnnotation().registerTypeAdapter(StorageUnit.class,
-                new StorageUnitGsonSerializer()).registerTypeAdapter(TimeUnit.class, new TimeUnitGsonSerializer()).create();
+        Gson gson = new GsonBuilder().setPrettyPrinting().excludeFieldsWithoutExposeAnnotation().registerTypeAdapter(
+                StorageUnit.class,
+                new StorageUnitGsonSerializer()).registerTypeAdapter(TimeUnit.class, new TimeUnitGsonSerializer())
+                .create();
 
         if (!file.exists()) {
             try {
@@ -495,7 +504,8 @@ public final class DXNetMain implements MessageReceiver {
             }
 
             ms_totalNumNodes++;
-            ms_nodeMap.addNode(entry.getNodeId(), new InetSocketAddress(entry.getAddress().getIP(), entry.getAddress().getPort()));
+            ms_nodeMap.addNode(entry.getNodeId(),
+                    new InetSocketAddress(entry.getAddress().getIP(), entry.getAddress().getPort()));
         }
 
         if (!found) {
@@ -515,7 +525,8 @@ public final class DXNetMain implements MessageReceiver {
             }
 
             if (!found) {
-                LOGGER.warn("Could not find node mapping for target node id: 0x%X (%d), target node ignored", targetNodeId, targetNodeId);
+                LOGGER.warn("Could not find node mapping for target node id: 0x%X (%d), target node ignored",
+                        targetNodeId, targetNodeId);
                 ms_targetNodeIds.remove(targetNodeId);
             }
         }
@@ -531,21 +542,12 @@ public final class DXNetMain implements MessageReceiver {
             ethernetCheckSocketBound();
         } else if ("Infiniband".equals(ms_context.getCoreConfig().getDevice())) {
             LOGGER.debug("Loading infiniband...");
-
-            File jniPath = new File(ms_context.getJNIPath());
-            File[] files = jniPath.listFiles();
-
-            if (files != null) {
-                for (File file : files) {
-                    LOGGER.debug("Loading jni file %s...", file);
-                    System.load(file.getAbsolutePath());
-                }
-            }
         } else if ("Loopback".equals(ms_context.getCoreConfig().getDevice())) {
             LOGGER.debug("Loading loopback...");
         } else {
             // #if LOGGER >= ERROR
-            LOGGER.error("Unknown device %s. Valid options: Ethernet, Infiniband or Loopback.", ms_context.getCoreConfig().getDevice());
+            LOGGER.error("Unknown device %s. Valid options: Ethernet, Infiniband or Loopback.",
+                    ms_context.getCoreConfig().getDevice());
             // #endif /* LOGGER >= ERROR */
             System.exit(-1);
         }
@@ -565,7 +567,8 @@ public final class DXNetMain implements MessageReceiver {
                 while (addresses.hasMoreElements()) {
                     InetAddress currentAddress = addresses.nextElement();
                     if (myAddress.equals(currentAddress)) {
-                        System.out.printf("%s is bound to %s\n", myAddress.getHostAddress(), currentNetworkInterface.getDisplayName());
+                        System.out.printf("%s is bound to %s\n", myAddress.getHostAddress(),
+                                currentNetworkInterface.getDisplayName());
                         found = true;
                         break outerloop;
                     }
@@ -582,20 +585,27 @@ public final class DXNetMain implements MessageReceiver {
     }
 
     private static void setupDXNet() {
-        ms_dxnet = new DXNet(ms_context.getCoreConfig(), ms_context.getNIOConfig(), ms_context.getIBConfig(), ms_context.getLoopbackConfig(), ms_nodeMap);
+        ms_dxnet = new DXNet(ms_context.getCoreConfig(), ms_context.getNIOConfig(), ms_context.getIBConfig(),
+                ms_context.getLoopbackConfig(), ms_nodeMap);
 
         // register coordination messages
-        ms_dxnet.registerMessageType(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_LOGIN_REQUEST, LoginRequest.class);
-        ms_dxnet.registerMessageType(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_LOGIN_RESPONSE, LoginResponse.class);
-        ms_dxnet.registerMessageType(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_START_MESSAGE, StartMessage.class);
+        ms_dxnet.registerMessageType(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_LOGIN_REQUEST,
+                LoginRequest.class);
+        ms_dxnet.registerMessageType(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_LOGIN_RESPONSE,
+                LoginResponse.class);
+        ms_dxnet.registerMessageType(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_START_MESSAGE,
+                StartMessage.class);
         ms_dxnet.register(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_LOGIN_REQUEST, new DXNetMain());
         ms_dxnet.register(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_LOGIN_RESPONSE, new DXNetMain());
         ms_dxnet.register(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_START_MESSAGE, new DXNetMain());
 
         // Register benchmark message in DXNet
-        ms_dxnet.registerMessageType(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_MESSAGE, BenchmarkMessage.class);
-        ms_dxnet.registerMessageType(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_REQUEST, BenchmarkRequest.class);
-        ms_dxnet.registerMessageType(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_RESPONSE, BenchmarkResponse.class);
+        ms_dxnet.registerMessageType(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_MESSAGE,
+                BenchmarkMessage.class);
+        ms_dxnet.registerMessageType(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_REQUEST,
+                BenchmarkRequest.class);
+        ms_dxnet.registerMessageType(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_RESPONSE,
+                BenchmarkResponse.class);
         ms_dxnet.register(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_MESSAGE, new DXNetMain());
         ms_dxnet.register(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_REQUEST, new DXNetMain());
         ms_dxnet.register(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_RESPONSE, new DXNetMain());
@@ -638,26 +648,39 @@ public final class DXNetMain implements MessageReceiver {
         }
     }
 
-    private static void printResults(final String p_name, final long p_timeDiffNs, final long p_minRttNs, final long p_maxRttNs, final long p_totalMessages) {
+    private static void printResults(final String p_name, final long p_timeDiffNs, final long p_minRttNs,
+            final long p_maxRttNs, final long p_totalMessages) {
         if (p_minRttNs != 0 && p_maxRttNs != 0) {
             System.out.printf(
                     "[%s RESULTS]\n[%s WORKLOAD] %d\n[%s MSG SIZE] %d\n[%s MSG PAYLOAD SIZE] %d\n[%s THREADS] %d\n[%s MSG HANDLERS] %d\n[%s RUNTIME] %d ms\n" +
                             "[%s TIME PER MESSAGE] %d ns\n[%s THROUGHPUT PAYLOAD] %f MB/s\n[%s THROUGHPUT] %f MB/s\n[RTT REQ-RESP AVG] %d us\n" +
-                            "[RTT REQ-RESP MIN] %d us\n[RTT REQ-RESP MAX] %d us\n[%s TIMEOUTS REQ-RESP] %d\n", p_name, p_name, ms_workload, p_name, ms_size,
-                    p_name, ms_messagePayloadSize, p_name, ms_threads, p_name, ms_context.getCoreConfig().getNumMessageHandlerThreads(), p_name,
-                    p_timeDiffNs / 1000 / 1000, p_name, p_totalMessages != 0 ? p_timeDiffNs / p_totalMessages : 0, p_name,
-                    p_totalMessages != 0 ? (double) p_totalMessages * ms_messagePayloadSize / 1024 / 1024 / ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0,
-                    p_name, p_totalMessages != 0 ? (double) p_totalMessages * ms_size / 1024 / 1024 / ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0,
-                    ms_reqRespRTTSumNs.get() / ms_messagesSent.get() / 1000, p_minRttNs / 1000, p_maxRttNs / 1000, p_name, ms_reqRespTimeouts.get());
+                            "[RTT REQ-RESP MIN] %d us\n[RTT REQ-RESP MAX] %d us\n[%s TIMEOUTS REQ-RESP] %d\n", p_name,
+                    p_name, ms_workload, p_name, ms_size,
+                    p_name, ms_messagePayloadSize, p_name, ms_threads, p_name,
+                    ms_context.getCoreConfig().getNumMessageHandlerThreads(), p_name,
+                    p_timeDiffNs / 1000 / 1000, p_name, p_totalMessages != 0 ? p_timeDiffNs / p_totalMessages : 0,
+                    p_name,
+                    p_totalMessages != 0 ? (double) p_totalMessages * ms_messagePayloadSize / 1024 / 1024 /
+                            ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0,
+                    p_name, p_totalMessages != 0 ? (double) p_totalMessages * ms_size / 1024 / 1024 /
+                            ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0,
+                    ms_reqRespRTTSumNs.get() / ms_messagesSent.get() / 1000, p_minRttNs / 1000, p_maxRttNs / 1000,
+                    p_name, ms_reqRespTimeouts.get());
         } else {
             System.out.printf(
-                    "[%s RESULTS]\n" + "[%s WORKLOAD] %d\n" + "[%s MSG SIZE] %d\n[%s MSG PAYLOAD SIZE] %d\n" + "[%s THREADS] %d\n" + "[%s MSG HANDLERS] %d\n" +
-                            "[%s RUNTIME] %d ms\n" + "[%s TIME PER MESSAGE] %d ns\n" + "[%s THROUGHPUT PAYLOAD] %f MB/s\n" + "[%s THROUGHPUT] %f MB/s\n",
-                    p_name, p_name, ms_workload, p_name, ms_size, p_name, ms_messagePayloadSize, p_name, ms_threads, p_name,
-                    ms_context.getCoreConfig().getNumMessageHandlerThreads(), p_name, p_timeDiffNs / 1000 / 1000, p_name,
+                    "[%s RESULTS]\n" + "[%s WORKLOAD] %d\n" + "[%s MSG SIZE] %d\n[%s MSG PAYLOAD SIZE] %d\n" +
+                            "[%s THREADS] %d\n" + "[%s MSG HANDLERS] %d\n" +
+                            "[%s RUNTIME] %d ms\n" + "[%s TIME PER MESSAGE] %d ns\n" +
+                            "[%s THROUGHPUT PAYLOAD] %f MB/s\n" + "[%s THROUGHPUT] %f MB/s\n",
+                    p_name, p_name, ms_workload, p_name, ms_size, p_name, ms_messagePayloadSize, p_name, ms_threads,
+                    p_name,
+                    ms_context.getCoreConfig().getNumMessageHandlerThreads(), p_name, p_timeDiffNs / 1000 / 1000,
+                    p_name,
                     p_totalMessages != 0 ? p_timeDiffNs / p_totalMessages : p_totalMessages, p_name,
-                    p_totalMessages != 0 ? (double) p_totalMessages * ms_messagePayloadSize / 1024 / 1024 / ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0,
-                    p_name, p_totalMessages != 0 ? (double) p_totalMessages * ms_size / 1024 / 1024 / ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0);
+                    p_totalMessages != 0 ? (double) p_totalMessages * ms_messagePayloadSize / 1024 / 1024 /
+                            ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0,
+                    p_name, p_totalMessages != 0 ? (double) p_totalMessages * ms_size / 1024 / 1024 /
+                            ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0);
         }
     }
 
@@ -907,13 +930,18 @@ public final class DXNetMain implements MessageReceiver {
                 long time = System.nanoTime();
                 long timeDiffSend = ms_timeStartSend != 0 ? time - ms_timeStartSend : 1;
                 long timeDiffRecv = ms_timeStartRecv != 0 ? time - ms_timeStartRecv : 1;
-                System.out.printf("[PROGRESS] %d sec: Sent %d%% (%d), Recv %d%% (%d), Sent-Recv-Diff %d, TX %f, RX %f, TXP %f, RXP %f, ReqRespTimeouts: %d\n",
-                        timeDiffSend / 1000 / 1000 / 1000, ms_sendCount != 0 ? (int) ((float) messagesSent / ms_sendCount / ms_targetNodeIds.size() * 100) : 0,
-                        messagesSent, ms_recvCount != 0 ? (int) ((float) messagesRecv / ms_recvCount * 100) : 0, messagesRecv, messagesSent - messagesRecv,
+                System.out.printf(
+                        "[PROGRESS] %d sec: Sent %d%% (%d), Recv %d%% (%d), Sent-Recv-Diff %d, TX %f, RX %f, TXP %f, RXP %f, ReqRespTimeouts: %d\n",
+                        timeDiffSend / 1000 / 1000 / 1000, ms_sendCount != 0 ?
+                                (int) ((float) messagesSent / ms_sendCount / ms_targetNodeIds.size() * 100) : 0,
+                        messagesSent, ms_recvCount != 0 ? (int) ((float) messagesRecv / ms_recvCount * 100) : 0,
+                        messagesRecv, messagesSent - messagesRecv,
                         (double) messagesSent * ms_size / 1024 / 1024 / ((double) timeDiffSend / 1000 / 1000 / 1000),
                         (double) messagesRecv * ms_size / 1024 / 1024 / ((double) timeDiffRecv / 1000 / 1000 / 1000),
-                        (double) messagesSent * ms_messagePayloadSize / 1024 / 1024 / ((double) timeDiffSend / 1000 / 1000 / 1000),
-                        (double) messagesRecv * ms_messagePayloadSize / 1024 / 1024 / ((double) timeDiffRecv / 1000 / 1000 / 1000), ms_reqRespTimeouts.get());
+                        (double) messagesSent * ms_messagePayloadSize / 1024 / 1024 /
+                                ((double) timeDiffSend / 1000 / 1000 / 1000),
+                        (double) messagesRecv * ms_messagePayloadSize / 1024 / 1024 /
+                                ((double) timeDiffRecv / 1000 / 1000 / 1000), ms_reqRespTimeouts.get());
             }
         }
     }

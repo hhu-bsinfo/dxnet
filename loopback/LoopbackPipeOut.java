@@ -49,7 +49,7 @@ public class LoopbackPipeOut extends AbstractPipeOut {
         return true;
     }
 
-    boolean write() throws IOException {
+    boolean write() {
         ByteBuffer buffer;
         buffer = ((LoopbackOutgoingRingBuffer) getOutgoingQueue()).pop();
 

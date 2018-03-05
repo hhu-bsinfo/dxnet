@@ -19,8 +19,8 @@ import java.util.concurrent.locks.LockSupport;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import de.hhu.bsinfo.dxutils.stats.StatisticsOperation;
-import de.hhu.bsinfo.dxutils.stats.StatisticsRecorderManager;
+import de.hhu.bsinfo.dxutils.stats.StatisticsManager;
+import de.hhu.bsinfo.dxutils.stats.TimePool;
 
 /**
  * Software flow control. Avoids that the sender is flooding the receiver if the receiver can't
@@ -32,7 +32,12 @@ import de.hhu.bsinfo.dxutils.stats.StatisticsRecorderManager;
  */
 public abstract class AbstractFlowControl {
     private static final Logger LOGGER = LogManager.getFormatterLogger(AbstractFlowControl.class.getSimpleName());
-    private static final StatisticsOperation SOP_WAIT = StatisticsRecorderManager.getOperation("DXNet-FlowControl", "Wait");
+
+    private static final TimePool SOP_WAIT = new TimePool(AbstractFlowControl.class, "Wait");
+
+    static {
+        StatisticsManager.get().registerOperation(AbstractFlowControl.class, SOP_WAIT);
+    }
 
     protected final short m_destinationNodeID;
 
@@ -53,7 +58,8 @@ public abstract class AbstractFlowControl {
      * @param p_flowControlWindowThreshold
      *         Threshold parameter to adjust the FC window to control when a flow control message is sent
      */
-    protected AbstractFlowControl(final short p_destinationNodeID, final int p_flowControlWindowSize, final float p_flowControlWindowThreshold) {
+    protected AbstractFlowControl(final short p_destinationNodeID, final int p_flowControlWindowSize,
+            final float p_flowControlWindowThreshold) {
         m_destinationNodeID = p_destinationNodeID;
         m_flowControlWindowSize = p_flowControlWindowSize;
         m_flowControlWindowThreshold = p_flowControlWindowThreshold;
@@ -63,7 +69,8 @@ public abstract class AbstractFlowControl {
         m_receivedBytes = new AtomicInteger(0);
 
         // #if LOGGER >= DEBUG
-        LOGGER.debug("Flow control settings for node 0x%X: window size %d, threshold %f", p_destinationNodeID, p_flowControlWindowSize,
+        LOGGER.debug("Flow control settings for node 0x%X: window size %d, threshold %f", p_destinationNodeID,
+                p_flowControlWindowSize,
                 p_flowControlWindowThreshold);
         // #endif /* LOGGER >= DEBUG */
     }
@@ -106,7 +113,7 @@ public abstract class AbstractFlowControl {
 
         if (m_unconfirmedBytes.get() > m_flowControlWindowSize) {
             // #ifdef STATISTICS
-            SOP_WAIT.enter();
+            SOP_WAIT.start();
             // #endif /* STATISTICS */
 
             while (m_unconfirmedBytes.get() > m_flowControlWindowSize) {
@@ -114,7 +121,7 @@ public abstract class AbstractFlowControl {
             }
 
             // #ifdef STATISTICS
-            SOP_WAIT.leave();
+            SOP_WAIT.stop();
             // #endif /* STATISTICS */
         }
 
@@ -154,7 +161,8 @@ public abstract class AbstractFlowControl {
      */
     public void handleFlowControlData(final byte p_confirmedWindows) {
         // #if LOGGER >= TRACE
-        LOGGER.trace("handleFlowControlData (%X): %d", m_destinationNodeID, p_confirmedWindows * m_flowControlWindowSizeThreshold);
+        LOGGER.trace("handleFlowControlData (%X): %d", m_destinationNodeID,
+                p_confirmedWindows * m_flowControlWindowSizeThreshold);
         // #endif /* LOGGER >= TRACE */
 
         m_unconfirmedBytes.addAndGet(-(p_confirmedWindows * m_flowControlWindowSizeThreshold));
@@ -164,7 +172,8 @@ public abstract class AbstractFlowControl {
     public String toString() {
         String str;
 
-        str = "FlowControl[m_flowControlWindowSize " + m_flowControlWindowSize + ", m_unconfirmedBytes " + m_unconfirmedBytes + ", m_receivedBytes " +
+        str = "FlowControl[m_flowControlWindowSize " + m_flowControlWindowSize + ", m_unconfirmedBytes " +
+                m_unconfirmedBytes + ", m_receivedBytes " +
                 m_receivedBytes + ']';
 
         return str;

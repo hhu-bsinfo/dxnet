@@ -24,8 +24,8 @@ import de.hhu.bsinfo.dxnet.core.MessageHeader;
 import de.hhu.bsinfo.dxnet.core.MessageHeaderPool;
 import de.hhu.bsinfo.dxnet.core.MessageImporterCollection;
 import de.hhu.bsinfo.dxnet.core.NetworkException;
-import de.hhu.bsinfo.dxutils.stats.StatisticsOperation;
-import de.hhu.bsinfo.dxutils.stats.StatisticsRecorderManager;
+import de.hhu.bsinfo.dxutils.stats.StatisticsManager;
+import de.hhu.bsinfo.dxutils.stats.Time;
 
 /**
  * Executes incoming default messages
@@ -34,9 +34,14 @@ import de.hhu.bsinfo.dxutils.stats.StatisticsRecorderManager;
  */
 class MessageHandler extends Thread {
     private static final Logger LOGGER = LogManager.getFormatterLogger(MessageHandler.class.getSimpleName());
-    private static final String RECORDER = "DXNet-MessageHandler";
-    private static final StatisticsOperation SOP_CREATE = StatisticsRecorderManager.getOperation(RECORDER, "CreateAndImport");
-    private static final StatisticsOperation SOP_EXECUTE = StatisticsRecorderManager.getOperation(RECORDER, "Execute");
+
+    private static final Time SOP_CREATE = new Time(MessageHandler.class, "CreateAndImport");
+    private static final Time SOP_EXECUTE = new Time(MessageHandler.class, "Execute");
+
+    static {
+        StatisticsManager.get().registerOperation(MessageHandler.class, SOP_CREATE);
+        StatisticsManager.get().registerOperation(MessageHandler.class, SOP_EXECUTE);
+    }
 
     // optimized values determined by experiments
     private static final int THRESHOLD_TIME_CHECK = 100000;
@@ -60,7 +65,8 @@ class MessageHandler extends Thread {
      * @param p_queue
      *         the message queue
      */
-    MessageHandler(final MessageReceiverStore p_messageReceivers, final MessageHeaderStore p_queue, final MessageHeaderPool p_messageHeaderPool,
+    MessageHandler(final MessageReceiverStore p_messageReceivers, final MessageHeaderStore p_queue,
+            final MessageHeaderPool p_messageHeaderPool,
             final boolean p_overprovisioning) {
         m_messageReceivers = p_messageReceivers;
         m_messages = p_queue;
@@ -119,7 +125,8 @@ class MessageHandler extends Thread {
 
             if (header == null) {
                 if (++counter >= THRESHOLD_TIME_CHECK) {
-                    if (System.currentTimeMillis() - lastSuccessfulPop > 1000) { // No message header for over a second -> sleep
+                    if (System.currentTimeMillis() - lastSuccessfulPop >
+                            1000) { // No message header for over a second -> sleep
                         LockSupport.parkNanos(100);
                     }
                 }
@@ -134,7 +141,7 @@ class MessageHandler extends Thread {
             counter = 0;
 
             // #ifdef STATISTICS
-            SOP_CREATE.enter();
+            SOP_CREATE.start();
             // #endif /* STATISTICS */
 
             type = header.getType();
@@ -146,14 +153,14 @@ class MessageHandler extends Thread {
                     messageReceiver = m_messageReceivers.getReceiver(type, subtype);
                     if (messageReceiver != null) {
                         // #ifdef STATISTICS
-                        SOP_EXECUTE.enter();
+                        SOP_EXECUTE.start();
                         // #endif /* STATISTICS */
 
                         ((SpecialMessageReceiver) messageReceiver).onIncomingHeader(header);
                         header.finishHeader(m_messageHeaderPool);
 
                         // #ifdef STATISTICS
-                        SOP_EXECUTE.leave();
+                        SOP_EXECUTE.stop();
                         // #endif /* STATISTICS */
                     } else {
                         // #if LOGGER >= ERROR
@@ -176,20 +183,20 @@ class MessageHandler extends Thread {
             }
 
             // #ifdef STATISTICS
-            SOP_CREATE.leave();
+            SOP_CREATE.stop();
             // #endif /* STATISTICS */
 
             if (message != null) {
                 messageReceiver = m_messageReceivers.getReceiver(type, subtype);
                 if (messageReceiver != null) {
                     // #ifdef STATISTICS
-                    SOP_EXECUTE.enter();
+                    SOP_EXECUTE.start();
                     // #endif /* STATISTICS */
 
                     messageReceiver.onIncomingMessage(message);
 
                     // #ifdef STATISTICS
-                    SOP_EXECUTE.leave();
+                    SOP_EXECUTE.stop();
                     // #endif /* STATISTICS */
                 } else {
                     // #if LOGGER >= ERROR

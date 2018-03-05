@@ -13,7 +13,6 @@
 
 package de.hhu.bsinfo.dxnet.loopback;
 
-import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
@@ -51,7 +50,8 @@ class LoopbackSendThread extends Thread {
      * @param p_osBufferSize
      *         the size of incoming and outgoing buffers
      */
-    LoopbackSendThread(final LoopbackConnectionManager p_connectionManager, final int p_connectionTimeout, final int p_osBufferSize,
+    LoopbackSendThread(final LoopbackConnectionManager p_connectionManager, final int p_connectionTimeout,
+            final int p_osBufferSize,
             final boolean p_overprovisioning) {
         m_send1 = new AtomicBoolean(false);
         m_send2 = new AtomicBoolean(false);
@@ -86,20 +86,12 @@ class LoopbackSendThread extends Thread {
             time = System.nanoTime();
             while (m_running) {
                 if (m_send2.compareAndSet(true, false)) {
-                    try {
-                        m_connection2.getPipeOut().write();
-                    } catch (final IOException ignore) {
-
-                    }
+                    m_connection2.getPipeOut().write();
                     sent = true;
                 }
 
                 if (m_send1.compareAndSet(true, false)) {
-                    try {
-                        m_connection1.getPipeOut().write();
-                    } catch (final IOException ignore) {
-
-                    }
+                    m_connection1.getPipeOut().write();
                     sent = true;
                 }
 
@@ -113,15 +105,11 @@ class LoopbackSendThread extends Thread {
                 }
 
                 if (System.nanoTime() - time > 1000 * 1000) {
-                    try {
-                        if (m_connection2 != null) {
-                            m_connection2.getPipeOut().write();
-                        }
-
-                        m_connection1.getPipeOut().write();
-                    } catch (final IOException ignore) {
-
+                    if (m_connection2 != null) {
+                        m_connection2.getPipeOut().write();
                     }
+
+                    m_connection1.getPipeOut().write();
                     break;
                 }
             }

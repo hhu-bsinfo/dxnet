@@ -25,8 +25,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import de.hhu.bsinfo.dxutils.UnsafeHandler;
-import de.hhu.bsinfo.dxutils.stats.StatisticsOperation;
-import de.hhu.bsinfo.dxutils.stats.StatisticsRecorderManager;
+import de.hhu.bsinfo.dxutils.stats.StatisticsManager;
+import de.hhu.bsinfo.dxutils.stats.Time;
+import de.hhu.bsinfo.dxutils.stats.TimePool;
 
 /**
  * Interest queue based on an array and an ArrayList.
@@ -34,11 +35,15 @@ import de.hhu.bsinfo.dxutils.stats.StatisticsRecorderManager;
  * @author Kevin Beineke, kevin.beineke@hhu.de, 18.12.2017
  */
 class InterestQueue {
-
     private static final Logger LOGGER = LogManager.getFormatterLogger(InterestQueue.class.getSimpleName());
-    private static final String RECORDER = "DXNet-NIOInterestQueue";
-    private static final StatisticsOperation SOP_ADD = StatisticsRecorderManager.getOperation(RECORDER, "AddInterest");
-    private static final StatisticsOperation SOP_PROCESS = StatisticsRecorderManager.getOperation(RECORDER, "ProcessInterests");
+
+    private static final TimePool SOP_ADD = new TimePool(InterestQueue.class, "Add");
+    private static final Time SOP_PROCESS = new Time(InterestQueue.class, "Process");
+
+    static {
+        StatisticsManager.get().registerOperation(InterestQueue.class, SOP_ADD);
+        StatisticsManager.get().registerOperation(InterestQueue.class, SOP_PROCESS);
+    }
 
     // Operations (0b1, 0b10, 0b100, 0b1000 reserved in SelectionKey)
     static final byte READ = 1;
@@ -79,7 +84,7 @@ class InterestQueue {
         short nodeID = p_connection.getDestinationNodeID();
 
         // #ifdef STATISTICS
-        SOP_ADD.enter();
+        SOP_ADD.start();
         // #endif /* STATISTICS */
 
         // Shortcut: if interest was already set (e.g. WRITE), we return immediately without locking (happens very often; once per message).
@@ -106,7 +111,7 @@ class InterestQueue {
         m_changeLock.unlock();
 
         // #ifdef STATISTICS
-        SOP_ADD.leave();
+        SOP_ADD.stop();
         // #endif /* STATISTICS */
 
         return ret;
@@ -122,14 +127,15 @@ class InterestQueue {
      * @param p_connectionTimeout
      *         the configured connection timeout.
      */
-    void processInterests(final Selector p_selector, final NIOConnectionManager p_connectionManager, final int p_connectionTimeout) {
+    void processInterests(final Selector p_selector, final NIOConnectionManager p_connectionManager,
+            final int p_connectionTimeout) {
         int interest;
         int entries;
         SelectionKey key;
         NIOConnection connection;
 
         // #ifdef STATISTICS
-        SOP_PROCESS.enter();
+        SOP_PROCESS.start();
         // #endif /* STATISTICS */
 
         m_changeLock.lock();
@@ -255,7 +261,7 @@ class InterestQueue {
         m_changeLock.unlock();
 
         // #ifdef STATISTICS
-        SOP_PROCESS.leave();
+        SOP_PROCESS.stop();
         // #endif /* STATISTICS */
     }
 }
