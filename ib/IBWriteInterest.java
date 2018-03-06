@@ -28,7 +28,8 @@ import de.hhu.bsinfo.dxutils.NodeID;
  */
 class IBWriteInterest {
     private final short m_nodeId;
-    private AtomicLong m_interestsAvailable;
+    // package private for state stats in manager
+    AtomicLong m_interestsAvailable;
 
     /**
      * Constructor

@@ -28,10 +28,11 @@ import de.hhu.bsinfo.dxutils.NodeID;
  * @author Stefan Nothaas, stefan.nothaas@hhu.de, 02.08.2017
  */
 class IBWriteInterestQueue {
-    private final short[] m_queue;
-    private volatile int m_front;
+    // package private for state stats in manager
+    final short[] m_queue;
+    volatile int m_front;
     private AtomicInteger m_backReserved;
-    private AtomicInteger m_back;
+    AtomicInteger m_back;
 
     /**
      * Constructor
@@ -64,7 +65,8 @@ class IBWriteInterestQueue {
         front = m_front & 0x7FFFFFFF;
 
         if ((backRes + 1 & 0x7FFFFFFF) % m_queue.length == front % m_queue.length) {
-            throw new IllegalStateException("Interest queue cannot be full: m_back " + m_back.get() + ", backRes " + backRes + ", front " + front);
+            throw new IllegalStateException("Interest queue cannot be full: m_back " + m_back.get() + ", backRes " +
+                    backRes + ", front " + front);
         }
 
         // write to reserved slot
