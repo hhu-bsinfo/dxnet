@@ -57,31 +57,44 @@ class IBOutgoingRingBuffer extends OutgoingRingBuffer {
 
     @Override
     protected void finalize() {
+        super.finalize();
         StatisticsManager.get().deregisterOperation(IBOutgoingRingBuffer.class, m_stateStats);
     }
 
-    // TODO doc: posted but NOT processed: we have to introduce another back pointer
-    // which marks this position so we don't send data from the ORB twice
-    // because the callback when the data is actually sent (which has to move the
-    // ORBs real back pointer) comes way later
+    /**
+     * Posted but NOT processed: we have to introduce another back pointer
+     * which marks this position so we don't send data from the ORB twice.
+     * The callback, once the data is actually sent (which has to move the
+     * ORBs real back pointer), comes way later
+     *
+     * @param p_bytesPosted
+     *         Number of bytes posted but NOT confirmed to be sent out
+     */
     public void dataSendPosted(final int p_bytesPosted) {
         // wipe sign to avoid bugs on overflows
         m_posBackDataPosted = m_posBackDataPosted + p_bytesPosted & 0x7FFFFFFF;
     }
 
-    // TODO doc, native SendThread handles wrap around, so we also allow it to happen
     @Override
     protected long popBack() {
         int posFrontRelative;
         int posBackRelative;
 
-        posFrontRelative = ((int) m_posFrontConsumer.get()) % m_bufferSize;
+        // note: native SendThread handles wrap around, so we also allow wrap around to happen here
+
+        posFrontRelative = (int) m_posFrontConsumer.get() % m_bufferSize;
         posBackRelative = m_posBackDataPosted % m_bufferSize;
 
         return (long) posFrontRelative << 32 | (long) posBackRelative;
     }
 
+    /**
+     * State statistics implementation for debugging
+     */
     private class StateStatistics extends AbstractState {
+        /**
+         * Constructor
+         */
         StateStatistics() {
             super(IBOutgoingRingBuffer.class, "State-" + NodeID.toHexStringShort(m_nodeId));
         }
