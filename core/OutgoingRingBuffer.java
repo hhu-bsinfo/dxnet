@@ -58,7 +58,7 @@ public class OutgoingRingBuffer {
     private long m_bufferAddr;
     protected int m_bufferSize;
 
-    private final short m_nodeId;
+    protected final short m_nodeId;
     private final AbstractExporterPool m_exporterPool;
 
     // per ring buffer instance statistics

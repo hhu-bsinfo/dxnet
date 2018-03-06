@@ -18,6 +18,9 @@ package de.hhu.bsinfo.dxnet.ib;
 
 import de.hhu.bsinfo.dxnet.core.AbstractExporterPool;
 import de.hhu.bsinfo.dxnet.core.OutgoingRingBuffer;
+import de.hhu.bsinfo.dxutils.NodeID;
+import de.hhu.bsinfo.dxutils.stats.AbstractState;
+import de.hhu.bsinfo.dxutils.stats.StatisticsManager;
 
 /**
  * Implementation of the outgoing ring buffer for IB
@@ -25,8 +28,9 @@ import de.hhu.bsinfo.dxnet.core.OutgoingRingBuffer;
  * @author Stefan Nothaas, stefan.nothaas@hhu.de, 17.07.2017
  */
 class IBOutgoingRingBuffer extends OutgoingRingBuffer {
-
     private int m_posBackDataPosted;
+
+    private final StateStatistics m_stateStats;
 
     /**
      * Constructor
@@ -45,6 +49,15 @@ class IBOutgoingRingBuffer extends OutgoingRingBuffer {
         super(p_nodeId, p_exporterPool);
 
         setBuffer(p_bufferAddr, p_bufferSize);
+
+        m_stateStats = new StateStatistics();
+
+        StatisticsManager.get().registerOperation(IBOutgoingRingBuffer.class, m_stateStats);
+    }
+
+    @Override
+    protected void finalize() {
+        StatisticsManager.get().deregisterOperation(IBOutgoingRingBuffer.class, m_stateStats);
     }
 
     // TODO doc: posted but NOT processed: we have to introduce another back pointer
@@ -66,5 +79,26 @@ class IBOutgoingRingBuffer extends OutgoingRingBuffer {
         posBackRelative = m_posBackDataPosted % m_bufferSize;
 
         return (long) posFrontRelative << 32 | (long) posBackRelative;
+    }
+
+    private class StateStatistics extends AbstractState {
+        StateStatistics() {
+            super(IBOutgoingRingBuffer.class, "State-" + NodeID.toHexStringShort(m_nodeId));
+        }
+
+        @Override
+        public String dataToString(final String p_indent) {
+            return p_indent + "m_posBackDataPosted " + m_posBackDataPosted;
+        }
+
+        @Override
+        public String generateCSVHeader(final char p_delim) {
+            return "m_posBackDataPosted";
+        }
+
+        @Override
+        public String toCSV(final char p_delim) {
+            return Integer.toString(m_posBackDataPosted);
+        }
     }
 }
