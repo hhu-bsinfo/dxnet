@@ -41,7 +41,8 @@ import de.hhu.bsinfo.dxnet.core.StaticExporterPool;
 import de.hhu.bsinfo.dxutils.ByteBufferHelper;
 import de.hhu.bsinfo.dxutils.NodeID;
 import de.hhu.bsinfo.dxutils.stats.StatisticsManager;
-import de.hhu.bsinfo.dxutils.stats.Time;
+import de.hhu.bsinfo.dxutils.stats.TimePool;
+import de.hhu.bsinfo.dxutils.stats.Timeline;
 
 /**
  * Connection manager for infiniband (note: this is the main class for the IB subsystem in the java space)
@@ -51,9 +52,14 @@ import de.hhu.bsinfo.dxutils.stats.Time;
 public class IBConnectionManager extends AbstractConnectionManager implements MsgrcJNIBinding.CallbackHandler {
     private static final Logger LOGGER = LogManager.getFormatterLogger(IBConnectionManager.class.getSimpleName());
 
-    private static final Time SOP_SEND_NEXT_DATA = new Time(IBConnectionManager.class, "NextDataToSend");
+    private static final TimePool SOP_CREATE_CON = new TimePool(IBConnectionManager.class, "CreateCon");
+    private static final Timeline SOP_RECV = new Timeline(IBConnectionManager.class, "Recv", "Process", "Native");
+    private static final Timeline SOP_SEND_NEXT_DATA = new Timeline(IBConnectionManager.class, "SendNextData",
+            "PrevResults", "SendComps", "NextData", "Native");
 
     static {
+        StatisticsManager.get().registerOperation(IBConnectionManager.class, SOP_CREATE_CON);
+        StatisticsManager.get().registerOperation(IBConnectionManager.class, SOP_RECV);
         StatisticsManager.get().registerOperation(IBConnectionManager.class, SOP_SEND_NEXT_DATA);
     }
 
@@ -129,14 +135,12 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
      * library to be loaded
      */
     public void init() {
-
         // can't call this in the constructor because it relies on the implemented interfaces for callbacks
         if (!MsgrcJNIBinding.init(this, m_config.getPinSendRecvThreads(), m_config.getEnableSignalHandler(),
-                m_config.getStatisticsThreadPrintIntervalMs(),
-                m_coreConfig.getOwnNodeId(), (int) m_config.getConnectionCreationTimeout().getMs(),
-                m_config.getMaxConnections(), m_config.getSendQueueSize(),
-                m_config.getSharedReceiveQueueSize(), m_config.getSharedSendCompletionQueueSize(),
-                m_config.getSharedReceiveCompletionQueueSize(),
+                m_config.getStatisticsThreadPrintIntervalMs(), m_coreConfig.getOwnNodeId(),
+                (int) m_config.getConnectionCreationTimeout().getMs(), m_config.getMaxConnections(),
+                m_config.getSendQueueSize(), m_config.getSharedReceiveQueueSize(),
+                m_config.getSharedSendCompletionQueueSize(), m_config.getSharedReceiveCompletionQueueSize(),
                 (int) m_config.getOugoingRingBufferSize().getBytes(),
                 m_config.getIncomingBufferPoolTotalSize().getBytes(),
                 (int) m_config.getIncomingBufferSize().getBytes())) {
@@ -187,6 +191,10 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             throw new NetworkDestinationUnreachableException(p_destination);
         }
 
+        // #ifdef STATISTICS
+        SOP_CREATE_CON.start();
+        // #endif /* STATISTICS */
+
         if (m_openConnections == m_maxConnections) {
             // #if LOGGER >= DEBUG
             LOGGER.debug("Connection max (%d) reached, dismissing random connection", m_maxConnections);
@@ -205,11 +213,19 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                         m_config.getConnectionCreationTimeout());
                 // #endif /* LOGGER >= DEBUG */
 
+                // #ifdef STATISTICS
+                SOP_CREATE_CON.stop();
+                // #endif /* STATISTICS */
+
                 throw new NetworkException("Connection creation timeout occurred");
             } else {
                 // #if LOGGER >= ERROR
                 LOGGER.error("Connection creation (0x%X) failed", p_destination);
                 // #endif /* LOGGER >= ERROR */
+
+                // #ifdef STATISTICS
+                SOP_CREATE_CON.stop();
+                // #endif /* STATISTICS */
 
                 throw new NetworkException("Connection creation failed");
             }
@@ -218,6 +234,10 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         long sendBufferAddr = MsgrcJNIBinding.getSendBufferAddress(p_destination);
 
         if (sendBufferAddr == -1) {
+            // #ifdef STATISTICS
+            SOP_CREATE_CON.stop();
+            // #endif /* STATISTICS */
+
             // might happen on disconnect or if connection is not established in the ibnet subsystem
             throw new NetworkDestinationUnreachableException(p_destination);
         }
@@ -227,15 +247,18 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         // #endif /* LOGGER >= DEBUG */
 
         connection = new IBConnection(m_coreConfig.getOwnNodeId(), p_destination, sendBufferAddr,
-                (int) m_config.getOugoingRingBufferSize().getBytes(),
-                (int) m_config.getFlowControlWindow().getBytes(), m_config.getFlowControlWindowThreshold(),
-                m_messageHeaderPool, m_messageDirectory,
-                m_requestMap, m_exporterPool, m_messageHandlers, m_writeInterestManager);
+                (int) m_config.getOugoingRingBufferSize().getBytes(), (int) m_config.getFlowControlWindow().getBytes(),
+                m_config.getFlowControlWindowThreshold(), m_messageHeaderPool, m_messageDirectory, m_requestMap,
+                m_exporterPool, m_messageHandlers, m_writeInterestManager);
 
         connection.setPipeInConnected(true);
         connection.setPipeOutConnected(true);
 
         m_openConnections++;
+
+        // #ifdef STATISTICS
+        SOP_CREATE_CON.stop();
+        // #endif /* STATISTICS */
 
         return connection;
     }
@@ -290,8 +313,13 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
     }
 
     @Override
-    public void received(long p_recvPackage) {
+    public void received(final long p_recvPackage) {
         try {
+            // #ifdef STATISTICS
+            SOP_RECV.stop();
+            SOP_RECV.start();
+            // #endif /* STATISTICS */
+
             // wrap on the first callback, native address is always the same
             if (m_receivedPackage == null) {
                 m_receivedPackage = new ReceivedPackage(p_recvPackage, m_config.getSharedReceiveQueueSize());
@@ -314,8 +342,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                 int dataLength = m_receivedPackage.getDataLength(i);
 
                 // sanity checks
-                if (sourceNodeId == NodeID.INVALID_ID ||
-                        fcData == 0 && (ptrDataHandle == 0 || ptrData == 0 || dataLength == 0)) {
+                if (sourceNodeId == NodeID.INVALID_ID || fcData == 0 && (ptrDataHandle == 0 || ptrData == 0 ||
+                        dataLength == 0)) {
                     // #if LOGGER >= ERROR
                     LOGGER.error("Illegal state, invalid receive package: 0x%X %d 0x%X 0x%X %d", sourceNodeId, fcData,
                             ptrDataHandle, ptrData, dataLength);
@@ -347,6 +375,10 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                     m_incomingBufferQueue.pushBuffer(connection, null, ptrDataHandle, ptrData, dataLength);
                 }
             }
+
+            // #ifdef STATISTICS
+            SOP_RECV.nextSection();
+            // #endif /* STATISTICS */
         } catch (Exception e) {
             // print error because we disabled exception handling when executing jni calls
 
@@ -360,15 +392,26 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
     public void getNextDataToSend(final long p_nextWorkPackage, final long p_prevResults, final long p_completionList) {
         try {
             // #ifdef STATISTICS
+            SOP_SEND_NEXT_DATA.stop();
             SOP_SEND_NEXT_DATA.start();
             // #endif /* STATISTICS */
 
             processPrevResults(p_prevResults);
+
+            // #ifdef STATISTICS
+            SOP_SEND_NEXT_DATA.nextSection();
+            // #endif /* STATISTICS */
+
             processSendCompletions(p_completionList);
+
+            // #ifdef STATISTICS
+            SOP_SEND_NEXT_DATA.nextSection();
+            // #endif /* STATISTICS */
+
             prepareNextDataToSend(p_nextWorkPackage);
 
             // #ifdef STATISTICS
-            SOP_SEND_NEXT_DATA.stop();
+            SOP_SEND_NEXT_DATA.nextSection();
             // #endif /* STATISTICS */
         } catch (Exception e) {
             // print error because we disabled exception handling when executing jni calls
