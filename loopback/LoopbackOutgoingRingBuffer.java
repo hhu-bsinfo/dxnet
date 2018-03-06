@@ -31,8 +31,9 @@ class LoopbackOutgoingRingBuffer extends OutgoingRingBuffer {
     private ByteBuffer m_sendByteBuffer;
     private long m_bufferAddr;
 
-    LoopbackOutgoingRingBuffer(final int p_osBufferSize, final AbstractExporterPool p_exporterPool) {
-        super(p_exporterPool);
+    LoopbackOutgoingRingBuffer(final short p_nodeId, final int p_osBufferSize,
+            final AbstractExporterPool p_exporterPool) {
+        super(p_nodeId, p_exporterPool);
 
         m_sendByteBuffer = ByteBuffer.allocateDirect(p_osBufferSize);
         m_bufferAddr = ByteBufferHelper.getDirectAddress(m_sendByteBuffer);

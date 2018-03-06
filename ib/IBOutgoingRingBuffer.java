@@ -31,6 +31,8 @@ class IBOutgoingRingBuffer extends OutgoingRingBuffer {
     /**
      * Constructor
      *
+     * @param p_nodeId
+     *         Node id of the connection (target node)
      * @param p_bufferAddr
      *         Unsafe address of the ring buffer
      * @param p_bufferSize
@@ -38,8 +40,9 @@ class IBOutgoingRingBuffer extends OutgoingRingBuffer {
      * @param p_exporterPool
      *         Exporter pool instance
      */
-    IBOutgoingRingBuffer(final long p_bufferAddr, final int p_bufferSize, final AbstractExporterPool p_exporterPool) {
-        super(p_exporterPool);
+    IBOutgoingRingBuffer(final short p_nodeId, final long p_bufferAddr, final int p_bufferSize,
+            final AbstractExporterPool p_exporterPool) {
+        super(p_nodeId, p_exporterPool);
 
         setBuffer(p_bufferAddr, p_bufferSize);
     }
@@ -54,6 +57,7 @@ class IBOutgoingRingBuffer extends OutgoingRingBuffer {
     }
 
     // TODO doc, native SendThread handles wrap around, so we also allow it to happen
+    @Override
     protected long popBack() {
         int posFrontRelative;
         int posBackRelative;

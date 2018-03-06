@@ -53,7 +53,8 @@ public class NIOConnection extends AbstractConnection<NIOPipeIn, NIOPipeOut> {
     private volatile boolean m_connectionCreationAborted;
 
     /**
-     * Creates a new NIO connection object for given destination. The connection has not been established when returning!
+     * Creates a new NIO connection object for given destination. The connection has not been established when
+     * returning!
      *
      * @param p_ownNodeId
      *         the NodeID of this node.
@@ -88,19 +89,22 @@ public class NIOConnection extends AbstractConnection<NIOPipeIn, NIOPipeOut> {
      * @param p_cond
      *         the condition to signal connection completion.
      */
-    NIOConnection(final short p_ownNodeId, final short p_destination, final int p_bufferSize, final int p_flowControlWindowSize,
-            final float p_flowControlWindowThreshold, final IncomingBufferQueue p_incomingBufferQueue, final LocalMessageHeaderPool p_messageHeaderPool,
-            final MessageDirectory p_messageDirectory, final RequestMap p_requestMap, final MessageHandlers p_messageHandlers, final BufferPool p_bufferPool,
-            final AbstractExporterPool p_exporterPool, final NIOSelector p_nioSelector, final NodeMap p_nodeMap, final ReentrantLock p_lock,
-            final Condition p_cond) {
+    NIOConnection(final short p_ownNodeId, final short p_destination, final int p_bufferSize,
+            final int p_flowControlWindowSize, final float p_flowControlWindowThreshold,
+            final IncomingBufferQueue p_incomingBufferQueue, final LocalMessageHeaderPool p_messageHeaderPool,
+            final MessageDirectory p_messageDirectory, final RequestMap p_requestMap,
+            final MessageHandlers p_messageHandlers, final BufferPool p_bufferPool,
+            final AbstractExporterPool p_exporterPool, final NIOSelector p_nioSelector, final NodeMap p_nodeMap,
+            final ReentrantLock p_lock, final Condition p_cond) {
         super(p_ownNodeId);
 
-        NIOFlowControl flowControl = new NIOFlowControl(p_destination, p_flowControlWindowSize, p_flowControlWindowThreshold, p_nioSelector, this);
-        NIOOutgoingRingBuffer outgoingBuffer = new NIOOutgoingRingBuffer(p_bufferSize, p_exporterPool);
-        NIOPipeIn pipeIn =
-                new NIOPipeIn(p_ownNodeId, p_destination, p_messageHeaderPool, flowControl, p_messageDirectory, p_requestMap, p_messageHandlers, p_bufferPool,
-                        p_incomingBufferQueue, this);
-        NIOPipeOut pipeOut = new NIOPipeOut(p_ownNodeId, p_destination, p_bufferSize, flowControl, outgoingBuffer, p_nioSelector, p_nodeMap, this);
+        NIOFlowControl flowControl = new NIOFlowControl(p_destination, p_flowControlWindowSize,
+                p_flowControlWindowThreshold, p_nioSelector, this);
+        NIOOutgoingRingBuffer outgoingBuffer = new NIOOutgoingRingBuffer(p_ownNodeId, p_bufferSize, p_exporterPool);
+        NIOPipeIn pipeIn = new NIOPipeIn(p_ownNodeId, p_destination, p_messageHeaderPool, flowControl,
+                p_messageDirectory, p_requestMap, p_messageHandlers, p_bufferPool, p_incomingBufferQueue, this);
+        NIOPipeOut pipeOut = new NIOPipeOut(p_ownNodeId, p_destination, p_bufferSize, flowControl, outgoingBuffer,
+                p_nioSelector, p_nodeMap, this);
 
         setPipes(pipeIn, pipeOut);
 
@@ -111,7 +115,8 @@ public class NIOConnection extends AbstractConnection<NIOPipeIn, NIOPipeOut> {
     }
 
     /**
-     * Creates a new NIO connection object for given destination. The connection was created from remote side and has been established when entering!
+     * Creates a new NIO connection object for given destination. The connection was created from remote side and has
+     * been established when entering!
      *
      * @param p_ownNodeId
      *         the NodeID of this node.
@@ -142,18 +147,21 @@ public class NIOConnection extends AbstractConnection<NIOPipeIn, NIOPipeOut> {
      * @param p_nodeMap
      *         the node map.
      */
-    NIOConnection(final short p_ownNodeId, final short p_destination, final int p_bufferSize, final int p_flowControlWindowSize,
-            final float p_flowControlWindowThreshold, final IncomingBufferQueue p_incomingBufferQueue, final LocalMessageHeaderPool p_messageHeaderPool,
-            final MessageDirectory p_messageDirectory, final RequestMap p_requestMap, final MessageHandlers p_messageHandlers, final BufferPool p_bufferPool,
+    NIOConnection(final short p_ownNodeId, final short p_destination, final int p_bufferSize,
+            final int p_flowControlWindowSize, final float p_flowControlWindowThreshold,
+            final IncomingBufferQueue p_incomingBufferQueue, final LocalMessageHeaderPool p_messageHeaderPool,
+            final MessageDirectory p_messageDirectory, final RequestMap p_requestMap,
+            final MessageHandlers p_messageHandlers, final BufferPool p_bufferPool,
             final AbstractExporterPool p_exporterPool, final NIOSelector p_nioSelector, final NodeMap p_nodeMap) {
         super(p_ownNodeId);
 
-        NIOFlowControl flowControl = new NIOFlowControl(p_destination, p_flowControlWindowSize, p_flowControlWindowThreshold, p_nioSelector, this);
-        NIOOutgoingRingBuffer outgoingBuffer = new NIOOutgoingRingBuffer(p_bufferSize, p_exporterPool);
-        NIOPipeIn pipeIn =
-                new NIOPipeIn(p_ownNodeId, p_destination, p_messageHeaderPool, flowControl, p_messageDirectory, p_requestMap, p_messageHandlers, p_bufferPool,
-                        p_incomingBufferQueue, this);
-        NIOPipeOut pipeOut = new NIOPipeOut(p_ownNodeId, p_destination, p_bufferSize, flowControl, outgoingBuffer, p_nioSelector, p_nodeMap, this);
+        NIOFlowControl flowControl = new NIOFlowControl(p_destination, p_flowControlWindowSize,
+                p_flowControlWindowThreshold, p_nioSelector, this);
+        NIOOutgoingRingBuffer outgoingBuffer = new NIOOutgoingRingBuffer(p_ownNodeId, p_bufferSize, p_exporterPool);
+        NIOPipeIn pipeIn = new NIOPipeIn(p_ownNodeId, p_destination, p_messageHeaderPool, flowControl,
+                p_messageDirectory, p_requestMap, p_messageHandlers, p_bufferPool, p_incomingBufferQueue, this);
+        NIOPipeOut pipeOut = new NIOPipeOut(p_ownNodeId, p_destination, p_bufferSize, flowControl, outgoingBuffer,
+                p_nioSelector, p_nodeMap, this);
 
         setPipes(pipeIn, pipeOut);
 

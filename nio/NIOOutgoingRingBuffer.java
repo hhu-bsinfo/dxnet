@@ -35,8 +35,8 @@ class NIOOutgoingRingBuffer extends OutgoingRingBuffer {
     private ByteBuffer m_sendByteBuffer;
     private long m_bufferAddr;
 
-    NIOOutgoingRingBuffer(final int p_osBufferSize, final AbstractExporterPool p_exporterPool) {
-        super(p_exporterPool);
+    NIOOutgoingRingBuffer(final short p_nodeId, final int p_osBufferSize, final AbstractExporterPool p_exporterPool) {
+        super(p_nodeId, p_exporterPool);
 
         m_sendByteBuffer = ByteBuffer.allocateDirect(p_osBufferSize);
         m_bufferAddr = ByteBufferHelper.getDirectAddress(m_sendByteBuffer);
@@ -62,7 +62,8 @@ class NIOOutgoingRingBuffer extends OutgoingRingBuffer {
             return null;
         }
 
-        // Use pre-allocated DirectByteBuffer instance for sending (to avoid copying to kernel buffer) -> set position and limit
+        // Use pre-allocated DirectByteBuffer instance for sending (to avoid copying to kernel buffer) -> set position
+        // and limit
         m_sendByteBuffer.position(posFrontRelative);
         m_sendByteBuffer.limit(posBackRelative);
 

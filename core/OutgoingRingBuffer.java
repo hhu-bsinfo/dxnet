@@ -21,7 +21,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 
+import de.hhu.bsinfo.dxutils.NodeID;
 import de.hhu.bsinfo.dxutils.UnsafeHandler;
+import de.hhu.bsinfo.dxutils.stats.AbstractState;
 import de.hhu.bsinfo.dxutils.stats.StatisticsManager;
 import de.hhu.bsinfo.dxutils.stats.TimePool;
 import de.hhu.bsinfo.dxutils.stats.Value;
@@ -35,29 +37,19 @@ import de.hhu.bsinfo.dxutils.stats.ValuePool;
  * @author Kevin Beineke, kevin.beineke@hhu.de, 31.05.2016
  */
 public class OutgoingRingBuffer {
-
-    private static final TimePool SOP_PUSH = new TimePool(OutgoingRingBuffer.class, "Push");
-    private static final TimePool SOP_WAIT_FULL = new TimePool(OutgoingRingBuffer.class, "WaitFull");
-    private static final ValuePool SOP_BUFFER_POSTED = new ValuePool(OutgoingRingBuffer.class, "BufferPosted");
-    private static final Value SOP_SHIFT_BACK = new Value(OutgoingRingBuffer.class, "ShiftBack");
-
-    static {
-        StatisticsManager.get().registerOperation(OutgoingRingBuffer.class, SOP_PUSH);
-        StatisticsManager.get().registerOperation(OutgoingRingBuffer.class, SOP_WAIT_FULL);
-        StatisticsManager.get().registerOperation(OutgoingRingBuffer.class, SOP_BUFFER_POSTED);
-        StatisticsManager.get().registerOperation(OutgoingRingBuffer.class, SOP_SHIFT_BACK);
-    }
-
     private static final int MAX_CONCURRENT_THREADS = 1000;
 
     // multiple producer, single consumer
-    protected volatile int m_posBack;
+    private volatile int m_posBack;
 
-    // Upper 32 bits: front position in m_uncommittedMessageSizes; lower 32 bits: current front producer pointer in ring buffer
+    // Upper 32 bits: front position in m_uncommittedMessageSizes; lower 32 bits: current front producer pointer in
+    // ring buffer
     protected final AtomicLong m_posFrontProducer;
-    // Upper 32 bits: back position in m_uncommittedMessageSizes; lower 32 bits: current front consumer pointer in ring buffer
+    // Upper 32 bits: back position in m_uncommittedMessageSizes; lower 32 bits: current front consumer pointer in
+    // ring buffer
     protected final AtomicLong m_posFrontConsumer;
-    // Also stores the back position in m_uncommittedMessageSizes because back position in m_posFrontConsumer is invalidated during committing
+    // Also stores the back position in m_uncommittedMessageSizes because back position in m_posFrontConsumer is
+    // invalidated during committing
     private final AtomicInteger m_posBackArray;
 
     private final AtomicBoolean m_largeMessageBeingWritten;
@@ -66,15 +58,28 @@ public class OutgoingRingBuffer {
     private long m_bufferAddr;
     protected int m_bufferSize;
 
-    private AbstractExporterPool m_exporterPool;
+    private final short m_nodeId;
+    private final AbstractExporterPool m_exporterPool;
+
+    // per ring buffer instance statistics
+    private final TimePool m_sopPush;
+    private final TimePool m_sopWaitFull;
+    private final ValuePool m_sopDataPosted;
+    private final Value m_sopDataSent;
+    private final StateStatistics m_stateStats;
 
     /**
      * Creates an instance of OutgoingRingBuffer
      *
+     * @param p_nodeId
+     *         Node id of the connection (target node)
      * @param p_exporterPool
      *         Pool with exporters to use for serializing messages
      */
-    protected OutgoingRingBuffer(final AbstractExporterPool p_exporterPool) {
+    protected OutgoingRingBuffer(final short p_nodeId, final AbstractExporterPool p_exporterPool) {
+        m_nodeId = p_nodeId;
+        m_exporterPool = p_exporterPool;
+
         m_posBack = 0;
         m_posFrontProducer = new AtomicLong(0);
         m_posFrontConsumer = new AtomicLong(0);
@@ -85,7 +90,26 @@ public class OutgoingRingBuffer {
 
         m_uncommittedMessageSizes = new int[MAX_CONCURRENT_THREADS];
 
-        m_exporterPool = p_exporterPool;
+        m_sopPush = new TimePool(OutgoingRingBuffer.class, "Push-" + NodeID.toHexStringShort(m_nodeId));
+        m_sopWaitFull = new TimePool(OutgoingRingBuffer.class, "WaitFull-" + NodeID.toHexStringShort(m_nodeId));
+        m_sopDataPosted = new ValuePool(OutgoingRingBuffer.class, "DataPosted-" + NodeID.toHexStringShort(m_nodeId));
+        m_sopDataSent = new Value(OutgoingRingBuffer.class, "DataSent-" + NodeID.toHexStringShort(m_nodeId));
+        m_stateStats = new StateStatistics();
+
+        StatisticsManager.get().registerOperation(OutgoingRingBuffer.class, m_sopPush);
+        StatisticsManager.get().registerOperation(OutgoingRingBuffer.class, m_sopWaitFull);
+        StatisticsManager.get().registerOperation(OutgoingRingBuffer.class, m_sopDataPosted);
+        StatisticsManager.get().registerOperation(OutgoingRingBuffer.class, m_sopDataSent);
+        StatisticsManager.get().registerOperation(OutgoingRingBuffer.class, m_stateStats);
+    }
+
+    @Override
+    protected void finalize() {
+        StatisticsManager.get().deregisterOperation(OutgoingRingBuffer.class, m_sopPush);
+        StatisticsManager.get().deregisterOperation(OutgoingRingBuffer.class, m_sopWaitFull);
+        StatisticsManager.get().deregisterOperation(OutgoingRingBuffer.class, m_sopDataPosted);
+        StatisticsManager.get().deregisterOperation(OutgoingRingBuffer.class, m_sopDataSent);
+        StatisticsManager.get().deregisterOperation(OutgoingRingBuffer.class, m_stateStats);
     }
 
     /**
@@ -131,7 +155,7 @@ public class OutgoingRingBuffer {
      */
     public void shiftBack(final int p_writtenBytes) {
         // #ifdef STATISTICS
-        SOP_SHIFT_BACK.add(p_writtenBytes);
+        m_sopDataSent.add(p_writtenBytes);
         // #endif /* STATISTICS */
 
         m_posBack = m_posBack + p_writtenBytes & 0x7FFFFFFF;
@@ -154,7 +178,7 @@ public class OutgoingRingBuffer {
         long posFrontProducer;
 
         // #ifdef STATISTICS
-        SOP_PUSH.start();
+        m_sopPush.start();
         // #endif /* STATISTICS */
 
         // #ifdef STATISTICS
@@ -175,7 +199,7 @@ public class OutgoingRingBuffer {
 
                     // #ifdef STATISTICS
                     if (waited) {
-                        SOP_WAIT_FULL.stop();
+                        m_sopWaitFull.stop();
                     }
                     // #endif /* STATISTICS */
 
@@ -194,7 +218,7 @@ public class OutgoingRingBuffer {
                 } else {
                     // #ifdef STATISTICS
                     if (!waited) {
-                        SOP_WAIT_FULL.stop();
+                        m_sopWaitFull.stop();
                         waited = true;
                     }
                     // #endif /* STATISTICS */
@@ -223,11 +247,11 @@ public class OutgoingRingBuffer {
         }
 
         // #ifdef STATISTICS
-        SOP_PUSH.stop();
+        m_sopPush.stop();
         // #endif /* STATISTICS */
 
         // #ifdef STATISTICS
-        SOP_BUFFER_POSTED.add(p_messageSize);
+        m_sopDataPosted.add(p_messageSize);
         // #endif /* STATISTICS */
 
         // FIXME: this should be moved to the if branch above because the serializeLargeMessage method calls this
@@ -296,7 +320,8 @@ public class OutgoingRingBuffer {
 
             // Increase posFrontConsumer for finished threads
             // At least one thread entered the serialization area after this thread.
-            // If that thread finished the serialization earlier this thread must increase the posFrontConsumer for it (and consecutive threads)
+            // If that thread finished the serialization earlier this thread must increase the posFrontConsumer for it
+            // (and consecutive threads)
             int currentSize;
             while (true) {
                 posFrontArray = posFrontArray + 1 & 0x7FFFFFFF;
@@ -313,7 +338,8 @@ public class OutgoingRingBuffer {
                     }
 
                     if (m_posFrontConsumer.get() != newPosFrontProducer) {
-                        // The following thread just finished serialization and increased posFrontConsumer -> nothing to do for this thread
+                        // The following thread just finished serialization and increased posFrontConsumer -> nothing
+                        // to do for this thread
                         break;
                     }
 
@@ -363,7 +389,8 @@ public class OutgoingRingBuffer {
     private void serialize(final Message p_message, final int p_start, final int p_messageSize)
             throws NetworkException {
 
-        // Get exporter (default or overflow). Small messages are written at once, but might be split into two parts if ring buffer overflows during writing.
+        // Get exporter (default or overflow). Small messages are written at once, but might be split into two parts
+        // if ring buffer overflows during writing.
         MessageExporterCollection exporterCollection = m_exporterPool.getInstance();
         AbstractMessageExporter exporter = exporterCollection.getMessageExporter(
                 p_messageSize > m_bufferSize - p_start);
@@ -424,7 +451,8 @@ public class OutgoingRingBuffer {
             try {
                 p_message.serialize(exporter, p_messageSize);
 
-                // Break if all bytes have been written. Cannot be here if not as ArrayIndexOutOfBoundsException would have been thrown.
+                // Break if all bytes have been written. Cannot be here if not as ArrayIndexOutOfBoundsException would
+                // have been thrown.
                 exporterCollection.deleteUnfinishedOperation();
             } catch (final ArrayIndexOutOfBoundsException ignore) {
             }
@@ -442,7 +470,7 @@ public class OutgoingRingBuffer {
             m_posFrontConsumer.set(posFrontConsumer);
 
             // #ifdef STATISTICS
-            SOP_BUFFER_POSTED.add(allWrittenBytes - previouslyWrittenBytes);
+            m_sopDataPosted.add(allWrittenBytes - previouslyWrittenBytes);
             // #endif /* STATISTICS */
 
             p_pipeOut.bufferPosted(allWrittenBytes - previouslyWrittenBytes);
@@ -479,5 +507,35 @@ public class OutgoingRingBuffer {
         }
 
         return (long) posFrontRelative << 32 | (long) posBackRelative;
+    }
+
+    private class StateStatistics extends AbstractState {
+        /**
+         * Constructor
+         */
+        StateStatistics() {
+            super(OutgoingRingBuffer.class, "State-" + NodeID.toHexStringShort(m_nodeId));
+        }
+
+        @Override
+        public String dataToString(final String p_indent) {
+            return p_indent + "m_nodeId " + NodeID.toHexStringShort(m_nodeId) + ";m_bufferAddr " +
+                    Long.toHexString(m_bufferAddr) + ";m_bufferSize " + m_bufferSize + ";m_posBack " + m_posBack +
+                    ";m_posFrontProducer " + m_posFrontProducer.get() + ";m_posFrontConsumer " + m_posFrontConsumer +
+                    ";m_largeMessageBeingWritten " + m_largeMessageBeingWritten.get();
+        }
+
+        @Override
+        public String generateCSVHeader(final char p_delim) {
+            return "m_nodeId" + p_delim + "m_bufferAddr" + p_delim + "m_bufferSize" + p_delim + "m_posBack" + p_delim +
+                    "m_posFrontProducer" + p_delim + "m_posFrontConsumer" + p_delim + "m_largeMessageBeingWritten";
+        }
+
+        @Override
+        public String toCSV(final char p_delim) {
+            return NodeID.toHexStringShort(m_nodeId) + p_delim + Long.toHexString(m_bufferAddr) + p_delim +
+                    m_bufferSize + p_delim + m_posBack + p_delim + m_posFrontProducer.get() + p_delim +
+                    m_posFrontConsumer.get() + p_delim + m_largeMessageBeingWritten.get();
+        }
     }
 }
