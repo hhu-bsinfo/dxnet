@@ -125,7 +125,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
     }
 
     /**
-     * Initialize the infiniband subsystem. This calls to the underlying Ibdxnet subsystem and requires the respective library to be loaded
+     * Initialize the infiniband subsystem. This calls to the underlying Ibdxnet subsystem and requires the respective
+     * library to be loaded
      */
     public void init() {
 
@@ -147,8 +148,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             throw new NetworkRuntimeException("Initializing ibnet failed");
         }
 
-        // this is an ugly way of figuring out which nodes are available on startup. the ib subsystem needs that kind of information to
-        // contact the nodes using an ethernet connection to exchange ib connection information
+        // this is an ugly way of figuring out which nodes are available on startup. the ib subsystem needs that kind
+        // of information to contact the nodes using an ethernet connection to exchange ib connection information
         // if you know a better/faster way of doing this here, be my guest and fix it
         for (int i = 0; i < NodeID.MAX_ID; i++) {
             if (i == (m_coreConfig.getOwnNodeId() & 0xFFFF)) {
@@ -552,8 +553,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
 
                 nothingToSend = false;
             } else {
-                // and again, we got an interest but no FC data is available because the FC data was already sent with the previous
-                // interest (non harmful data race between ORB/flow control and interest manager)
+                // and again, we got an interest but no FC data is available because the FC data was already sent with
+                // the previous interest (non harmful data race between ORB/flow control and interest manager)
             }
         }
 
@@ -562,7 +563,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         }
     }
 
-    private class NextWorkPackage {
+    private static class NextWorkPackage {
         private static final int SIZE_FIELD_POS_BACK_REL = Integer.BYTES;
         private static final int SIZE_FIELD_POS_FRONT_REL = Integer.BYTES;
         private static final int SIZE_FIELD_FLOW_CONTROL_DATA = Byte.BYTES;
@@ -585,7 +586,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         //    } __attribute__((packed));
         private ByteBuffer m_struct;
 
-        public NextWorkPackage(final long p_addr) {
+        NextWorkPackage(final long p_addr) {
             m_struct = ByteBufferHelper.wrap(p_addr, SIZE);
             m_struct.order(ByteOrder.nativeOrder());
         }
@@ -597,7 +598,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             setNodeId(NodeID.INVALID_ID);
         }
 
-        public void setPosBackRel(final int p_pos) {
+        void setPosBackRel(final int p_pos) {
             if (p_pos < 0) {
                 throw new IllegalStateException("NextWorkPackage posBackRel < 0: " + p_pos);
             }
@@ -605,7 +606,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             m_struct.putInt(IDX_POS_BACK_REL, p_pos);
         }
 
-        public void setPosFrontRel(final int p_pos) {
+        void setPosFrontRel(final int p_pos) {
             if (p_pos < 0) {
                 throw new IllegalStateException("NextWorkPackage posFrontRel < 0: " + p_pos);
             }
@@ -613,7 +614,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             m_struct.putInt(IDX_POS_FRONT_REL, p_pos);
         }
 
-        public void setFlowControlData(final byte p_data) {
+        void setFlowControlData(final byte p_data) {
             if (p_data < 0) {
                 throw new IllegalStateException("NextWorkPackage fcData < 0: " + p_data);
             }
@@ -621,7 +622,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             m_struct.put(IDX_FLOW_CONTROL_DATA, p_data);
         }
 
-        public void setNodeId(final short p_nodeId) {
+        void setNodeId(final short p_nodeId) {
             m_struct.putShort(IDX_NODE_ID, p_nodeId);
         }
 
@@ -631,7 +632,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         }
     }
 
-    private class PrevWorkPackageResults {
+    private static class PrevWorkPackageResults {
         private static final int SIZE_FIELD_NODE_ID = Short.BYTES;
         private static final int SIZE_FIELD_NUM_BYTES_POSTED = Integer.BYTES;
         private static final int SIZE_FIELD_NUM_BYTES_NOT_POSTED = Integer.BYTES;
@@ -658,7 +659,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         //    } __attribute__((packed));
         private ByteBuffer m_struct;
 
-        public PrevWorkPackageResults(final long p_addr) {
+        PrevWorkPackageResults(final long p_addr) {
             m_struct = ByteBufferHelper.wrap(p_addr, SIZE);
             m_struct.order(ByteOrder.nativeOrder());
         }
@@ -667,7 +668,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             return m_struct.getShort(IDX_NODE_ID);
         }
 
-        public int getNumBytesPosted() {
+        int getNumBytesPosted() {
             int tmp = m_struct.getInt(IDX_NUM_BYTES_POSTED);
 
             if (tmp < 0) {
@@ -677,7 +678,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             return tmp;
         }
 
-        public int getNumBytesNotPosted() {
+        int getNumBytesNotPosted() {
             int tmp = m_struct.getInt(IDX_NUM_BYTES_NOT_POSTED);
 
             if (tmp < 0) {
@@ -687,7 +688,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             return tmp;
         }
 
-        public byte getFcDataPosted() {
+        byte getFcDataPosted() {
             byte tmp = m_struct.get(IDX_FC_DATA_POSTED);
 
             if (tmp < 0) {
@@ -697,7 +698,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             return tmp;
         }
 
-        public byte getFcDataNotPosted() {
+        byte getFcDataNotPosted() {
             byte tmp = m_struct.get(IDX_FC_DATA_NOT_POSTED);
 
             if (tmp < 0) {
@@ -713,17 +714,17 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         }
     }
 
-    private class CompletedWorkList {
+    private static class CompletedWorkList {
         private static final int SIZE_FIELD_NUM_NODES = Short.BYTES;
         private static final int SIZE_FIELD_NUM_BYTES_WRITTEN = Integer.BYTES;
         private static final int SIZE_FIELD_NUM_BYTES_WRITTEN_ARRAY = SIZE_FIELD_NUM_BYTES_WRITTEN * 0xFFFF;
         private static final int SIZE_FIELD_FC_DATA_WRITTEN = Byte.BYTES;
         private static final int SIZE_FIELD_FC_DATA_WRITTEN_ARRAY = SIZE_FIELD_FC_DATA_WRITTEN * 0xFFFF;
         private static final int SIZE_FIELD_NODE_ID = Short.BYTES;
-        private final int SIZE_FIELD_NODE_IDS_ARRAY;
+        private final int m_sizeFieldNodeIdsArray;
 
         // depends on max num connections, must be initializated in the constructor
-        private final int SIZE;
+        private final int m_size;
 
         private static final int IDX_NUM_ITEMS = 0;
         private static final int IDX_BYTES_WRITTEN = IDX_NUM_ITEMS + SIZE_FIELD_NUM_NODES;
@@ -739,20 +740,20 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         //    } __attribute__((packed));
         private ByteBuffer m_struct;
 
-        public CompletedWorkList(final long p_addr, final int p_numNodes) {
-            SIZE_FIELD_NODE_IDS_ARRAY = SIZE_FIELD_NODE_ID * p_numNodes;
-            SIZE = SIZE_FIELD_NUM_NODES + SIZE_FIELD_NUM_BYTES_WRITTEN_ARRAY + SIZE_FIELD_FC_DATA_WRITTEN_ARRAY +
-                    SIZE_FIELD_NODE_IDS_ARRAY;
+        CompletedWorkList(final long p_addr, final int p_numNodes) {
+            m_sizeFieldNodeIdsArray = SIZE_FIELD_NODE_ID * p_numNodes;
+            m_size = SIZE_FIELD_NUM_NODES + SIZE_FIELD_NUM_BYTES_WRITTEN_ARRAY + SIZE_FIELD_FC_DATA_WRITTEN_ARRAY +
+                    m_sizeFieldNodeIdsArray;
 
-            m_struct = ByteBufferHelper.wrap(p_addr, SIZE);
+            m_struct = ByteBufferHelper.wrap(p_addr, m_size);
             m_struct.order(ByteOrder.nativeOrder());
         }
 
-        public int getNumNodes() {
+        int getNumNodes() {
             return m_struct.getShort(IDX_NUM_ITEMS) & 0xFFFF;
         }
 
-        public int getNumBytesWritten(final int p_idx) {
+        int getNumBytesWritten(final int p_idx) {
             int tmp = m_struct.getInt(IDX_BYTES_WRITTEN + p_idx * SIZE_FIELD_NUM_BYTES_WRITTEN);
 
             if (tmp < 0) {
@@ -762,7 +763,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             return tmp;
         }
 
-        public byte getFcDataWritten(final int p_idx) {
+        byte getFcDataWritten(final int p_idx) {
             byte tmp = m_struct.get(IDX_FC_DATA_WRITTEN + p_idx * SIZE_FIELD_FC_DATA_WRITTEN);
 
             if (tmp < 0) {
@@ -782,9 +783,9 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         }
     }
 
-    private class ReceivedPackage {
+    private static class ReceivedPackage {
         private static final int SIZE_FIELD_COUNT = Integer.BYTES;
-        private final int SIZE_FIELD_ENTRIES_ARRAY;
+        private final int m_sizeFieldEntriesArray;
 
         private static final int SIZE_FIELD_ENTRY_SOURCE_NODE_ID = Short.BYTES;
         private static final int SIZE_FIELD_ENTRY_FC_DATA = Byte.BYTES;
@@ -797,7 +798,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                         SIZE_FIELD_ENTRY_DATA_RAW + SIZE_FIELD_DATA_LENGTH;
 
         // depends on the shared recv queue size, must be initializated in the constructor
-        private final int SIZE;
+        private final int m_size;
 
         private static final int IDX_COUNT = 0;
         private static final int IDX_ENTRIES = IDX_COUNT + SIZE_FIELD_COUNT;
@@ -822,11 +823,11 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         //    } __attribute__((__packed__));
         private ByteBuffer m_struct;
 
-        public ReceivedPackage(final long p_addr, final int p_maxCount) {
-            SIZE_FIELD_ENTRIES_ARRAY = SIZE_ENTRY_STRUCT * p_maxCount;
-            SIZE = SIZE_FIELD_COUNT + SIZE_FIELD_ENTRIES_ARRAY;
+        ReceivedPackage(final long p_addr, final int p_maxCount) {
+            m_sizeFieldEntriesArray = SIZE_ENTRY_STRUCT * p_maxCount;
+            m_size = SIZE_FIELD_COUNT + m_sizeFieldEntriesArray;
 
-            m_struct = ByteBufferHelper.wrap(p_addr, SIZE);
+            m_struct = ByteBufferHelper.wrap(p_addr, m_size);
             m_struct.order(ByteOrder.nativeOrder());
         }
 
@@ -840,11 +841,11 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             return tmp;
         }
 
-        public short getSourceNodeId(final int p_idx) {
+        short getSourceNodeId(final int p_idx) {
             return m_struct.getShort(IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_SOURCE_NODE_ID);
         }
 
-        public byte getFcData(final int p_idx) {
+        byte getFcData(final int p_idx) {
             byte tmp = m_struct.get(IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_FC_DATA);
 
             if (tmp < 0) {
@@ -858,11 +859,11 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             return m_struct.getLong(IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_PTR_DATA);
         }
 
-        public long getDataRaw(final int p_idx) {
+        long getDataRaw(final int p_idx) {
             return m_struct.getLong(IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_PTR_DATA_RAW);
         }
 
-        public int getDataLength(final int p_idx) {
+        int getDataLength(final int p_idx) {
             int tmp = m_struct.getInt(IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_DATA_LENGTH);
 
             if (tmp < 0) {
