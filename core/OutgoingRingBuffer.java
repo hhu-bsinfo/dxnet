@@ -509,6 +509,9 @@ public class OutgoingRingBuffer {
         return (long) posFrontRelative << 32 | (long) posBackRelative;
     }
 
+    /**
+     * State statistics implementation for debugging
+     */
     private class StateStatistics extends AbstractState {
         /**
          * Constructor

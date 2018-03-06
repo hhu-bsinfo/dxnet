@@ -22,6 +22,8 @@ import java.util.concurrent.locks.LockSupport;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import de.hhu.bsinfo.dxutils.NodeID;
+import de.hhu.bsinfo.dxutils.stats.AbstractState;
 import de.hhu.bsinfo.dxutils.stats.StatisticsManager;
 import de.hhu.bsinfo.dxutils.stats.TimePool;
 
@@ -36,12 +38,6 @@ import de.hhu.bsinfo.dxutils.stats.TimePool;
 public abstract class AbstractFlowControl {
     private static final Logger LOGGER = LogManager.getFormatterLogger(AbstractFlowControl.class.getSimpleName());
 
-    private static final TimePool SOP_WAIT = new TimePool(AbstractFlowControl.class, "Wait");
-
-    static {
-        StatisticsManager.get().registerOperation(AbstractFlowControl.class, SOP_WAIT);
-    }
-
     protected final short m_destinationNodeID;
 
     private final int m_flowControlWindowSize;
@@ -50,6 +46,9 @@ public abstract class AbstractFlowControl {
 
     private AtomicInteger m_unconfirmedBytes;
     protected AtomicInteger m_receivedBytes;
+
+    private final TimePool m_sopWait;
+    private StateStatistics m_stateStats;
 
     /**
      * Constructor
@@ -71,11 +70,23 @@ public abstract class AbstractFlowControl {
         m_unconfirmedBytes = new AtomicInteger(0);
         m_receivedBytes = new AtomicInteger(0);
 
+        m_sopWait = new TimePool(AbstractFlowControl.class, "Wait-" + NodeID.toHexStringShort(m_destinationNodeID));
+        m_stateStats = new StateStatistics();
+
+        StatisticsManager.get().registerOperation(AbstractFlowControl.class, m_sopWait);
+        StatisticsManager.get().registerOperation(AbstractFlowControl.class, m_stateStats);
+
         // #if LOGGER >= DEBUG
         LOGGER.debug("Flow control settings for node 0x%X: window size %d, threshold %f", p_destinationNodeID,
                 p_flowControlWindowSize,
                 p_flowControlWindowThreshold);
         // #endif /* LOGGER >= DEBUG */
+    }
+
+    @Override
+    protected void finalize() {
+        StatisticsManager.get().deregisterOperation(AbstractFlowControl.class, m_sopWait);
+        StatisticsManager.get().deregisterOperation(AbstractFlowControl.class, m_stateStats);
     }
 
     /**
@@ -86,7 +97,8 @@ public abstract class AbstractFlowControl {
     }
 
     /**
-     * Writes flow control data to the destination ASAP (really, do it ASAP or you risk running into ugly deadlocking issues)
+     * Writes flow control data to the destination ASAP (really, do it ASAP or you risk running into ugly deadlocking
+     * issues)
      *
      * @throws NetworkException
      *         If writing the flow control data failed
@@ -116,7 +128,7 @@ public abstract class AbstractFlowControl {
 
         if (m_unconfirmedBytes.get() > m_flowControlWindowSize) {
             // #ifdef STATISTICS
-            SOP_WAIT.start();
+            m_sopWait.start();
             // #endif /* STATISTICS */
 
             while (m_unconfirmedBytes.get() > m_flowControlWindowSize) {
@@ -124,7 +136,7 @@ public abstract class AbstractFlowControl {
             }
 
             // #ifdef STATISTICS
-            SOP_WAIT.stop();
+            m_sopWait.stop();
             // #endif /* STATISTICS */
         }
 
@@ -176,9 +188,43 @@ public abstract class AbstractFlowControl {
         String str;
 
         str = "FlowControl[m_flowControlWindowSize " + m_flowControlWindowSize + ", m_unconfirmedBytes " +
-                m_unconfirmedBytes + ", m_receivedBytes " +
-                m_receivedBytes + ']';
+                m_unconfirmedBytes + ", m_receivedBytes " + m_receivedBytes + ']';
 
         return str;
+    }
+
+    /**
+     * State statistics implementation for debugging
+     */
+    private class StateStatistics extends AbstractState {
+        /**
+         * Constructor
+         */
+        StateStatistics() {
+            super(AbstractFlowControl.class, "State-" + NodeID.toHexStringShort(m_destinationNodeID));
+        }
+
+        @Override
+        public String dataToString(String p_indent) {
+            return p_indent + "m_destinationNodeID " + NodeID.toHexStringShort(m_destinationNodeID) +
+                    ";m_flowControlWindowSize " + m_flowControlWindowSize + ";m_flowControlWindowThreshold " +
+                    m_flowControlWindowThreshold + ";m_flowControlWindowSizeThreshold " +
+                    m_flowControlWindowSizeThreshold + ";m_unconfirmedBytes " + m_unconfirmedBytes.get() +
+                    ";m_receivedBytes " + m_receivedBytes.get();
+        }
+
+        @Override
+        public String generateCSVHeader(final char p_delim) {
+            return "m_destinationNodeID " + p_delim + "m_flowControlWindowSize" + p_delim +
+                    "m_flowControlWindowThreshold" + p_delim + "m_flowControlWindowSizeThreshold" + p_delim +
+                    "m_unconfirmedBytes" + p_delim + "m_receivedBytes";
+        }
+
+        @Override
+        public String toCSV(final char p_delim) {
+            return NodeID.toHexStringShort(m_destinationNodeID) + p_delim + m_flowControlWindowSize + p_delim +
+                    m_flowControlWindowThreshold + p_delim + m_flowControlWindowSizeThreshold + p_delim +
+                    m_unconfirmedBytes.get() + p_delim + m_receivedBytes.get();
+        }
     }
 }
