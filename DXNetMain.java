@@ -485,7 +485,7 @@ public final class DXNetMain implements MessageReceiver {
                 PerfTimer.init(PerfTimer.Type.SYSTEM_NANO_TIME);
                 break;
             default:
-                PerfTimer.init();
+                PerfTimer.init(PerfTimer.Type.SYSTEM_NANO_TIME);
                 break;
         }
 
