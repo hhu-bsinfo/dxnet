@@ -43,6 +43,7 @@ import de.hhu.bsinfo.dxutils.NodeID;
 import de.hhu.bsinfo.dxutils.stats.StatisticsManager;
 import de.hhu.bsinfo.dxutils.stats.TimePool;
 import de.hhu.bsinfo.dxutils.stats.Timeline;
+import de.hhu.bsinfo.dxutils.stats.Value;
 
 /**
  * Connection manager for infiniband (note: this is the main class for the IB subsystem in the java space)
@@ -56,11 +57,13 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
     private static final Timeline SOP_RECV = new Timeline(IBConnectionManager.class, "Recv", "Process", "Native");
     private static final Timeline SOP_SEND_NEXT_DATA = new Timeline(IBConnectionManager.class, "SendNextData",
             "PrevResults", "SendComps", "NextData", "Native");
+    private static final Value SOP_NEXT_DATA_NONE = new Value(IBConnectionManager.class, "NextDataNone");
 
     static {
         StatisticsManager.get().registerOperation(IBConnectionManager.class, SOP_CREATE_CON);
         StatisticsManager.get().registerOperation(IBConnectionManager.class, SOP_RECV);
         StatisticsManager.get().registerOperation(IBConnectionManager.class, SOP_SEND_NEXT_DATA);
+        StatisticsManager.get().registerOperation(IBConnectionManager.class, SOP_NEXT_DATA_NONE);
     }
 
     private final CoreConfig m_coreConfig;
@@ -602,6 +605,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         }
 
         if (nothingToSend) {
+            SOP_NEXT_DATA_NONE.inc();
             m_nextWorkPackage.reset();
         }
     }
