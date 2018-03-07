@@ -514,23 +514,6 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
 
         // no data available
         if (nodeId == NodeID.INVALID_ID) {
-            // TODO move parking to java space to reduce latency if no completions to poll
-            //                if (m_waitTimerStartNs == 0) {
-            //                    m_waitTimerStartNs = System.nanoTime();
-            //                }
-            //
-            //                double waitTimeMs = (System.nanoTime() - m_waitTimerStartNs) / 1000.0 / 1000.0;
-            //
-            //                if (waitTimeMs >= 100.0 && waitTimeMs < 1000.0) {
-            //                    Thread.yield();
-            //                } else if (waitTimeMs >= 1000.0) {
-            //                    LockSupport.parkNanos(1);
-            //                    // return to allow the send thread to shut down (on subsystem shutdown)
-            //                    return 0;
-            //                }
-            //
-            //                continue;
-
             return;
         }
 
