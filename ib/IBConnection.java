@@ -74,7 +74,7 @@ class IBConnection extends AbstractConnection<IBPipeIn, IBPipeOut> {
 
         IBFlowControl flowControl = new IBFlowControl(p_destinationNodeId, p_flowControlWindowSize,
                 p_flowControlWindowThreshold, p_writeInterestManager);
-        IBOutgoingRingBuffer outgoingBuffer = new IBOutgoingRingBuffer(p_ownNodeId, p_sendBufferNativeAddr,
+        IBOutgoingRingBuffer outgoingBuffer = new IBOutgoingRingBuffer(p_destinationNodeId, p_sendBufferNativeAddr,
                 p_outBufferSize, p_exporterPool);
         IBPipeIn pipeIn = new IBPipeIn(p_ownNodeId, p_destinationNodeId, p_messageHeaderPool, flowControl,
                 p_messageDirectory, p_requestMap, p_messageHandlers, p_benchmarkMode);

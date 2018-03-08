@@ -102,7 +102,7 @@ public class NIOConnection extends AbstractConnection<NIOPipeIn, NIOPipeOut> {
 
         NIOFlowControl flowControl = new NIOFlowControl(p_destination, p_flowControlWindowSize,
                 p_flowControlWindowThreshold, p_nioSelector, this);
-        NIOOutgoingRingBuffer outgoingBuffer = new NIOOutgoingRingBuffer(p_ownNodeId, p_bufferSize, p_exporterPool);
+        NIOOutgoingRingBuffer outgoingBuffer = new NIOOutgoingRingBuffer(p_destination, p_bufferSize, p_exporterPool);
         NIOPipeIn pipeIn = new NIOPipeIn(p_ownNodeId, p_destination, p_messageHeaderPool, flowControl,
                 p_messageDirectory, p_requestMap, p_messageHandlers, p_bufferPool, p_incomingBufferQueue, this,
                 p_benchmarkMode);
