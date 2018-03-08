@@ -28,6 +28,7 @@ import de.hhu.bsinfo.dxutils.NodeID;
 import de.hhu.bsinfo.dxutils.UnsafeMemory;
 import de.hhu.bsinfo.dxutils.stats.StatisticsManager;
 import de.hhu.bsinfo.dxutils.stats.Time;
+import de.hhu.bsinfo.dxutils.stats.TimePercentile;
 import de.hhu.bsinfo.dxutils.stats.Value;
 
 /**
@@ -41,7 +42,7 @@ public abstract class AbstractPipeIn {
     private static final Time SOP_PROCESS = new Time(AbstractPipeIn.class, "ProcessBuffer");
     private static final Value SOP_FULFILL = new Value(AbstractPipeIn.class, "FulfillRequest");
     private static final Time SOP_WAIT_SLOT = new Time(AbstractPipeIn.class, "WaitSlot");
-    private static final Value SOP_REQ_RESP_RTT = new Value(AbstractPipeIn.class, "ReqRespRTT");
+    private static final TimePercentile SOP_REQ_RESP_RTT = new TimePercentile(AbstractPipeIn.class, "ReqRespRTT");
 
     static {
         StatisticsManager.get().registerOperation(AbstractPipeIn.class, SOP_PROCESS);
@@ -459,7 +460,7 @@ public abstract class AbstractPipeIn {
             if (request != null) {
                 // Not surrounded by statistics strings as this should always be registered
                 // Must be executed prior to fulfill()!
-                SOP_REQ_RESP_RTT.add(timeReceiveResponse - request.getSendReceiveTimestamp());
+                SOP_REQ_RESP_RTT.record(timeReceiveResponse - request.getSendReceiveTimestamp());
 
                 // #ifdef STATISTICS
                 SOP_FULFILL.inc();
