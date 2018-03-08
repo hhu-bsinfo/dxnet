@@ -205,7 +205,7 @@ public abstract class AbstractFlowControl {
         }
 
         @Override
-        public String dataToString(String p_indent) {
+        public String dataToString(final String p_indent, final boolean p_extended) {
             return p_indent + "m_destinationNodeID " + NodeID.toHexStringShort(m_destinationNodeID) +
                     ";m_flowControlWindowSize " + m_flowControlWindowSize + ";m_flowControlWindowThreshold " +
                     m_flowControlWindowThreshold + ";m_flowControlWindowSizeThreshold " +

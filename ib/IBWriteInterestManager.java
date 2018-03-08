@@ -149,7 +149,7 @@ class IBWriteInterestManager {
         }
 
         @Override
-        public String dataToString(final String p_indent) {
+        public String dataToString(final String p_indent, final boolean p_extended) {
             StringBuilder builder = new StringBuilder();
 
             // allow data races here to avoid performance penalties

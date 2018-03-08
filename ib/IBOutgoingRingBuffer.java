@@ -100,7 +100,7 @@ class IBOutgoingRingBuffer extends OutgoingRingBuffer {
         }
 
         @Override
-        public String dataToString(final String p_indent) {
+        public String dataToString(final String p_indent, final boolean p_extended) {
             return p_indent + "m_posBackDataPosted " + m_posBackDataPosted;
         }
 

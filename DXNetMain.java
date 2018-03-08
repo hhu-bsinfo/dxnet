@@ -230,7 +230,7 @@ public final class DXNetMain implements MessageReceiver {
         ms_dxnet.close();
 
         StatisticsManager.get().stopPeriodicPrinting();
-        StatisticsManager.get().printStatistics(System.out);
+        StatisticsManager.get().printStatistics(System.out, true);
         StatisticsManager.get().printStatisticTables(System.out);
 
         System.exit(0);

@@ -521,7 +521,7 @@ public class OutgoingRingBuffer {
         }
 
         @Override
-        public String dataToString(final String p_indent) {
+        public String dataToString(final String p_indent, final boolean p_extended) {
             return p_indent + "m_nodeId " + NodeID.toHexStringShort(m_nodeId) + ";m_bufferAddr " +
                     Long.toHexString(m_bufferAddr) + ";m_bufferSize " + m_bufferSize + ";m_posBack " + m_posBack +
                     ";m_posFrontProducer " + m_posFrontProducer.get() + ";m_posFrontConsumer " + m_posFrontConsumer +
