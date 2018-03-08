@@ -57,9 +57,10 @@ public class LoopbackConnectionManager extends AbstractConnectionManager {
 
     private AbstractExporterPool m_exporterPool;
 
-    public LoopbackConnectionManager(final CoreConfig p_coreConfig, final LoopbackConfig p_nioConfig, final NodeMap p_nodeMap,
-            final MessageDirectory p_messageDirectory, final RequestMap p_requestMap, final IncomingBufferQueue p_incomingBufferQueue,
-            final LocalMessageHeaderPool p_messageHeaderPool, final MessageHandlers p_messageHandlers, final boolean p_overprovisioning) {
+    public LoopbackConnectionManager(final CoreConfig p_coreConfig, final LoopbackConfig p_nioConfig,
+            final NodeMap p_nodeMap, final MessageDirectory p_messageDirectory, final RequestMap p_requestMap,
+            final IncomingBufferQueue p_incomingBufferQueue, final LocalMessageHeaderPool p_messageHeaderPool,
+            final MessageHandlers p_messageHandlers, final boolean p_overprovisioning) {
         super(2, p_overprovisioning);
 
         m_coreConfig = p_coreConfig;
@@ -84,8 +85,8 @@ public class LoopbackConnectionManager extends AbstractConnectionManager {
         }
 
         m_loopbackSendThread =
-                new LoopbackSendThread(this, (int) p_nioConfig.getConnectionTimeOut().getMs(), (int) m_loopbackConfig.getOugoingRingBufferSize().getBytes(),
-                        p_overprovisioning);
+                new LoopbackSendThread(this, (int) p_nioConfig.getConnectionTimeOut().getMs(),
+                        (int) m_loopbackConfig.getOugoingRingBufferSize().getBytes(), p_overprovisioning);
         m_loopbackSendThread.setName("Network-LoopbackSendThread");
         m_loopbackSendThread.start();
     }
@@ -102,22 +103,17 @@ public class LoopbackConnectionManager extends AbstractConnectionManager {
         m_loopbackSendThread.activateParking();
     }
 
-    /**
-     * Creates a new connection to the given destination
-     *
-     * @param p_destination
-     *         the destination
-     * @return a new connection
-     * @throws NetworkException
-     *         if the connection could not be created
-     */
     @Override
-    public AbstractConnection createConnection(final short p_destination, final AbstractConnection p_existingConnection) throws NetworkException {
+    public AbstractConnection createConnection(final short p_destination,
+            final AbstractConnection p_existingConnection) throws NetworkException {
         LoopbackConnection ret;
 
-        ret = new LoopbackConnection(m_coreConfig.getOwnNodeId(), p_destination, (int) m_loopbackConfig.getOugoingRingBufferSize().getBytes(),
-                (int) m_loopbackConfig.getFlowControlWindow().getBytes(), m_loopbackConfig.getFlowControlWindowThreshold(), m_incomingBufferQueue,
-                m_messageHeaderPool, m_messageDirectory, m_requestMap, m_messageHandlers, m_bufferPool, m_exporterPool, m_loopbackSendThread, m_nodeMap);
+        ret = new LoopbackConnection(m_coreConfig.getOwnNodeId(), p_destination,
+                (int) m_loopbackConfig.getOugoingRingBufferSize().getBytes(),
+                (int) m_loopbackConfig.getFlowControlWindow().getBytes(),
+                m_loopbackConfig.getFlowControlWindowThreshold(), m_incomingBufferQueue, m_messageHeaderPool,
+                m_messageDirectory, m_requestMap, m_messageHandlers, m_bufferPool, m_exporterPool,
+                m_loopbackSendThread, m_nodeMap, m_coreConfig.isBenchmarkMode());
 
         return ret;
     }

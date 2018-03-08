@@ -41,7 +41,7 @@ public class LoopbackConnection extends AbstractConnection<LoopbackPipeIn, Loopb
             final MessageDirectory p_messageDirectory, final RequestMap p_requestMap,
             final MessageHandlers p_messageHandlers, final BufferPool p_bufferPool,
             final AbstractExporterPool p_exporterPool, final LoopbackSendThread p_loopbackSendThread,
-            final NodeMap p_nodeMap) {
+            final NodeMap p_nodeMap, final boolean p_benchmarkMode) {
         super(p_ownNodeId);
 
         LoopbackFlowControl flowControl = new LoopbackFlowControl(p_destination, p_flowControlWindowSize,
@@ -49,7 +49,8 @@ public class LoopbackConnection extends AbstractConnection<LoopbackPipeIn, Loopb
         LoopbackOutgoingRingBuffer outgoingBuffer = new LoopbackOutgoingRingBuffer(p_ownNodeId, p_bufferSize,
                 p_exporterPool);
         LoopbackPipeIn pipeIn = new LoopbackPipeIn(p_ownNodeId, p_destination, p_messageHeaderPool, flowControl,
-                p_messageDirectory, p_requestMap, p_messageHandlers, p_bufferPool, p_incomingBufferQueue, this);
+                p_messageDirectory, p_requestMap, p_messageHandlers, p_bufferPool, p_incomingBufferQueue, this,
+                p_benchmarkMode);
         LoopbackPipeOut pipeOut = new LoopbackPipeOut(p_ownNodeId, p_destination, p_bufferSize, flowControl,
                 outgoingBuffer, p_loopbackSendThread, p_nodeMap, this);
 

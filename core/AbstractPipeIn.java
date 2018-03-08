@@ -19,9 +19,6 @@ package de.hhu.bsinfo.dxnet.core;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.LockSupport;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import de.hhu.bsinfo.dxnet.MessageHandlers;
 import de.hhu.bsinfo.dxnet.core.messages.Messages;
 import de.hhu.bsinfo.dxutils.NodeID;
@@ -37,18 +34,18 @@ import de.hhu.bsinfo.dxutils.stats.Value;
  * @author Stefan Nothaas, stefan.nothaas@hhu.de, 09.06.2017
  */
 public abstract class AbstractPipeIn {
-    private static final Logger LOGGER = LogManager.getFormatterLogger(AbstractPipeIn.class.getSimpleName());
-
     private static final Time SOP_PROCESS = new Time(AbstractPipeIn.class, "ProcessBuffer");
     private static final Value SOP_FULFILL = new Value(AbstractPipeIn.class, "FulfillRequest");
     private static final Time SOP_WAIT_SLOT = new Time(AbstractPipeIn.class, "WaitSlot");
     private static final TimePercentile SOP_REQ_RESP_RTT = new TimePercentile(AbstractPipeIn.class, "ReqRespRTT");
+    private static final Value SOP_REQ_RESP_RTT_VAL = new Value(AbstractPipeIn.class, "ReqRespRTTVal");
 
     static {
         StatisticsManager.get().registerOperation(AbstractPipeIn.class, SOP_PROCESS);
         StatisticsManager.get().registerOperation(AbstractPipeIn.class, SOP_FULFILL);
         StatisticsManager.get().registerOperation(AbstractPipeIn.class, SOP_WAIT_SLOT);
         StatisticsManager.get().registerOperation(AbstractPipeIn.class, SOP_REQ_RESP_RTT);
+        StatisticsManager.get().registerOperation(AbstractPipeIn.class, SOP_REQ_RESP_RTT_VAL);
     }
 
     private static final int BUFFER_SLOTS = 8;
@@ -76,6 +73,8 @@ public abstract class AbstractPipeIn {
     private UnfinishedImExporterOperation m_unfinishedOperation;
     private final UnfinishedImExporterOperation m_dummyOperation;
 
+    private final boolean m_benchmarkMode;
+
     /**
      * Constructor
      *
@@ -91,12 +90,13 @@ public abstract class AbstractPipeIn {
      *         RequestMap instance
      * @param p_messageHandlers
      *         MessageHandlers instance
+     * @param p_benchmarkMode
+     *         True to enable benchmark mode and record all RTT values to calculate percentile
      */
     protected AbstractPipeIn(final short p_ownNodeId, final short p_destinationNodeId,
-            final LocalMessageHeaderPool p_messageHeaderPool,
-            final AbstractFlowControl p_flowControl, final MessageDirectory p_messageDirectory,
-            final RequestMap p_requestMap,
-            final MessageHandlers p_messageHandlers) {
+            final LocalMessageHeaderPool p_messageHeaderPool, final AbstractFlowControl p_flowControl,
+            final MessageDirectory p_messageDirectory, final RequestMap p_requestMap,
+            final MessageHandlers p_messageHandlers, final boolean p_benchmarkMode) {
         m_ownNodeID = p_ownNodeId;
         m_destinationNodeID = p_destinationNodeId;
         m_flowControl = p_flowControl;
@@ -125,6 +125,8 @@ public abstract class AbstractPipeIn {
         }
         m_unfinishedOperation = m_slotUnfinishedOperations[m_slotPosition];
         m_dummyOperation = new UnfinishedImExporterOperation();
+
+        m_benchmarkMode = p_benchmarkMode;
     }
 
     /**
@@ -151,8 +153,8 @@ public abstract class AbstractPipeIn {
     @Override
     public String toString() {
         return "PipeIn[m_ownNodeID " + NodeID.toHexString(m_ownNodeID) + ", m_destinationNodeID " + NodeID.toHexString(
-                m_destinationNodeID) +
-                ", m_flowControl " + m_flowControl + ", m_receivedMessages " + m_receivedMessages + ']';
+                m_destinationNodeID) + ", m_flowControl " + m_flowControl + ", m_receivedMessages " +
+                m_receivedMessages + ']';
     }
 
     /**
@@ -217,7 +219,8 @@ public abstract class AbstractPipeIn {
             /* Read header */
 
             if (m_unfinishedOperation.isEmpty() || !m_unfinishedOperation.wasMessageCreated()) {
-                // Skip reading header only if message payload could not be read entirely (only relevant for first iteration)
+                // Skip reading header only if message payload could not be read entirely (only relevant for first
+                // iteration)
                 if (currentPosition + Message.HEADER_SIZE - m_unfinishedOperation.getBytesCopied() > bytesAvailable) {
                     // End of current data stream in importer, incomplete header
                     readHeader(messageHeader, currentPosition, address, bytesAvailable, m_unfinishedOperation,
@@ -227,7 +230,8 @@ public abstract class AbstractPipeIn {
                         // Overflow + underflow: transfer state of unfinished operation to new unfinished operation
                         UnfinishedImExporterOperation tmp = m_unfinishedOperation;
 
-                        // Switch to unfinished operation from current slot as soon as last message header of last buffer is completed
+                        // Switch to unfinished operation from current slot as soon as last message header of last
+                        // buffer is completed
                         m_unfinishedOperation = m_slotUnfinishedOperations[slotUnfinishedOperation];
                         m_unfinishedOperation.reset();
 
@@ -246,9 +250,11 @@ public abstract class AbstractPipeIn {
                 if (m_unfinishedOperation.isEmpty()) {
                     currentPosition += Message.HEADER_SIZE;
                 } else {
-                    // The header was not finished with last buffer but with current one -> increase position by read bytes in current buffer, only
+                    // The header was not finished with last buffer but with current one -> increase position by read
+                    // bytes in current buffer, only
                     currentPosition += Message.HEADER_SIZE - m_unfinishedOperation.getBytesCopied();
-                    // Switch to unfinished operation from current slot as soon as last message header of last buffer is completed
+                    // Switch to unfinished operation from current slot as soon as last message header of last buffer
+                    // is completed
                     m_unfinishedOperation = m_slotUnfinishedOperations[slotUnfinishedOperation];
                     m_unfinishedOperation.reset();
                 }
@@ -271,11 +277,10 @@ public abstract class AbstractPipeIn {
                 }
 
                 if (type == Messages.DEFAULT_MESSAGES_TYPE && subtype == Messages.SUBTYPE_INVALID_MESSAGE) {
-                    throw new NetworkException(
-                            "Invalid message type 0, subtype 0, most likely corrupted message/buffer. Current message header: " +
-                                    messageHeader +
-                                    "\nBuffer section (first index is start of message header): " + builder +
-                                    "\nImporterCollectionState:\n" + m_importers);
+                    throw new NetworkException("Invalid message type 0, subtype 0, most likely corrupted " +
+                            "message/buffer. Current message header: " + messageHeader + "\nBuffer section (first " +
+                            "index is start of message header): " + builder + "\nImporterCollectionState:\n" +
+                            m_importers);
                 } else {
                     throw new NetworkException(
                             "Invalid message type " + type + ", subtype " + subtype +
@@ -292,7 +297,8 @@ public abstract class AbstractPipeIn {
                 continue;
             }
 
-            /* Create and read message. Delegated to message handlers if message is included entirely in current incoming buffer. */
+            // Create and read message. Delegated to message handlers if message is included entirely in current
+            // incoming buffer.
 
             int payloadSize = messageHeader.getPayloadSize();
             if (currentPosition + payloadSize - m_unfinishedOperation.getBytesCopied() > bytesAvailable) {
@@ -308,7 +314,8 @@ public abstract class AbstractPipeIn {
                     // Overflow + underflow: transfer state of unfinished operation to new unfinished operation
                     UnfinishedImExporterOperation tmp = m_unfinishedOperation;
 
-                    // Switch to unfinished operation from current slot as soon as last message of last buffer is completed
+                    // Switch to unfinished operation from current slot as soon as last message of last
+                    // buffer is completed
                     m_unfinishedOperation = m_slotUnfinishedOperations[slotUnfinishedOperation];
                     m_unfinishedOperation.reset();
 
@@ -460,7 +467,11 @@ public abstract class AbstractPipeIn {
             if (request != null) {
                 // Not surrounded by statistics strings as this should always be registered
                 // Must be executed prior to fulfill()!
-                SOP_REQ_RESP_RTT.record(timeReceiveResponse - request.getSendReceiveTimestamp());
+                if (m_benchmarkMode) {
+                    SOP_REQ_RESP_RTT.record(timeReceiveResponse - request.getSendReceiveTimestamp());
+                } else {
+                    SOP_REQ_RESP_RTT_VAL.add(timeReceiveResponse - request.getSendReceiveTimestamp());
+                }
 
                 // #ifdef STATISTICS
                 SOP_FULFILL.inc();
@@ -527,7 +538,8 @@ public abstract class AbstractPipeIn {
     }
 
     /**
-     * Leave buffer slot after processing all messages (reading message headers and dispatching creation). Is called by MessageCreationCoordinator.
+     * Leave buffer slot after processing all messages (reading message
+     * headers and dispatching creation). Is called by MessageCreationCoordinator.
      *
      * @param p_messageCounter
      *         the slot's message counter
@@ -547,7 +559,8 @@ public abstract class AbstractPipeIn {
     }
 
     /**
-     * Update buffer slot: decrement message counter and return incoming buffer to buffer pool if counter is 0. Is called by MessageHandlers.
+     * Update buffer slot: decrement message counter and return
+     * incoming buffer to buffer pool if counter is 0. Is called by MessageHandlers.
      *
      * @param p_slotIndex
      *         the slot index
@@ -557,7 +570,8 @@ public abstract class AbstractPipeIn {
         BufferPool.DirectBufferWrapper buffer = m_slotBufferWrappers[p_slotIndex];
         long bufferHandle = m_slotBufferHandles[p_slotIndex];
 
-        // Decrement message counter for this slot and return incoming buffer if all messages have been created and de-serialized
+        // Decrement message counter for this slot and return incoming buffer if all
+        // messages have been created and de-serialized
         int counter = m_slotMessageCounters[p_slotIndex].decrementAndGet();
         if (counter == 0) {
             returnProcessedBuffer(buffer, bufferHandle);

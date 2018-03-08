@@ -81,6 +81,8 @@ class NIOPipeIn extends AbstractPipeIn {
      *         the incoming buffer queue.
      * @param p_parentConnection
      *         the NIO connection this PipeIn belongs to.
+     * @param p_benchmarkMode
+     *         True to enable benchmark mode and record all RTT values to calculate percentile
      */
     NIOPipeIn(final short p_ownNodeId, final short p_destinationNodeId,
             final LocalMessageHeaderPool p_messageHeaderPool,
@@ -88,9 +90,9 @@ class NIOPipeIn extends AbstractPipeIn {
             final RequestMap p_requestMap,
             final MessageHandlers p_messageHandlers, final BufferPool p_bufferPool,
             final IncomingBufferQueue p_incomingBufferQueue,
-            final NIOConnection p_parentConnection) {
+            final NIOConnection p_parentConnection, final boolean p_benchmarkMode) {
         super(p_ownNodeId, p_destinationNodeId, p_messageHeaderPool, p_flowControl, p_messageDirectory, p_requestMap,
-                p_messageHandlers);
+                p_messageHandlers, p_benchmarkMode);
 
         m_incomingChannel = null;
         m_bufferPool = p_bufferPool;

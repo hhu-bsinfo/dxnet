@@ -39,6 +39,9 @@ public class CoreConfig {
     private boolean m_useStaticExporterPool = true;
 
     @Expose
+    private boolean m_benchmarkMode = false;
+
+    @Expose
     private String m_device = "Ethernet";
 
     /**
@@ -81,6 +84,14 @@ public class CoreConfig {
      */
     public boolean getExporterPoolType() {
         return m_useStaticExporterPool;
+    }
+
+    /**
+     * Set this to true to put DXNet into benchmark mode which enables further statistics like percentile for RTT
+     * (note: the application requires more memory in this mode due to recording more data for evaluation purpose)
+     */
+    public boolean isBenchmarkMode() {
+        return m_benchmarkMode;
     }
 
     /**

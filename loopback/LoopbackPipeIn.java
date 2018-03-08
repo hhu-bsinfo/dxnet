@@ -49,9 +49,10 @@ public class LoopbackPipeIn extends AbstractPipeIn {
             final LocalMessageHeaderPool p_messageHeaderPool, final AbstractFlowControl p_flowControl,
             final MessageDirectory p_messageDirectory, final RequestMap p_requestMap,
             final MessageHandlers p_messageHandlers, final BufferPool p_bufferPool,
-            final IncomingBufferQueue p_incomingBufferQueue, final LoopbackConnection p_parentConnection) {
+            final IncomingBufferQueue p_incomingBufferQueue, final LoopbackConnection p_parentConnection,
+            final boolean p_benchmarkMode) {
         super(p_ownNodeId, p_destinationNodeId, p_messageHeaderPool, p_flowControl, p_messageDirectory, p_requestMap,
-                p_messageHandlers);
+                p_messageHandlers, p_benchmarkMode);
 
         m_bufferPool = p_bufferPool;
         m_incomingBufferQueue = p_incomingBufferQueue;

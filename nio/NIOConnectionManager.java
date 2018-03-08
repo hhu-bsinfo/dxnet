@@ -45,7 +45,8 @@ import de.hhu.bsinfo.dxnet.core.StaticExporterPool;
 import de.hhu.bsinfo.dxutils.NodeID;
 
 /**
- * Creates and closes NIO connections. Connection creations/closures initiated by a remote node are processed asynchronously.
+ * Creates and closes NIO connections. Connection creations/closures
+ * initiated by a remote node are processed asynchronously.
  *
  * @author Kevin Beineke, kevin.beineke@hhu.de, 18.03.2017
  */
@@ -90,8 +91,9 @@ public class NIOConnectionManager extends AbstractConnectionManager {
      * @param p_overprovisioning
      *         whether thread overprovisioning was detected before. Might be updated later.
      */
-    public NIOConnectionManager(final CoreConfig p_coreConfig, final NIOConfig p_nioConfig, final NodeMap p_nodeMap, final MessageDirectory p_messageDirectory,
-            final RequestMap p_requestMap, final IncomingBufferQueue p_incomingBufferQueue, final LocalMessageHeaderPool p_messageHeaderPool,
+    public NIOConnectionManager(final CoreConfig p_coreConfig, final NIOConfig p_nioConfig, final NodeMap p_nodeMap,
+            final MessageDirectory p_messageDirectory, final RequestMap p_requestMap,
+            final IncomingBufferQueue p_incomingBufferQueue, final LocalMessageHeaderPool p_messageHeaderPool,
             final MessageHandlers p_messageHandlers, final boolean p_overprovisioning) {
         super(p_nioConfig.getMaxConnections(), p_overprovisioning);
 
@@ -116,8 +118,8 @@ public class NIOConnectionManager extends AbstractConnectionManager {
             m_exporterPool = new DynamicExporterPool();
         }
 
-        m_nioSelector = new NIOSelector(this, p_nodeMap.getAddress(p_nodeMap.getOwnNodeID()).getPort(), (int) p_nioConfig.getConnectionTimeOut().getMs(),
-                (int) m_config.getOugoingRingBufferSize().getBytes());
+        m_nioSelector = new NIOSelector(this, p_nodeMap.getAddress(p_nodeMap.getOwnNodeID()).getPort(),
+                (int) p_nioConfig.getConnectionTimeOut().getMs(), (int) m_config.getOugoingRingBufferSize().getBytes());
         m_nioSelector.setName("Network-NIOSelector");
         m_nioSelector.start();
 
@@ -148,7 +150,8 @@ public class NIOConnectionManager extends AbstractConnectionManager {
      *         if the connection could not be created
      */
     @Override
-    public AbstractConnection createConnection(final short p_destination, final AbstractConnection p_existingConnection) throws NetworkException {
+    public AbstractConnection createConnection(final short p_destination,
+            final AbstractConnection p_existingConnection) throws NetworkException {
         NIOConnection ret;
         ReentrantLock condLock;
         Condition cond;
@@ -160,15 +163,19 @@ public class NIOConnectionManager extends AbstractConnectionManager {
         if (p_existingConnection == null) {
             if (m_openConnections == m_maxConnections) {
                 // #if LOGGER >= DEBUG
-                LOGGER.debug("Create connection on send: Connection max (%d) reached, dismissing random connection", m_maxConnections);
+                LOGGER.debug("Create connection on send: Connection max (%d) reached, dismissing random connection",
+                        m_maxConnections);
                 // #endif /* LOGGER >= DEBUG */
 
                 dismissRandomConnection();
             }
 
-            ret = new NIOConnection(m_coreConfig.getOwnNodeId(), p_destination, (int) m_config.getOugoingRingBufferSize().getBytes(),
-                    (int) m_config.getFlowControlWindow().getBytes(), m_config.getFlowControlWindowThreshold(), m_incomingBufferQueue, m_messageHeaderPool,
-                    m_messageDirectory, m_requestMap, m_messageHandlers, m_bufferPool, m_exporterPool, m_nioSelector, m_nodeMap, condLock, cond);
+            ret = new NIOConnection(m_coreConfig.getOwnNodeId(), p_destination,
+                    (int) m_config.getOugoingRingBufferSize().getBytes(),
+                    (int) m_config.getFlowControlWindow().getBytes(), m_config.getFlowControlWindowThreshold(),
+                    m_incomingBufferQueue, m_messageHeaderPool, m_messageDirectory, m_requestMap, m_messageHandlers,
+                    m_bufferPool, m_exporterPool, m_nioSelector, m_nodeMap, condLock, cond,
+                    m_coreConfig.isBenchmarkMode());
         } else {
             ret = (NIOConnection) p_existingConnection;
         }
@@ -190,7 +197,8 @@ public class NIOConnectionManager extends AbstractConnectionManager {
 
             if (System.currentTimeMillis() > deadline) {
                 // #if LOGGER >= DEBUG
-                LOGGER.debug("Connection creation time-out. Interval %s ms might be to small", m_config.getConnectionTimeOut());
+                LOGGER.debug("Connection creation time-out. Interval %s ms might be to small",
+                        m_config.getConnectionTimeOut());
                 // #endif /* LOGGER >= DEBUG */
 
                 condLock.unlock();
@@ -307,7 +315,8 @@ public class NIOConnectionManager extends AbstractConnectionManager {
      * @throws IOException
      *         if the connection could not be created
      */
-    private static short readRemoteNodeID(final SocketChannel p_channel, final NIOSelector p_nioSelector) throws IOException {
+    private static short readRemoteNodeID(final SocketChannel p_channel, final NIOSelector p_nioSelector)
+            throws IOException {
         short ret;
         int bytes;
         int counter = 0;
@@ -471,16 +480,20 @@ public class NIOConnectionManager extends AbstractConnectionManager {
                     if (connection == null) {
                         if (m_openConnections == m_config.getMaxConnections()) {
                             // #if LOGGER >= DEBUG
-                            LOGGER.debug("Create connection on recv: Connection max (%d) reached, " + "dismissing random connection", m_maxConnections);
+                            LOGGER.debug("Create connection on recv: Connection max (%d) reached, dismissing random " +
+                                    "connection", m_maxConnections);
                             // #endif /* LOGGER >= DEBUG */
 
                             dismissRandomConnection();
                         }
 
-                        connection = new NIOConnection(m_coreConfig.getOwnNodeId(), destination, (int) m_config.getOugoingRingBufferSize().getBytes(),
-                                (int) m_config.getFlowControlWindow().getBytes(), m_config.getFlowControlWindowThreshold(), m_incomingBufferQueue,
-                                m_messageHeaderPool, m_messageDirectory, m_requestMap, m_messageHandlers, m_bufferPool, m_exporterPool, m_nioSelector,
-                                m_nodeMap);
+                        connection = new NIOConnection(m_coreConfig.getOwnNodeId(), destination,
+                                (int) m_config.getOugoingRingBufferSize().getBytes(),
+                                (int) m_config.getFlowControlWindow().getBytes(),
+                                m_config.getFlowControlWindowThreshold(), m_incomingBufferQueue, m_messageHeaderPool,
+                                m_messageDirectory, m_requestMap, m_messageHandlers, m_bufferPool, m_exporterPool,
+                                m_nioSelector, m_nodeMap, m_coreConfig.isBenchmarkMode());
+
                         ((NIOConnection) connection).getPipeIn().bindIncomingChannel(channel);
 
                         m_connections[destination & 0xFFFF] = connection;

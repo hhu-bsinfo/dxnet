@@ -252,7 +252,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         connection = new IBConnection(m_coreConfig.getOwnNodeId(), p_destination, sendBufferAddr,
                 (int) m_config.getOugoingRingBufferSize().getBytes(), (int) m_config.getFlowControlWindow().getBytes(),
                 m_config.getFlowControlWindowThreshold(), m_messageHeaderPool, m_messageDirectory, m_requestMap,
-                m_exporterPool, m_messageHandlers, m_writeInterestManager);
+                m_exporterPool, m_messageHandlers, m_writeInterestManager, m_coreConfig.isBenchmarkMode());
 
         connection.setPipeInConnected(true);
         connection.setPipeOutConnected(true);

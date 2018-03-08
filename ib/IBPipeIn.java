@@ -45,11 +45,14 @@ class IBPipeIn extends AbstractPipeIn {
      *         Request map instance
      * @param p_messageHandlers
      *         Message handlers instance
+     * @param p_benchmarkMode
+     *         True to enable benchmark mode and record all RTT values to calculate percentile
      */
     IBPipeIn(final short p_ownNodeId, final short p_destinationNodeId, final LocalMessageHeaderPool p_messageHeaderPool,
-            final AbstractFlowControl p_flowControl, final MessageDirectory p_messageDirectory, final RequestMap p_requestMap,
-            final MessageHandlers p_messageHandlers) {
-        super(p_ownNodeId, p_destinationNodeId, p_messageHeaderPool, p_flowControl, p_messageDirectory, p_requestMap, p_messageHandlers);
+            final AbstractFlowControl p_flowControl, final MessageDirectory p_messageDirectory,
+            final RequestMap p_requestMap, final MessageHandlers p_messageHandlers, final boolean p_benchmarkMode) {
+        super(p_ownNodeId, p_destinationNodeId, p_messageHeaderPool, p_flowControl, p_messageDirectory, p_requestMap,
+                p_messageHandlers, p_benchmarkMode);
     }
 
     void handleFlowControlData(final byte p_confirmedWindows) {
