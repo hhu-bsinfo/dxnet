@@ -24,6 +24,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import de.hhu.bsinfo.dxutils.UnsafeHandler;
+import de.hhu.bsinfo.dxutils.stats.AbstractState;
 import de.hhu.bsinfo.dxutils.stats.StatisticsManager;
 import de.hhu.bsinfo.dxutils.stats.Time;
 
@@ -55,11 +56,14 @@ public class IncomingBufferQueue {
 
     private AtomicInteger m_currentBytes;
 
-    // single producer, single consumer lock free queue (posBack and posFront are synchronized with fences and byte counter)
+    // single producer, single consumer lock free queue (posBack and posFront are synchronized with fences and byte
+    // counter)
     private int m_posBack; // 31 bits used (see incrementation)
     private int m_posFront; // 31 bits used (see incrementation)
 
     private AtomicLong m_queueFullCounter;
+
+    private final StateStatistics m_stateStats;
 
     /**
      * Creates an instance of IncomingBufferQueue
@@ -92,6 +96,15 @@ public class IncomingBufferQueue {
         m_incomingBuffer = new IncomingBuffer();
 
         m_queueFullCounter = new AtomicLong(0);
+
+        m_stateStats = new StateStatistics();
+
+        StatisticsManager.get().registerOperation(IncomingBufferQueue.class, m_stateStats);
+    }
+
+    @Override
+    protected void finalize() {
+        StatisticsManager.get().deregisterOperation(IncomingBufferQueue.class, m_stateStats);
     }
 
     /**
@@ -161,11 +174,9 @@ public class IncomingBufferQueue {
             // avoid flooding the log
             if (m_queueFullCounter.getAndIncrement() % 100000 == 0) {
                 // #if LOGGER == WARN
-                LOGGER.warn(
-                        "IBQ is full (curBytes %d, posBack %d, posFront %d), count: %d. If this message appears often (with a high counter) you should " +
-                                "consider increasing the number message handlers to avoid performance penalties",
-                        curBytes, posBack, posFront,
-                        m_queueFullCounter.get());
+                LOGGER.warn("IBQ is full (curBytes %d, posBack %d, posFront %d), count: %d. If this message appears " +
+                        "often (with a high counter) you should consider increasing the number message handlers to " +
+                        "avoid performance penalties", curBytes, posBack, posFront, m_queueFullCounter.get());
                 // #endif /* LOGGER == WARN */
             }
 
@@ -281,6 +292,38 @@ public class IncomingBufferQueue {
             m_bufferHandle = p_bufferHandle;
             m_bufferAddress = p_bufferAddress;
             m_bufferSize = p_bufferSize;
+        }
+    }
+
+    /**
+     * State statistics implementation for debugging
+     */
+    private class StateStatistics extends AbstractState {
+        /**
+         * Constructor
+         */
+        StateStatistics() {
+            super(IncomingBufferQueue.class, "State");
+        }
+
+        @Override
+        public String dataToString(final String p_indent, final boolean p_extended) {
+            return p_indent + "m_maxCapacityBufferCount " + m_maxCapacityBufferCount + ";m_maxCapacitySize " +
+                    m_maxCapacitySize + ";m_currentBytes " + m_currentBytes.get() + ";m_posBack " + m_posBack +
+                    ";m_posFront " + m_posFront + ";m_queueFullCounter " + m_queueFullCounter.get();
+        }
+
+        @Override
+        public String generateCSVHeader(final char p_delim) {
+            return "m_maxCapacityBufferCount" + p_delim + "m_maxCapacitySize" + p_delim + "m_currentBytes" + p_delim +
+                    "m_posBack" + p_delim + "m_posFront" + p_delim + "m_queueFullCounter";
+        }
+
+        @Override
+        public String toCSV(final char p_delim) {
+            return Integer.toString(m_maxCapacityBufferCount) + p_delim + m_maxCapacitySize + p_delim +
+                    m_currentBytes.get() + p_delim + m_posBack + p_delim + m_posFront + p_delim +
+                    m_queueFullCounter.get();
         }
     }
 }
