@@ -115,7 +115,8 @@ public class IBConfig {
     }
 
     /**
-     * Get the threshold determining when a flow control message is sent (receivedBytes > m_flowControlWindow * m_flowControlWindowThreshold)
+     * Get the threshold determining when a flow control message is sent
+     * (receivedBytes > m_flowControlWindow * m_flowControlWindowThreshold)
      */
     public float getFlowControlWindowThreshold() {
         return m_flowControlWindowThreshold;

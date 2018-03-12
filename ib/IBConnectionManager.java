@@ -102,8 +102,12 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
      *         Request map instance
      * @param p_incomingBufferQueue
      *         Incoming buffer queue instance
+     * @param p_messageHeaderPool
+     *         Pool for message headers
      * @param p_messageHandlers
      *         Message handlers instance
+     * @param p_overprovisioning
+     *         True if overprovisioning is on, false for off
      */
     public IBConnectionManager(final CoreConfig p_coreConfig, final IBConfig p_config, final NodeMap p_nodeMap,
             final MessageDirectory p_messageDirectory,
@@ -425,7 +429,12 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         }
     }
 
-    // evaluate processing results of the previous work package
+    /**
+     * Evaluate the processing results of the previous work package
+     *
+     * @param p_prevResults
+     *         Native pointer to a struct with the data about the previous work package
+     */
     private void processPrevResults(final long p_prevResults) {
         // wrap on the first callback, native address is always the same
         if (m_prevWorkPackageResults == null) {
@@ -468,6 +477,12 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         }
     }
 
+    /**
+     * Process send completion data which tells us that the asynchronous transfer has completed
+     *
+     * @param p_completionList
+     *         Native pointer to struct with completion data
+     */
     private void processSendCompletions(final long p_completionList) {
         // wrap on first call
         if (m_completedWorkList == null) {
@@ -502,6 +517,12 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         }
     }
 
+    /**
+     * Prepare the next work package with data from the ORB to send
+     *
+     * @param p_nextWorkPackage
+     *         Native pointer to struct to write the data to for sending
+     */
     private void prepareNextDataToSend(final long p_nextWorkPackage) {
         if (m_nextWorkPackage == null) {
             m_nextWorkPackage = new NextWorkPackage(p_nextWorkPackage);
@@ -593,6 +614,9 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         }
     }
 
+    /**
+     * Wrapper for native struct NextWorkPackage
+     */
     private static class NextWorkPackage {
         private static final int SIZE_FIELD_POS_BACK_REL = Integer.BYTES;
         private static final int SIZE_FIELD_POS_FRONT_REL = Integer.BYTES;
@@ -616,11 +640,20 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         //    } __attribute__((packed));
         private ByteBuffer m_struct;
 
+        /**
+         * Constructor
+         *
+         * @param p_addr
+         *         Native address pointing to struct
+         */
         NextWorkPackage(final long p_addr) {
             m_struct = ByteBufferHelper.wrap(p_addr, SIZE);
             m_struct.order(ByteOrder.nativeOrder());
         }
 
+        /**
+         * Reset state and clear data
+         */
         public void reset() {
             setPosBackRel(0);
             setPosFrontRel(0);
@@ -628,6 +661,12 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             setNodeId(NodeID.INVALID_ID);
         }
 
+        /**
+         * Set the pos back relative field
+         *
+         * @param p_pos
+         *         Value to set
+         */
         void setPosBackRel(final int p_pos) {
             if (p_pos < 0) {
                 throw new IllegalStateException("NextWorkPackage posBackRel < 0: " + p_pos);
@@ -636,6 +675,12 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             m_struct.putInt(IDX_POS_BACK_REL, p_pos);
         }
 
+        /**
+         * Set the pos front relative field
+         *
+         * @param p_pos
+         *         Value to set
+         */
         void setPosFrontRel(final int p_pos) {
             if (p_pos < 0) {
                 throw new IllegalStateException("NextWorkPackage posFrontRel < 0: " + p_pos);
@@ -644,6 +689,12 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             m_struct.putInt(IDX_POS_FRONT_REL, p_pos);
         }
 
+        /**
+         * Set data for the flow control data field
+         *
+         * @param p_data
+         *         Value to set
+         */
         void setFlowControlData(final byte p_data) {
             if (p_data < 0) {
                 throw new IllegalStateException("NextWorkPackage fcData < 0: " + p_data);
@@ -652,6 +703,12 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             m_struct.put(IDX_FLOW_CONTROL_DATA, p_data);
         }
 
+        /**
+         * Set the target node id
+         *
+         * @param p_nodeId
+         *         Target node id to send to
+         */
         void setNodeId(final short p_nodeId) {
             m_struct.putShort(IDX_NODE_ID, p_nodeId);
         }
@@ -662,6 +719,9 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         }
     }
 
+    /**
+     * Wrapper for native struct PrevWorkPackageResults
+     */
     private static class PrevWorkPackageResults {
         private static final int SIZE_FIELD_NODE_ID = Short.BYTES;
         private static final int SIZE_FIELD_NUM_BYTES_POSTED = Integer.BYTES;
@@ -689,15 +749,27 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         //    } __attribute__((packed));
         private ByteBuffer m_struct;
 
+        /**
+         * Constructor
+         *
+         * @param p_addr
+         *         Native address pointing to struct
+         */
         PrevWorkPackageResults(final long p_addr) {
             m_struct = ByteBufferHelper.wrap(p_addr, SIZE);
             m_struct.order(ByteOrder.nativeOrder());
         }
 
+        /**
+         * Get the node id the last package was sent to
+         */
         public short getNodeId() {
             return m_struct.getShort(IDX_NODE_ID);
         }
 
+        /**
+         * Get the actual number of bytes posted (might be less than specified on the last work package)
+         */
         int getNumBytesPosted() {
             int tmp = m_struct.getInt(IDX_NUM_BYTES_POSTED);
 
@@ -708,6 +780,9 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             return tmp;
         }
 
+        /**
+         * Get the number of bytes that were not posted on the last work request (due to queue full)
+         */
         int getNumBytesNotPosted() {
             int tmp = m_struct.getInt(IDX_NUM_BYTES_NOT_POSTED);
 
@@ -718,6 +793,9 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             return tmp;
         }
 
+        /**
+         * Get the amount of fc data posted on the last work request
+         */
         byte getFcDataPosted() {
             byte tmp = m_struct.get(IDX_FC_DATA_POSTED);
 
@@ -728,6 +806,9 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             return tmp;
         }
 
+        /**
+         * Get the amount of fc data could not be posted (queue full)
+         */
         byte getFcDataNotPosted() {
             byte tmp = m_struct.get(IDX_FC_DATA_NOT_POSTED);
 
@@ -744,6 +825,9 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         }
     }
 
+    /**
+     * Wrapper for native struct CompletedWorkList
+     */
     private static class CompletedWorkList {
         private static final int SIZE_FIELD_NUM_NODES = Short.BYTES;
         private static final int SIZE_FIELD_NUM_BYTES_WRITTEN = Integer.BYTES;
@@ -770,6 +854,14 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         //    } __attribute__((packed));
         private ByteBuffer m_struct;
 
+        /**
+         * Constructor
+         *
+         * @param p_addr
+         *         Native address pointing to struct
+         * @param p_numNodes
+         *         Max number of nodes that can be connected (connection limit)
+         */
         CompletedWorkList(final long p_addr, final int p_numNodes) {
             m_sizeFieldNodeIdsArray = SIZE_FIELD_NODE_ID * p_numNodes;
             m_size = SIZE_FIELD_NUM_NODES + SIZE_FIELD_NUM_BYTES_WRITTEN_ARRAY + SIZE_FIELD_FC_DATA_WRITTEN_ARRAY +
@@ -779,10 +871,19 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             m_struct.order(ByteOrder.nativeOrder());
         }
 
+        /**
+         * Get the number of nodes that have work completed
+         */
         int getNumNodes() {
             return m_struct.getShort(IDX_NUM_ITEMS) & 0xFFFF;
         }
 
+        /**
+         * Get the number of bytes written on completion
+         *
+         * @param p_idx
+         *         Index of the work completion list
+         */
         int getNumBytesWritten(final int p_idx) {
             int tmp = m_struct.getInt(IDX_BYTES_WRITTEN + p_idx * SIZE_FIELD_NUM_BYTES_WRITTEN);
 
@@ -793,6 +894,12 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             return tmp;
         }
 
+        /**
+         * Get the number of fc data written on completion
+         *
+         * @param p_idx
+         *         Index of the work completion list
+         */
         byte getFcDataWritten(final int p_idx) {
             byte tmp = m_struct.get(IDX_FC_DATA_WRITTEN + p_idx * SIZE_FIELD_FC_DATA_WRITTEN);
 
@@ -803,6 +910,12 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             return tmp;
         }
 
+        /**
+         * Get the node id of the work completion with data sent
+         *
+         * @param p_idx
+         *         Index of the work completion list
+         */
         public short getNodeId(final int p_idx) {
             return m_struct.getShort(IDX_NODE_IDS + p_idx * SIZE_FIELD_NODE_ID);
         }
@@ -813,6 +926,9 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         }
     }
 
+    /**
+     * Wrapper for native struct ReceivedPackage
+     */
     private static class ReceivedPackage {
         private static final int SIZE_FIELD_COUNT = Integer.BYTES;
         private final int m_sizeFieldEntriesArray;
@@ -853,6 +969,14 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         //    } __attribute__((__packed__));
         private ByteBuffer m_struct;
 
+        /**
+         * Constructor
+         *
+         * @param p_addr
+         *         Native address pointing to struct
+         * @param p_maxCount
+         *         Max number of elements that can be received (i.e. receive queue size)
+         */
         ReceivedPackage(final long p_addr, final int p_maxCount) {
             m_sizeFieldEntriesArray = SIZE_ENTRY_STRUCT * p_maxCount;
             m_size = SIZE_FIELD_COUNT + m_sizeFieldEntriesArray;
@@ -861,6 +985,9 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             m_struct.order(ByteOrder.nativeOrder());
         }
 
+        /**
+         * Get the number of entries of the receive package
+         */
         public int getCount() {
             int tmp = m_struct.getInt(IDX_COUNT);
 
@@ -871,10 +998,22 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             return tmp;
         }
 
+        /**
+         * Get the node id of a single entry
+         *
+         * @param p_idx
+         *         Index of the entry
+         */
         short getSourceNodeId(final int p_idx) {
             return m_struct.getShort(IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_SOURCE_NODE_ID);
         }
 
+        /**
+         * Get the received flow control data
+         *
+         * @param p_idx
+         *         Index of the entry
+         */
         byte getFcData(final int p_idx) {
             byte tmp = m_struct.get(IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_FC_DATA);
 
@@ -885,14 +1024,32 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             return tmp;
         }
 
+        /**
+         * Get a pointer to the data received (MemReg structure)
+         *
+         * @param p_idx
+         *         Index of the entry
+         */
         public long getData(final int p_idx) {
             return m_struct.getLong(IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_PTR_DATA);
         }
 
+        /**
+         * Get a (raw) pointer to the data received
+         *
+         * @param p_idx
+         *         Index of the entry
+         */
         long getDataRaw(final int p_idx) {
             return m_struct.getLong(IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_PTR_DATA_RAW);
         }
 
+        /**
+         * Get the length of data received
+         *
+         * @param p_idx
+         *         Index of the entry
+         */
         int getDataLength(final int p_idx) {
             int tmp = m_struct.getInt(IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_DATA_LENGTH);
 

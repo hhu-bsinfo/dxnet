@@ -42,17 +42,15 @@ class IBPipeOut extends AbstractPipeOut {
      * @param p_writeInterestManager
      *         Write interest manager instance
      */
-    IBPipeOut(final short p_ownNodeId, final short p_destinationNodeId, final AbstractFlowControl p_flowControl, final OutgoingRingBuffer p_outgoingBuffer,
-            final IBWriteInterestManager p_writeInterestManager) {
+    IBPipeOut(final short p_ownNodeId, final short p_destinationNodeId, final AbstractFlowControl p_flowControl,
+            final OutgoingRingBuffer p_outgoingBuffer, final IBWriteInterestManager p_writeInterestManager) {
         super(p_ownNodeId, p_destinationNodeId, p_flowControl, p_outgoingBuffer);
         m_writeInterestManager = p_writeInterestManager;
     }
 
-    // TODO adjust doc, this returns pointers which can wrap around the ring buffer
-    // which needs to be handled in the native SendThread
-
     /**
-     * Get the next available buffer/chunk of data to write to the connection
+     * Get the next available buffer/chunk of data to write to the connection. This returns two pointers which
+     * can wrap around the ring buffer. This is handled by the native send thread to increase performance.
      *
      * @return Long holding the current relative position of the front pointer
      * (lower 32-bit) and the relative position of the back pointer
@@ -62,23 +60,54 @@ class IBPipeOut extends AbstractPipeOut {
         return ((IBOutgoingRingBuffer) getOutgoingQueue()).popBack();
     }
 
+    /**
+     * Posted but NOT processed: we have to introduce another back pointer
+     * which marks this position so we don't send data from the ORB twice.
+     * The callback, once the data is actually sent (which has to move the
+     * ORBs real back pointer), comes way later
+     *
+     * @param p_numBytesPosted
+     *         Number of bytes posted but NOT confirmed to be sent out
+     */
     void dataSendPosted(final int p_numBytesPosted) {
         ((IBOutgoingRingBuffer) getOutgoingQueue()).dataSendPosted(p_numBytesPosted);
     }
 
-    // TODO doc wrapper for outgoing ring buffer method
-    void dataSendConfirmed(final int p_numBytesPosted) {
-        getOutgoingQueue().shiftBack(p_numBytesPosted);
+    /**
+     * Call shift back on the ORB once the data is actually confirmed that it was sent
+     *
+     * @param p_numBytesConfirmed
+     *         Number of bytes confirmed sent
+     */
+    void dataSendConfirmed(final int p_numBytesConfirmed) {
+        getOutgoingQueue().shiftBack(p_numBytesConfirmed);
     }
 
+    /**
+     * Get but don't remove flow control data before a confirmation is received.
+     *
+     * @return The number of flow control windows to confirm
+     */
     byte getFlowControlData() {
         return ((IBFlowControl) getFlowControl()).getFlowControlData();
     }
 
+    /**
+     * Call, once flow control data is posted (but not confirmed to be sent, yet)
+     *
+     * @param p_fcDataPosted
+     *         Fc data posted
+     */
     void flowControlDataSendPosted(final byte p_fcDataPosted) {
         ((IBFlowControl) getFlowControl()).flowControlDataSendPosted(p_fcDataPosted);
     }
 
+    /**
+     * Call, once a confirmation is received that the data was actually sent
+     *
+     * @param p_fcData
+     *         Amount of fc data that was confirmed
+     */
     void flowControlDataSendConfirmed(final byte p_fcData) {
         ((IBFlowControl) getFlowControl()).flowControlDataSendConfirmed(p_fcData);
     }

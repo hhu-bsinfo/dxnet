@@ -1,6 +1,15 @@
 package de.hhu.bsinfo.dxnet.ib;
 
-public class MsgrcJNIBinding {
+/**
+ * Binding for native library calling the Msgrc subsystem of Ibdxnet.
+ *
+ * @author Stefan Nothaas, stefan.nothaas@hhu.de, 31.01.2018
+ */
+public final class MsgrcJNIBinding {
+
+    /**
+     * Handler for callbacks from native to java space.
+     */
     public interface CallbackHandler {
 
         /**
@@ -27,14 +36,66 @@ public class MsgrcJNIBinding {
          */
         void nodeDisconnected(final short p_nodeId);
 
+        /**
+         * Called by the native receive thread once data was received from one or multiple remote nodes
+         *
+         * @param p_recvPackage
+         *         Native pointer to a struct with the data received (ReceivedPackage)
+         */
         void received(final long p_recvPackage);
 
+        /**
+         * Called by the native send thread to get more data to send
+         *
+         * @param p_nextWorkPackage
+         *         Native pointer to a struct (NextWorkPackage)
+         * @param p_prevResults
+         *         Native pointer to a struct (PrevResults)
+         * @param p_completionList
+         *         Native pointer to a struct (CompletionList)
+         */
         void getNextDataToSend(final long p_nextWorkPackage, final long p_prevResults, final long p_completionList);
     }
 
-    public static native boolean init(final CallbackHandler p_callbackHandler, final boolean p_pinSendRecvThreads, final boolean p_enableSignalHandler,
-            final int p_statisticsThreadPrintIntervalMs, final short p_ownNodeId, final int p_connectionCreationTimeoutMs, final int p_maxNumConnections,
-            final int p_sqSize, final int p_srqSize, final int p_sharedSCQSize, final int p_sharedRCQSize, final int p_sendBufferSize,
+    /**
+     * Initialize the native subsystem. The native library is required for this to be loaded
+     *
+     * @param p_callbackHandler
+     *         Reference to the implemented callback handler
+     * @param p_pinSendRecvThreads
+     *         True to pin the native send and recv threads to cores
+     * @param p_enableSignalHandler
+     *         True to enable the native signal handler (for debugging)
+     * @param p_statisticsThreadPrintIntervalMs
+     *         Set this to non 0 to enable periodic printing of native statistics (for debugging)
+     * @param p_ownNodeId
+     *         Own node id
+     * @param p_connectionCreationTimeoutMs
+     *         Connection creation timeout in ms
+     * @param p_maxNumConnections
+     *         Max number of connections
+     * @param p_sqSize
+     *         Send queue size
+     * @param p_srqSize
+     *         Shared receive queue size
+     * @param p_sharedSCQSize
+     *         Shared send completion queue size
+     * @param p_sharedRCQSize
+     *         Shared receive completion queue size
+     * @param p_sendBufferSize
+     *         Send buffer (ORB) size in bytes
+     * @param p_recvBufferPoolSize
+     *         Total size of the receive buffer pool in bytes
+     * @param p_recvBufferSize
+     *         Size of a single receive buffer in bytes
+     * @return True if init successful, false on error
+     */
+    public static native boolean init(final CallbackHandler p_callbackHandler, final boolean p_pinSendRecvThreads,
+            final boolean p_enableSignalHandler,
+            final int p_statisticsThreadPrintIntervalMs, final short p_ownNodeId,
+            final int p_connectionCreationTimeoutMs, final int p_maxNumConnections,
+            final int p_sqSize, final int p_srqSize, final int p_sharedSCQSize, final int p_sharedRCQSize,
+            final int p_sendBufferSize,
             final long p_recvBufferPoolSize, final int p_recvBufferSize);
 
     /**
@@ -52,6 +113,13 @@ public class MsgrcJNIBinding {
      */
     public static native void addNode(final int p_ipv4);
 
+    /**
+     * Actively create a new connection (e.g. we want to send data by the connection does not exist, yet)
+     *
+     * @param p_nodeId
+     *         Target node to create a connection to
+     * @return 0 on success, 1 on timeout, 2 on other error
+     */
     public static native int createConnection(final short p_nodeId);
 
     /**
@@ -72,4 +140,10 @@ public class MsgrcJNIBinding {
      */
     public static native void returnRecvBuffer(final long p_addr);
 
+    /**
+     * Constructor
+     */
+    private MsgrcJNIBinding() {
+
+    }
 }

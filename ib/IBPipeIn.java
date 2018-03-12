@@ -37,6 +37,8 @@ class IBPipeIn extends AbstractPipeIn {
      *         Node id of the current node
      * @param p_destinationNodeId
      *         Node id of the destination this pipe is connected to
+     * @param p_messageHeaderPool
+     *         Pool for message header
      * @param p_flowControl
      *         Flow control instance
      * @param p_messageDirectory
@@ -55,6 +57,12 @@ class IBPipeIn extends AbstractPipeIn {
                 p_messageHandlers, p_benchmarkMode);
     }
 
+    /**
+     * Called when "confirmed bytes" are received from the remote (wrapper method)
+     *
+     * @param p_confirmedWindows
+     *         Number of windows confirmed by the remote
+     */
     void handleFlowControlData(final byte p_confirmedWindows) {
         getFlowControl().handleFlowControlData(p_confirmedWindows);
     }

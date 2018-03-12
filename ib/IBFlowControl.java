@@ -20,7 +20,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import de.hhu.bsinfo.dxnet.core.AbstractFlowControl;
-import de.hhu.bsinfo.dxnet.core.NetworkException;
 
 /**
  * Flow control implementation for IB
@@ -46,14 +45,17 @@ class IBFlowControl extends AbstractFlowControl {
      * @param p_writeInterestManager
      *         Write interest manager instance
      */
-    IBFlowControl(final short p_destinationNodeId, final int p_flowControlWindowSize, final float p_flowControlWindowThreshold,
-            final IBWriteInterestManager p_writeInterestManager) {
+    IBFlowControl(final short p_destinationNodeId, final int p_flowControlWindowSize,
+            final float p_flowControlWindowThreshold, final IBWriteInterestManager p_writeInterestManager) {
         super(p_destinationNodeId, p_flowControlWindowSize, p_flowControlWindowThreshold);
         m_writeInterestManager = p_writeInterestManager;
     }
 
-    // get but don't remove flow control data before not confirmed sent
-    // get the number of windows to confirm
+    /**
+     * Get but don't remove flow control data before a confirmation is received.
+     *
+     * @return The number of flow control windows to confirm
+     */
     public byte getFlowControlData() {
         byte ret;
 
@@ -74,11 +76,22 @@ class IBFlowControl extends AbstractFlowControl {
         return (byte) (ret - m_fcDataPosted);
     }
 
+    /**
+     * Call, once flow control data is posted (but not confirmed to be sent, yet)
+     *
+     * @param p_fcData
+     *         Fc data posted
+     */
     public void flowControlDataSendPosted(final byte p_fcData) {
         m_fcDataPosted += p_fcData;
     }
 
-    // confirm that fc data was confirmed posted/sent
+    /**
+     * Call, once a confirmation is received that the data was actually sent
+     *
+     * @param p_fcData
+     *         Amount of fc data that was confirmed
+     */
     public void flowControlDataSendConfirmed(final byte p_fcData) {
         int bytesLeft;
 
@@ -100,7 +113,7 @@ class IBFlowControl extends AbstractFlowControl {
     }
 
     @Override
-    public void flowControlWrite() throws NetworkException {
+    public void flowControlWrite() {
         m_writeInterestManager.pushBackFcInterest(getDestinationNodeId());
     }
 
