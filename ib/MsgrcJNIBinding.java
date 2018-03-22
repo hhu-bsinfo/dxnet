@@ -88,6 +88,8 @@ public final class MsgrcJNIBinding {
      *         Total size of the receive buffer pool in bytes
      * @param p_recvBufferSize
      *         Size of a single receive buffer in bytes
+     * @param p_maxSGEs
+     *         Max number of SGEs to use for receiving data. Determines the max send and receive size
      * @return True if init successful, false on error
      */
     public static native boolean init(final CallbackHandler p_callbackHandler, final boolean p_pinSendRecvThreads,
@@ -96,7 +98,7 @@ public final class MsgrcJNIBinding {
             final int p_connectionCreationTimeoutMs, final int p_maxNumConnections,
             final int p_sqSize, final int p_srqSize, final int p_sharedSCQSize, final int p_sharedRCQSize,
             final int p_sendBufferSize,
-            final long p_recvBufferPoolSize, final int p_recvBufferSize);
+            final long p_recvBufferPoolSize, final int p_recvBufferSize, final int p_maxSGEs);
 
     /**
      * Shut down the subsystem

@@ -150,7 +150,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                 m_config.getSharedSendCompletionQueueSize(), m_config.getSharedReceiveCompletionQueueSize(),
                 (int) m_config.getOugoingRingBufferSize().getBytes(),
                 m_config.getIncomingBufferPoolTotalSize().getBytes(),
-                (int) m_config.getIncomingBufferSize().getBytes())) {
+                (int) m_config.getIncomingBufferSize().getBytes(), m_config.getMaxSGEs())) {
 
             // #if LOGGER >= DEBUG
             LOGGER.debug("Initializing ibnet failed, check ibnet logs");

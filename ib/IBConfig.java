@@ -71,6 +71,9 @@ public class IBConfig {
     private int m_sharedRCQSize = m_srqSize;
 
     @Expose
+    private int m_maxSGEs = 2;
+
+    @Expose
     private boolean m_enableSignalHandler = false;
 
     @Expose
@@ -169,6 +172,14 @@ public class IBConfig {
      */
     public int getSharedReceiveQueueSize() {
         return m_srqSize;
+    }
+
+    /**
+     * Get the max number of SGEs to use for a single WRQ (when receiving data). This also determines the max
+     * size to send to a remote (as a single chunk)
+     */
+    public int getMaxSGEs() {
+        return m_maxSGEs;
     }
 
     /**
