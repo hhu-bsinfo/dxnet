@@ -16,6 +16,8 @@
 
 package de.hhu.bsinfo.dxnet.core;
 
+import java.nio.charset.StandardCharsets;
+
 import de.hhu.bsinfo.dxutils.UnsafeMemory;
 import de.hhu.bsinfo.dxutils.serialization.Exportable;
 import de.hhu.bsinfo.dxutils.serialization.ObjectSizeUtil;
@@ -399,7 +401,7 @@ class LargeMessageExporter extends AbstractMessageExporter {
 
     @Override
     public void writeString(final String p_str) {
-        writeByteArray(p_str.getBytes());
+        writeByteArray(p_str.getBytes(StandardCharsets.US_ASCII));
     }
 
     @Override
