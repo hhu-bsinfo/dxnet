@@ -329,7 +329,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
 
             // wrap on the first callback, native address is always the same
             if (m_receivedPackage == null) {
-                m_receivedPackage = new ReceivedPackage(p_recvPackage, m_config.getSharedReceiveQueueSize());
+                m_receivedPackage = new ReceivedPackage(p_recvPackage, m_config.getSharedReceiveQueueSize() *
+                        m_config.getMaxSGEs());
 
                 // for debugging purpose
                 Thread.currentThread().setName("IBRecv-native");
@@ -945,6 +946,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
 
         // depends on the shared recv queue size, must be initializated in the constructor
         private final int m_size;
+        private final int m_maxCount;
 
         private static final int IDX_COUNT = 0;
         private static final int IDX_ENTRIES = IDX_COUNT + SIZE_FIELD_COUNT;
@@ -978,7 +980,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
          *         Max number of elements that can be received (i.e. receive queue size)
          */
         ReceivedPackage(final long p_addr, final int p_maxCount) {
-            m_sizeFieldEntriesArray = SIZE_ENTRY_STRUCT * p_maxCount;
+            m_maxCount = p_maxCount;
+            m_sizeFieldEntriesArray = SIZE_ENTRY_STRUCT * m_maxCount;
             m_size = SIZE_FIELD_COUNT + m_sizeFieldEntriesArray;
 
             m_struct = ByteBufferHelper.wrap(p_addr, m_size);
@@ -993,6 +996,10 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
 
             if (tmp < 0) {
                 throw new IllegalStateException("RecvPackage count < 0: " + tmp);
+            }
+
+            if (tmp > m_maxCount) {
+                throw new IllegalStateException("RecvPackage count > max " + m_maxCount + ": " + tmp);
             }
 
             return tmp;
