@@ -218,7 +218,7 @@ public class OutgoingRingBuffer {
                 } else {
                     // #ifdef STATISTICS
                     if (!waited) {
-                        m_sopWaitFull.stop();
+                        m_sopWaitFull.start();
                         waited = true;
                     }
                     // #endif /* STATISTICS */
