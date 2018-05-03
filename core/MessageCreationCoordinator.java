@@ -21,6 +21,9 @@ import java.util.concurrent.locks.LockSupport;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import de.hhu.bsinfo.dxutils.stats.StatisticsManager;
+import de.hhu.bsinfo.dxutils.stats.Value;
+
 /**
  * The MessageCreationCoordinator builds messages and forwards them to the MessageHandlers.
  *
@@ -29,6 +32,14 @@ import org.apache.logging.log4j.Logger;
 public class MessageCreationCoordinator extends Thread {
     private static final Logger LOGGER = LogManager.getFormatterLogger(
             MessageCreationCoordinator.class.getSimpleName());
+
+    private static final Value SOP_PARKING = new Value(MessageCreationCoordinator.class, "Parking");
+    private static final Value SOP_YIELDING = new Value(MessageCreationCoordinator.class, "Yielding");
+
+    static {
+        StatisticsManager.get().registerOperation(MessageCreationCoordinator.class, SOP_PARKING);
+        StatisticsManager.get().registerOperation(MessageCreationCoordinator.class, SOP_YIELDING);
+    }
 
     private static final int THRESHOLD_TIME_CHECK = 100000;
 
@@ -77,21 +88,30 @@ public class MessageCreationCoordinator extends Thread {
         while (!m_shutdown) {
             // pop an incomingBuffer
             incomingBuffer = m_bufferQueue.popBuffer();
+
             if (incomingBuffer == null) {
                 // Ring-buffer is empty.
                 if (++counter >= THRESHOLD_TIME_CHECK) {
-                    if (System.currentTimeMillis() - lastSuccessfulPop >
-                            1000) { // No message header for over a second -> sleep
-                        LockSupport.parkNanos(100);
+                    // No message header for over a second -> sleep
+                    if (System.currentTimeMillis() - lastSuccessfulPop > 1000) {
+                        // #ifdef STATISTICS
+                        SOP_PARKING.inc();
+                        // #endif /* STATISTICS */
+
+                        LockSupport.parkNanos(1);
                     }
                 }
 
                 if (m_overprovisioning) {
+                    // #ifdef STATISTICS
+                    SOP_YIELDING.inc();
+                    // #endif /* STATISTICS */
                     Thread.yield();
                 }
 
                 continue;
             }
+
             lastSuccessfulPop = System.currentTimeMillis();
             counter = 0;
 
