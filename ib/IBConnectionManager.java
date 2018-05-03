@@ -58,12 +58,18 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
     private static final Timeline SOP_SEND_NEXT_DATA = new Timeline(IBConnectionManager.class, "SendNextData",
             "PrevResults", "SendComps", "NextData", "Native");
     private static final Value SOP_NEXT_DATA_NONE = new Value(IBConnectionManager.class, "NextDataNone");
+    private static final Value SOP_SEND_DATA_POSTED = new Value(IBConnectionManager.class, "SendDataPosted");
+    private static final Value SOP_SEND_DATA_POSTED_NONE = new Value(IBConnectionManager.class, "SendDataPostedNone");
+    private static final Value SOP_SEND_DATA_AVAIL = new Value(IBConnectionManager.class, "SendDataAvail");
 
     static {
         StatisticsManager.get().registerOperation(IBConnectionManager.class, SOP_CREATE_CON);
         StatisticsManager.get().registerOperation(IBConnectionManager.class, SOP_RECV);
         StatisticsManager.get().registerOperation(IBConnectionManager.class, SOP_SEND_NEXT_DATA);
         StatisticsManager.get().registerOperation(IBConnectionManager.class, SOP_NEXT_DATA_NONE);
+        StatisticsManager.get().registerOperation(IBConnectionManager.class, SOP_SEND_DATA_POSTED);
+        StatisticsManager.get().registerOperation(IBConnectionManager.class, SOP_SEND_DATA_POSTED_NONE);
+        StatisticsManager.get().registerOperation(IBConnectionManager.class, SOP_SEND_DATA_AVAIL);
     }
 
     private final CoreConfig m_coreConfig;
@@ -469,7 +475,15 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             // still data to send
 
             if (numBytesNotPosted > 0) {
+                // #ifdef STATISTICS
+                SOP_SEND_DATA_POSTED.add(numBytesPosted);
+                // #endif /* STATISTICS */
+
                 m_writeInterestManager.pushBackDataInterest(nodeId);
+            } else {
+                // #ifdef STATISTICS
+                SOP_SEND_DATA_POSTED_NONE.inc();
+                // #endif /* STATISTICS */
             }
 
             if (fcDataNotPosted > 0) {
@@ -584,6 +598,18 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                         relPosFrontRel);
                 // #endif /* LOGGER >= TRACE */
 
+                // #ifdef STATISTICS
+                int dataAvail;
+
+                if (relPosBackRel <= relPosFrontRel) {
+                    dataAvail = relPosFrontRel - relPosBackRel;
+                } else {
+                    dataAvail = (int) (m_config.getOugoingRingBufferSize().getBytes() - relPosBackRel + relPosFrontRel);
+                }
+
+                SOP_SEND_DATA_AVAIL.add(dataAvail);
+                // #endif /* STATISTICS */
+
                 nothingToSend = false;
             } else {
                 // we got an interest but no data is available because the data was already sent with the previous
@@ -610,7 +636,10 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         }
 
         if (nothingToSend) {
+            // #ifdef STATISTICS
             SOP_NEXT_DATA_NONE.inc();
+            // #endif /* STATISTICS */
+
             m_nextWorkPackage.reset();
         }
     }
