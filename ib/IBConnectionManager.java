@@ -327,6 +327,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
 
     @Override
     public int received(final long p_recvPackage) {
+        int processed = 0;
+
         try {
             // #ifdef STATISTICS
             SOP_RECV.stop();
@@ -343,17 +345,18 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             }
 
             int receiveCount = m_receivedPackage.getCount();
+            int offset = m_receivedPackage.getOffset();
 
             // #if LOGGER >= TRACE
-            LOGGER.trace("Received %d", receiveCount);
+            LOGGER.trace("Received %d, offset %d", receiveCount, offset);
             // #endif /* LOGGER >= TRACE */
 
             for (int i = 0; i < receiveCount; i++) {
-                short sourceNodeId = m_receivedPackage.getSourceNodeId(i);
-                short fcData = m_receivedPackage.getFcData(i);
-                long ptrDataHandle = m_receivedPackage.getData(i);
-                long ptrData = m_receivedPackage.getDataRaw(i);
-                int dataLength = m_receivedPackage.getDataLength(i);
+                short sourceNodeId = m_receivedPackage.getSourceNodeId(i + offset);
+                short fcData = m_receivedPackage.getFcData(i + offset);
+                long ptrDataHandle = m_receivedPackage.getData(i + offset);
+                long ptrData = m_receivedPackage.getDataRaw(i + offset);
+                int dataLength = m_receivedPackage.getDataLength(i + offset);
 
                 // sanity checks
                 if (sourceNodeId == NodeID.INVALID_ID || fcData == 0 && (ptrDataHandle == 0 || ptrData == 0 ||
@@ -386,8 +389,12 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
 
                 if (dataLength > 0) {
                     // TODO batch/multi push buffers?
-                    m_incomingBufferQueue.pushBuffer(connection, null, ptrDataHandle, ptrData, dataLength);
+                    if (!m_incomingBufferQueue.pushBuffer(connection, null, ptrDataHandle, ptrData, dataLength)) {
+                        break;
+                    }
                 }
+
+                processed++;
             }
 
             // #ifdef STATISTICS
@@ -401,7 +408,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             // #endif /* LOGGER >= ERROR */
         }
 
-        return m_receivedPackage.getCount();
+        return processed;
     }
 
     @Override
@@ -963,6 +970,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
      */
     private static class ReceivedPackage {
         private static final int SIZE_FIELD_COUNT = Integer.BYTES;
+        private static final int SIZE_FIELD_OFFSET = Integer.BYTES;
         private final int m_sizeFieldEntriesArray;
 
         private static final int SIZE_FIELD_ENTRY_SOURCE_NODE_ID = Short.BYTES;
@@ -980,7 +988,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         private final int m_maxCount;
 
         private static final int IDX_COUNT = 0;
-        private static final int IDX_ENTRIES = IDX_COUNT + SIZE_FIELD_COUNT;
+        private static final int IDX_OFFSET = IDX_COUNT + SIZE_FIELD_COUNT;
+        private static final int IDX_ENTRIES = IDX_OFFSET + SIZE_FIELD_OFFSET;
 
         private static final int IDX_ENTRY_SOURCE_NODE_ID = 0;
         private static final int IDX_ENTRY_FC_DATA = IDX_ENTRY_SOURCE_NODE_ID + SIZE_FIELD_ENTRY_SOURCE_NODE_ID;
@@ -990,7 +999,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
 
         //    struct ReceivedPackage
         //    {
-        //        uint32_t m_count = 0;
+        //        uint32_t m_count;
+        //        uint32_t m_offset;
         //
         //        struct Entry {
         //            con::NodeId m_sourceNodeId;
@@ -1031,6 +1041,23 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
 
             if (tmp > m_maxCount) {
                 throw new IllegalStateException("RecvPackage count > max " + m_maxCount + ": " + tmp);
+            }
+
+            return tmp;
+        }
+
+        /**
+         * Get the start offset for the entries
+         */
+        public int getOffset() {
+            int tmp = m_struct.getInt(IDX_OFFSET);
+
+            if (tmp < 0) {
+                throw new IllegalStateException("RecvPackage offset < 0: " + tmp);
+            }
+
+            if (tmp > m_maxCount) {
+                throw new IllegalStateException("RecvPackage offset > max " + m_maxCount + ": " + tmp);
             }
 
             return tmp;
