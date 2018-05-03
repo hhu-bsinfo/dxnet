@@ -63,8 +63,19 @@ public abstract class AbstractFlowControl {
     protected AbstractFlowControl(final short p_destinationNodeID, final int p_flowControlWindowSize,
             final float p_flowControlWindowThreshold) {
         m_destinationNodeID = p_destinationNodeID;
-        m_flowControlWindowSize = p_flowControlWindowSize;
-        m_flowControlWindowThreshold = p_flowControlWindowThreshold;
+
+        if (p_flowControlWindowSize == 0 || p_flowControlWindowThreshold == 0.0f) {
+            m_flowControlWindowSize = 0;
+            m_flowControlWindowThreshold = 0.0f;
+
+            // #if LOGGER >= WARN
+            LOGGER.warn("Flow control disabled");
+            // #endif /* LOGGER >= WARN */
+        } else {
+            m_flowControlWindowSize = p_flowControlWindowSize;
+            m_flowControlWindowThreshold = p_flowControlWindowThreshold;
+        }
+
         m_flowControlWindowSizeThreshold = (int) (m_flowControlWindowSize * m_flowControlWindowThreshold);
 
         m_unconfirmedBytes = new AtomicInteger(0);
@@ -126,7 +137,7 @@ public abstract class AbstractFlowControl {
         LOGGER.trace("flowControlDataToSend (%X): %d", m_destinationNodeID, p_writtenBytes);
         // #endif /* LOGGER >= TRACE */
 
-        if (m_unconfirmedBytes.get() > m_flowControlWindowSize) {
+        if (m_flowControlWindowSize != 0 && m_unconfirmedBytes.get() > m_flowControlWindowSize) {
             // #ifdef STATISTICS
             m_sopWait.start();
             // #endif /* STATISTICS */
@@ -157,7 +168,8 @@ public abstract class AbstractFlowControl {
         // #endif /* LOGGER >= TRACE */
 
         int receivedBytes = m_receivedBytes.addAndGet(p_receivedBytes);
-        if (receivedBytes >= m_flowControlWindowSizeThreshold) {
+
+        if (m_flowControlWindowSizeThreshold != 0.0f && receivedBytes >= m_flowControlWindowSizeThreshold) {
             try {
                 flowControlWrite();
             } catch (final NetworkException e) {
