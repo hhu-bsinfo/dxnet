@@ -18,7 +18,6 @@ package de.hhu.bsinfo.dxnet.core;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.LockSupport;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -150,8 +149,9 @@ public class IncomingBufferQueue {
      *         (Unsafe) address to the incoming buffer
      * @param p_size
      *         Size of the incoming buffer
+     * @return True if pushing the buffer to the queue was successful, false on full or limit exceeded
      */
-    public void pushBuffer(final AbstractConnection p_connection,
+    public boolean pushBuffer(final AbstractConnection p_connection,
             final BufferPool.DirectBufferWrapper p_directBufferWrapper, final long p_bufferHandle,
             final long p_addr, final int p_size) {
         int front;
@@ -161,7 +161,7 @@ public class IncomingBufferQueue {
             LOGGER.warn("Buffer size must not be 0. Incoming buffer is discarded.");
             // #endif /* LOGGER >= WARN */
 
-            return;
+            return true;
         }
 
         int curBytes = m_currentBytes.get();
@@ -171,27 +171,10 @@ public class IncomingBufferQueue {
         if (curBytes >= m_maxCapacitySize || (posBack + m_maxCapacityBufferCount & 0x7FFFFFFF) == posFront) {
             // Avoid congestion by not allowing more than a predefined number of buffers to be cached for importing
 
-            // avoid flooding the log
-            if (m_queueFullCounter.getAndIncrement() % 100000 == 0) {
-                // #if LOGGER == WARN
-                LOGGER.warn("IBQ is full (curBytes %d, posBack %d, posFront %d), count: %d. If this message appears " +
-                        "often (with a high counter) you should consider increasing the number message handlers to " +
-                        "avoid performance penalties", curBytes, posBack, posFront, m_queueFullCounter.get());
-                // #endif /* LOGGER == WARN */
-            }
-
-            // #ifdef STATISTICS
-            SOP_WAIT_PUSH.start();
-            // #endif /* STATISTICS */
-
-            while (m_currentBytes.get() >= m_maxCapacitySize ||
-                    (m_posBack + m_maxCapacityBufferCount & 0x7FFFFFFF) == m_posFront) {
-                LockSupport.parkNanos(100);
-            }
-
-            // #ifdef STATISTICS
-            SOP_WAIT_PUSH.stop();
-            // #endif /* STATISTICS */
+            // TODO for NIO and loopback: needs to be moved
+            // TODO keep counter with statistics about full counts
+            
+            return false;
         }
 
         front = m_posFront % m_maxCapacityBufferCount;
@@ -204,6 +187,8 @@ public class IncomingBufferQueue {
         // & 0x7FFFFFFF kill sign
         m_posFront = m_posFront + 1 & 0x7FFFFFFF;
         m_currentBytes.addAndGet(p_size); // Includes storeFence()
+
+        return true;
     }
 
     /**

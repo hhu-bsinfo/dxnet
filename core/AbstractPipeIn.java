@@ -17,7 +17,6 @@
 package de.hhu.bsinfo.dxnet.core;
 
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.LockSupport;
 
 import de.hhu.bsinfo.dxnet.MessageHandlers;
 import de.hhu.bsinfo.dxnet.core.messages.Messages;
@@ -519,7 +518,7 @@ public abstract class AbstractPipeIn {
 
         // Wait if current slot is processed
         while (m_slotMessageCounters[p_slot].get() > 0) {
-            LockSupport.parkNanos(100);
+            Thread.yield();//LockSupport.parkNanos(1);
         }
 
         // #ifdef STATISTICS

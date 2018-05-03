@@ -27,7 +27,8 @@ import org.apache.logging.log4j.Logger;
  * @author Kevin Beineke, kevin.beineke@hhu.de, 31.05.2016
  */
 public class MessageCreationCoordinator extends Thread {
-    private static final Logger LOGGER = LogManager.getFormatterLogger(MessageCreationCoordinator.class.getSimpleName());
+    private static final Logger LOGGER = LogManager.getFormatterLogger(
+            MessageCreationCoordinator.class.getSimpleName());
 
     private static final int THRESHOLD_TIME_CHECK = 100000;
 
@@ -44,7 +45,8 @@ public class MessageCreationCoordinator extends Thread {
      * @param p_incomingQueueMaxCapacitySize
      *         the max capacity of all buffers aggregated sizes for the incoming queue
      */
-    public MessageCreationCoordinator(final int p_incomingQueueMaxCapacityBufferCount, final int p_incomingQueueMaxCapacitySize,
+    public MessageCreationCoordinator(final int p_incomingQueueMaxCapacityBufferCount,
+            final int p_incomingQueueMaxCapacitySize,
             final boolean p_overprovisioning) {
         m_bufferQueue = new IncomingBufferQueue(p_incomingQueueMaxCapacityBufferCount, p_incomingQueueMaxCapacitySize);
         m_overprovisioning = p_overprovisioning;
@@ -78,7 +80,8 @@ public class MessageCreationCoordinator extends Thread {
             if (incomingBuffer == null) {
                 // Ring-buffer is empty.
                 if (++counter >= THRESHOLD_TIME_CHECK) {
-                    if (System.currentTimeMillis() - lastSuccessfulPop > 1000) { // No message header for over a second -> sleep
+                    if (System.currentTimeMillis() - lastSuccessfulPop >
+                            1000) { // No message header for over a second -> sleep
                         LockSupport.parkNanos(100);
                     }
                 }
@@ -86,6 +89,7 @@ public class MessageCreationCoordinator extends Thread {
                 if (m_overprovisioning) {
                     Thread.yield();
                 }
+
                 continue;
             }
             lastSuccessfulPop = System.currentTimeMillis();
@@ -94,7 +98,8 @@ public class MessageCreationCoordinator extends Thread {
             try {
                 incomingBuffer.getPipeIn().processBuffer(incomingBuffer);
             } catch (final NetworkException e) {
-                incomingBuffer.getPipeIn().returnProcessedBuffer(incomingBuffer.getDirectBuffer(), incomingBuffer.getBufferHandle());
+                incomingBuffer.getPipeIn().returnProcessedBuffer(incomingBuffer.getDirectBuffer(),
+                        incomingBuffer.getBufferHandle());
 
                 // #if LOGGER == ERROR
                 LOGGER.error("Processing incoming buffer failed", e);
