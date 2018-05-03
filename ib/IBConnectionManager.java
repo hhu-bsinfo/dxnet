@@ -326,7 +326,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
     }
 
     @Override
-    public void received(final long p_recvPackage) {
+    public int received(final long p_recvPackage) {
         try {
             // #ifdef STATISTICS
             SOP_RECV.stop();
@@ -400,6 +400,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             LOGGER.error("received unhandled exception", e);
             // #endif /* LOGGER >= ERROR */
         }
+
+        return m_receivedPackage.getCount();
     }
 
     @Override

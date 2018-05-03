@@ -41,8 +41,9 @@ public final class MsgrcJNIBinding {
          *
          * @param p_recvPackage
          *         Native pointer to a struct with the data received (ReceivedPackage)
+         * @return The number of processed recv packages
          */
-        void received(final long p_recvPackage);
+        int received(final long p_recvPackage);
 
         /**
          * Called by the native send thread to get more data to send
