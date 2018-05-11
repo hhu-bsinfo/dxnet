@@ -347,10 +347,6 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             int receiveCount = m_receivedPackage.getCount();
             int offset = m_receivedPackage.getOffset();
 
-            // #if LOGGER >= TRACE
-            LOGGER.trace("Received %d, offset %d", receiveCount, offset);
-            // #endif /* LOGGER >= TRACE */
-
             for (int i = 0; i < receiveCount; i++) {
                 short sourceNodeId = m_receivedPackage.getSourceNodeId(i + offset);
                 short fcData = m_receivedPackage.getFcData(i + offset);
@@ -517,10 +513,6 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         int numItems = m_completedWorkList.getNumNodes();
 
         if (numItems > 0) {
-            // #if LOGGER >= TRACE
-            LOGGER.trace("processSendCompletions, numItems %d", numItems);
-            // #endif /* LOGGER >= TRACE */
-
             // also notify that previous data has been processed (if connection is still available)
             for (int i = 0; i < numItems; i++) {
                 short nodeId = m_completedWorkList.getNodeId(i);
@@ -562,10 +554,6 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             return;
         }
 
-        // #if LOGGER >= TRACE
-        LOGGER.trace("Next write interests on node 0x%X", nodeId);
-        // #endif /* LOGGER >= TRACE */
-
         IBConnection connection;
 
         try {
@@ -602,11 +590,6 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                 // relative position of data end in buffer
                 m_nextWorkPackage.setPosFrontRel(relPosFrontRel);
 
-                // #if LOGGER >= TRACE
-                LOGGER.trace("Next data write on node 0x%X, relPosBackRel %d, relPosFrontRel %d", nodeId, relPosBackRel,
-                        relPosFrontRel);
-                // #endif /* LOGGER >= TRACE */
-
                 // #ifdef STATISTICS
                 int dataAvail;
 
@@ -632,10 +615,6 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
 
             if (fcData > 0) {
                 m_nextWorkPackage.setFlowControlData(fcData);
-
-                // #if LOGGER >= TRACE
-                LOGGER.trace("Next flow control write on node 0x%X, fc data %d", nodeId, fcData);
-                // #endif /* LOGGER >= TRACE */
 
                 nothingToSend = false;
             } else {

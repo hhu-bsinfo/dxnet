@@ -163,10 +163,6 @@ public abstract class AbstractFlowControl {
      *         Number of bytes received
      */
     void dataReceived(final int p_receivedBytes) {
-        // #if LOGGER >= TRACE
-        LOGGER.trace("flowControlDataReceived (%X): %d", m_destinationNodeID, p_receivedBytes);
-        // #endif /* LOGGER >= TRACE */
-
         int receivedBytes = m_receivedBytes.addAndGet(p_receivedBytes);
 
         if (m_flowControlWindowSizeThreshold != 0.0f && receivedBytes >= m_flowControlWindowSizeThreshold) {
