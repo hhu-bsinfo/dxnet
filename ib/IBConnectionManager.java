@@ -1002,7 +1002,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         ReceivedPackage(final long p_addr, final int p_maxCount) {
             m_maxCount = p_maxCount;
             m_sizeFieldEntriesArray = SIZE_ENTRY_STRUCT * m_maxCount;
-            m_size = SIZE_FIELD_COUNT + m_sizeFieldEntriesArray;
+            m_size = SIZE_FIELD_COUNT + SIZE_FIELD_OFFSET + m_sizeFieldEntriesArray;
 
             m_struct = ByteBufferHelper.wrap(p_addr, m_size);
             m_struct.order(ByteOrder.nativeOrder());
