@@ -22,10 +22,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import de.hhu.bsinfo.dxutils.UnsafeHandler;
 import de.hhu.bsinfo.dxutils.stats.AbstractState;
 import de.hhu.bsinfo.dxutils.stats.StatisticsManager;
-import de.hhu.bsinfo.dxutils.stats.Time;
+import de.hhu.bsinfo.dxutils.stats.Value;
 
 /**
  * The IncomingBufferQueue stores incoming buffers from all connections.
@@ -37,10 +36,14 @@ import de.hhu.bsinfo.dxutils.stats.Time;
 public class IncomingBufferQueue {
     private static final Logger LOGGER = LogManager.getFormatterLogger(IncomingBufferQueue.class.getSimpleName());
 
-    private static final Time SOP_WAIT_PUSH = new Time(IncomingBufferQueue.class, "WaitPush");
+    private static final Value SOP_PUSH_FULL_COUNT = new Value(IncomingBufferQueue.class, "PushFullCount");
+    private static final Value SOP_PUSH_FULL_SIZE = new Value(IncomingBufferQueue.class, "PushFullSize");
+    private static final Value SOP_POP_EMPTY = new Value(IncomingBufferQueue.class, "PopEmpty");
 
     static {
-        StatisticsManager.get().registerOperation(IncomingBufferQueue.class, SOP_WAIT_PUSH);
+        StatisticsManager.get().registerOperation(IncomingBufferQueue.class, SOP_PUSH_FULL_COUNT);
+        StatisticsManager.get().registerOperation(IncomingBufferQueue.class, SOP_PUSH_FULL_SIZE);
+        StatisticsManager.get().registerOperation(IncomingBufferQueue.class, SOP_POP_EMPTY);
     }
 
     private AbstractConnection[] m_connectionBuffer;
@@ -57,8 +60,8 @@ public class IncomingBufferQueue {
 
     // single producer, single consumer lock free queue (posBack and posFront are synchronized with fences and byte
     // counter)
-    private int m_posBack; // 31 bits used (see incrementation)
-    private int m_posFront; // 31 bits used (see incrementation)
+    private volatile int m_posBack; // 31 bits used (see incrementation)
+    private volatile int m_posFront; // 31 bits used (see incrementation)
 
     private AtomicLong m_queueFullCounter;
 
@@ -118,8 +121,11 @@ public class IncomingBufferQueue {
      * Removes one buffer from queue.
      */
     IncomingBuffer popBuffer() {
-        UnsafeHandler.getInstance().getUnsafe().loadFence();
         if (m_posBack == m_posFront) {
+            // #ifdef STATISTICS
+            SOP_POP_EMPTY.inc();
+            // #endif /* STATISTICS */
+
             // Empty
             return null;
         }
@@ -164,16 +170,23 @@ public class IncomingBufferQueue {
             return true;
         }
 
-        int curBytes = m_currentBytes.get();
-        int posBack = m_posBack;
-        int posFront = m_posFront;
+        // Avoid congestion by not allowing more than a predefined number of buffers to be cached for importing
 
-        if (curBytes >= m_maxCapacitySize || (posBack + m_maxCapacityBufferCount & 0x7FFFFFFF) == posFront) {
-            // Avoid congestion by not allowing more than a predefined number of buffers to be cached for importing
+        if (m_currentBytes.get() >= m_maxCapacitySize) {
+            // #ifdef STATISTICS
+            SOP_PUSH_FULL_SIZE.inc();
+            // #endif /* STATISTICS */
 
-            // TODO for NIO and loopback: needs to be moved
-            // TODO keep counter with statistics about full counts
-            
+            return false;
+        }
+
+        if ((m_posBack + m_maxCapacityBufferCount & 0x7FFFFFFF) == m_posFront) {
+            // TODO for NIO and loopback: refactoring still necessary because no active waiting here anymore
+
+            // #ifdef STATISTICS
+            SOP_PUSH_FULL_COUNT.inc();
+            // #endif /* STATISTICS */
+
             return false;
         }
 
