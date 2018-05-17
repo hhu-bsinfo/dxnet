@@ -17,8 +17,8 @@
 package de.hhu.bsinfo.dxnet.ib;
 
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
+
+import sun.misc.Unsafe;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -38,8 +38,8 @@ import de.hhu.bsinfo.dxnet.core.NetworkException;
 import de.hhu.bsinfo.dxnet.core.NetworkRuntimeException;
 import de.hhu.bsinfo.dxnet.core.RequestMap;
 import de.hhu.bsinfo.dxnet.core.StaticExporterPool;
-import de.hhu.bsinfo.dxutils.ByteBufferHelper;
 import de.hhu.bsinfo.dxutils.NodeID;
+import de.hhu.bsinfo.dxutils.UnsafeHandler;
 import de.hhu.bsinfo.dxutils.stats.StatisticsManager;
 import de.hhu.bsinfo.dxutils.stats.TimePool;
 import de.hhu.bsinfo.dxutils.stats.Timeline;
@@ -656,7 +656,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         //        uint8_t m_flowControlData;
         //        con::NodeId m_nodeId;
         //    } __attribute__((packed));
-        private ByteBuffer m_struct;
+        private final Unsafe m_unsafe;
+        private final long m_baseAddress;
 
         /**
          * Constructor
@@ -665,8 +666,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
          *         Native address pointing to struct
          */
         NextWorkPackage(final long p_addr) {
-            m_struct = ByteBufferHelper.wrap(p_addr, SIZE);
-            m_struct.order(ByteOrder.nativeOrder());
+            m_unsafe = UnsafeHandler.getInstance().getUnsafe();
+            m_baseAddress = p_addr;
         }
 
         /**
@@ -690,7 +691,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                 throw new IllegalStateException("NextWorkPackage posBackRel < 0: " + p_pos);
             }
 
-            m_struct.putInt(IDX_POS_BACK_REL, p_pos);
+            m_unsafe.putInt(m_baseAddress + IDX_POS_BACK_REL, p_pos);
         }
 
         /**
@@ -704,7 +705,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                 throw new IllegalStateException("NextWorkPackage posFrontRel < 0: " + p_pos);
             }
 
-            m_struct.putInt(IDX_POS_FRONT_REL, p_pos);
+            m_unsafe.putInt(m_baseAddress + IDX_POS_FRONT_REL, p_pos);
         }
 
         /**
@@ -718,7 +719,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                 throw new IllegalStateException("NextWorkPackage fcData < 0: " + p_data);
             }
 
-            m_struct.put(IDX_FLOW_CONTROL_DATA, p_data);
+            m_unsafe.putByte(m_baseAddress + IDX_FLOW_CONTROL_DATA, p_data);
         }
 
         /**
@@ -728,12 +729,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
          *         Target node id to send to
          */
         void setNodeId(final short p_nodeId) {
-            m_struct.putShort(IDX_NODE_ID, p_nodeId);
-        }
-
-        @Override
-        protected void finalize() {
-            ByteBufferHelper.unwrap(m_struct);
+            m_unsafe.putShort(m_baseAddress + IDX_NODE_ID, p_nodeId);
         }
     }
 
@@ -765,7 +761,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         //        uint8_t m_fcDataPosted;
         //        uint8_t m_fcDataNotPosted;
         //    } __attribute__((packed));
-        private ByteBuffer m_struct;
+        private final Unsafe m_unsafe;
+        private final long m_baseAddress;
 
         /**
          * Constructor
@@ -774,22 +771,22 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
          *         Native address pointing to struct
          */
         PrevWorkPackageResults(final long p_addr) {
-            m_struct = ByteBufferHelper.wrap(p_addr, SIZE);
-            m_struct.order(ByteOrder.nativeOrder());
+            m_unsafe = UnsafeHandler.getInstance().getUnsafe();
+            m_baseAddress = p_addr;
         }
 
         /**
          * Get the node id the last package was sent to
          */
         public short getNodeId() {
-            return m_struct.getShort(IDX_NODE_ID);
+            return m_unsafe.getShort(m_baseAddress + IDX_NODE_ID);
         }
 
         /**
          * Get the actual number of bytes posted (might be less than specified on the last work package)
          */
         int getNumBytesPosted() {
-            int tmp = m_struct.getInt(IDX_NUM_BYTES_POSTED);
+            int tmp = m_unsafe.getInt(m_baseAddress + IDX_NUM_BYTES_POSTED);
 
             if (tmp < 0) {
                 throw new IllegalStateException("PrevWorkPackageResults numBytesPosted < 0: " + tmp);
@@ -802,7 +799,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
          * Get the number of bytes that were not posted on the last work request (due to queue full)
          */
         int getNumBytesNotPosted() {
-            int tmp = m_struct.getInt(IDX_NUM_BYTES_NOT_POSTED);
+            int tmp = m_unsafe.getInt(m_baseAddress + IDX_NUM_BYTES_NOT_POSTED);
 
             if (tmp < 0) {
                 throw new IllegalStateException("PrevWorkPackageResults numBytesNotPosted < 0: " + tmp);
@@ -815,7 +812,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
          * Get the amount of fc data posted on the last work request
          */
         byte getFcDataPosted() {
-            byte tmp = m_struct.get(IDX_FC_DATA_POSTED);
+            byte tmp = m_unsafe.getByte(m_baseAddress + IDX_FC_DATA_POSTED);
 
             if (tmp < 0) {
                 throw new IllegalStateException("PrevWorkPackageResults fcDataPosted < 0: " + tmp);
@@ -828,18 +825,13 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
          * Get the amount of fc data could not be posted (queue full)
          */
         byte getFcDataNotPosted() {
-            byte tmp = m_struct.get(IDX_FC_DATA_NOT_POSTED);
+            byte tmp = m_unsafe.getByte(m_baseAddress + IDX_FC_DATA_NOT_POSTED);
 
             if (tmp < 0) {
                 throw new IllegalStateException("PrevWorkPackageResults fcDataNotPosted < 0: " + tmp);
             }
 
             return tmp;
-        }
-
-        @Override
-        protected void finalize() {
-            ByteBufferHelper.unwrap(m_struct);
         }
     }
 
@@ -870,7 +862,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         //        uint8_t m_fcDataWritten[con::NODE_ID_MAX_NUM_NODES];
         //        con::NodeId m_nodeIds[];
         //    } __attribute__((packed));
-        private ByteBuffer m_struct;
+        private final Unsafe m_unsafe;
+        private final long m_baseAddress;
 
         /**
          * Constructor
@@ -885,15 +878,15 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             m_size = SIZE_FIELD_NUM_NODES + SIZE_FIELD_NUM_BYTES_WRITTEN_ARRAY + SIZE_FIELD_FC_DATA_WRITTEN_ARRAY +
                     m_sizeFieldNodeIdsArray;
 
-            m_struct = ByteBufferHelper.wrap(p_addr, m_size);
-            m_struct.order(ByteOrder.nativeOrder());
+            m_unsafe = UnsafeHandler.getInstance().getUnsafe();
+            m_baseAddress = p_addr;
         }
 
         /**
          * Get the number of nodes that have work completed
          */
         int getNumNodes() {
-            return m_struct.getShort(IDX_NUM_ITEMS) & 0xFFFF;
+            return m_unsafe.getShort(m_baseAddress + IDX_NUM_ITEMS) & 0xFFFF;
         }
 
         /**
@@ -903,7 +896,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
          *         Index of the work completion list
          */
         int getNumBytesWritten(final int p_idx) {
-            int tmp = m_struct.getInt(IDX_BYTES_WRITTEN + p_idx * SIZE_FIELD_NUM_BYTES_WRITTEN);
+            int tmp = m_unsafe.getInt(m_baseAddress + IDX_BYTES_WRITTEN + p_idx * SIZE_FIELD_NUM_BYTES_WRITTEN);
 
             if (tmp < 0) {
                 throw new IllegalStateException("CompletedWorkList bytesWritten < 0: " + tmp);
@@ -919,7 +912,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
          *         Index of the work completion list
          */
         byte getFcDataWritten(final int p_idx) {
-            byte tmp = m_struct.get(IDX_FC_DATA_WRITTEN + p_idx * SIZE_FIELD_FC_DATA_WRITTEN);
+            byte tmp = m_unsafe.getByte(m_baseAddress + IDX_FC_DATA_WRITTEN + p_idx * SIZE_FIELD_FC_DATA_WRITTEN);
 
             if (tmp < 0) {
                 throw new IllegalStateException("CompletedWorkList fcData < 0: " + tmp);
@@ -935,12 +928,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
          *         Index of the work completion list
          */
         public short getNodeId(final int p_idx) {
-            return m_struct.getShort(IDX_NODE_IDS + p_idx * SIZE_FIELD_NODE_ID);
-        }
-
-        @Override
-        protected void finalize() {
-            ByteBufferHelper.unwrap(m_struct);
+            return m_unsafe.getShort(m_baseAddress + IDX_NODE_IDS + p_idx * SIZE_FIELD_NODE_ID);
         }
     }
 
@@ -989,7 +977,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         //            uint32_t m_dataLength;
         //        } __attribute__((__packed__)) m_entries[];
         //    } __attribute__((__packed__));
-        private ByteBuffer m_struct;
+        private final Unsafe m_unsafe;
+        private final long m_baseAddress;
 
         /**
          * Constructor
@@ -1004,15 +993,15 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             m_sizeFieldEntriesArray = SIZE_ENTRY_STRUCT * m_maxCount;
             m_size = SIZE_FIELD_COUNT + SIZE_FIELD_OFFSET + m_sizeFieldEntriesArray;
 
-            m_struct = ByteBufferHelper.wrap(p_addr, m_size);
-            m_struct.order(ByteOrder.nativeOrder());
+            m_unsafe = UnsafeHandler.getInstance().getUnsafe();
+            m_baseAddress = p_addr;
         }
 
         /**
          * Get the number of entries of the receive package
          */
         public int getCount() {
-            int tmp = m_struct.getInt(IDX_COUNT);
+            int tmp = m_unsafe.getInt(m_baseAddress + IDX_COUNT);
 
             if (tmp < 0) {
                 throw new IllegalStateException("RecvPackage count < 0: " + tmp);
@@ -1029,7 +1018,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
          * Get the start offset for the entries
          */
         public int getOffset() {
-            int tmp = m_struct.getInt(IDX_OFFSET);
+            int tmp = m_unsafe.getInt(m_baseAddress + IDX_OFFSET);
 
             if (tmp < 0) {
                 throw new IllegalStateException("RecvPackage offset < 0: " + tmp);
@@ -1049,7 +1038,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
          *         Index of the entry
          */
         short getSourceNodeId(final int p_idx) {
-            return m_struct.getShort(IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_SOURCE_NODE_ID);
+            return m_unsafe.getShort(
+                    m_baseAddress + IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_SOURCE_NODE_ID);
         }
 
         /**
@@ -1059,7 +1049,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
          *         Index of the entry
          */
         byte getFcData(final int p_idx) {
-            byte tmp = m_struct.get(IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_FC_DATA);
+            byte tmp = m_unsafe.getByte(m_baseAddress + IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_FC_DATA);
 
             if (tmp < 0) {
                 throw new IllegalStateException("RecvPackage fcData < 0: " + tmp);
@@ -1075,7 +1065,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
          *         Index of the entry
          */
         public long getData(final int p_idx) {
-            return m_struct.getLong(IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_PTR_DATA);
+            return m_unsafe.getLong(m_baseAddress + IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_PTR_DATA);
         }
 
         /**
@@ -1085,7 +1075,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
          *         Index of the entry
          */
         long getDataRaw(final int p_idx) {
-            return m_struct.getLong(IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_PTR_DATA_RAW);
+            return m_unsafe.getLong(m_baseAddress + IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_PTR_DATA_RAW);
         }
 
         /**
@@ -1095,18 +1085,13 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
          *         Index of the entry
          */
         int getDataLength(final int p_idx) {
-            int tmp = m_struct.getInt(IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_DATA_LENGTH);
+            int tmp = m_unsafe.getInt(m_baseAddress + IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_DATA_LENGTH);
 
             if (tmp < 0) {
                 throw new IllegalStateException("RecvPackage data length < 0: " + tmp);
             }
 
             return tmp;
-        }
-
-        @Override
-        protected void finalize() {
-            ByteBufferHelper.unwrap(m_struct);
         }
     }
 }
