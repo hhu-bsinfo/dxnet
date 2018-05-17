@@ -39,11 +39,11 @@ public final class MsgrcJNIBinding {
         /**
          * Called by the native receive thread once data was received from one or multiple remote nodes
          *
-         * @param p_recvPackage
-         *         Native pointer to a struct with the data received (ReceivedPackage)
+         * @param p_incomingRingBuffer
+         *         Native pointer to a struct with the data received (IncomingRingBuffer)
          * @return The number of processed recv packages
          */
-        int received(final long p_recvPackage);
+        int received(final long p_incomingRingBuffer);
 
         /**
          * Called by the native send thread to get more data to send

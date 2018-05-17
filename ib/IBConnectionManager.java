@@ -91,7 +91,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
     private NextWorkPackage m_nextWorkPackage;
     private PrevWorkPackageResults m_prevWorkPackageResults;
     private CompletedWorkList m_completedWorkList;
-    private ReceivedPackage m_receivedPackage;
+    private IncomingRingBuffer m_incomingRingBuffer;
 
     /**
      * Constructor
@@ -326,7 +326,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
     }
 
     @Override
-    public int received(final long p_recvPackage) {
+    public int received(final long p_incomingRingBuffer) {
         int processed = 0;
 
         try {
@@ -336,23 +336,25 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             // #endif /* STATISTICS */
 
             // wrap on the first callback, native address is always the same
-            if (m_receivedPackage == null) {
-                m_receivedPackage = new ReceivedPackage(p_recvPackage, m_config.getSharedReceiveQueueSize() *
-                        m_config.getMaxSGEs());
+            if (m_incomingRingBuffer == null) {
+                m_incomingRingBuffer = new IncomingRingBuffer(p_incomingRingBuffer);
 
                 // for debugging purpose
                 Thread.currentThread().setName("IBRecv-native");
             }
 
-            int receiveCount = m_receivedPackage.getCount();
-            int offset = m_receivedPackage.getOffset();
+            int usedEntries = m_incomingRingBuffer.getUsedEntries();
+            int front = m_incomingRingBuffer.getFront();
+            int size = m_incomingRingBuffer.getSize();
 
-            for (int i = 0; i < receiveCount; i++) {
-                short sourceNodeId = m_receivedPackage.getSourceNodeId(i + offset);
-                short fcData = m_receivedPackage.getFcData(i + offset);
-                long ptrDataHandle = m_receivedPackage.getData(i + offset);
-                long ptrData = m_receivedPackage.getDataRaw(i + offset);
-                int dataLength = m_receivedPackage.getDataLength(i + offset);
+            for (int i = 0; i < usedEntries; i++) {
+                int offset = (front + i) % size;
+
+                short sourceNodeId = m_incomingRingBuffer.getSourceNodeId(offset);
+                short fcData = m_incomingRingBuffer.getFcData(offset);
+                int dataLength = m_incomingRingBuffer.getDataLength(offset);
+                long ptrDataHandle = m_incomingRingBuffer.getData(offset);
+                long ptrData = m_incomingRingBuffer.getDataRaw(offset);
 
                 // sanity checks
                 if (sourceNodeId == NodeID.INVALID_ID || fcData == 0 && (ptrDataHandle == 0 || ptrData == 0 ||
@@ -933,99 +935,104 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
     }
 
     /**
-     * Wrapper for native struct ReceivedPackage
+     * Wrapper for native struct IncomingRingBuffer
      */
-    private static class ReceivedPackage {
-        private static final int SIZE_FIELD_COUNT = Integer.BYTES;
-        private static final int SIZE_FIELD_OFFSET = Integer.BYTES;
-        private final int m_sizeFieldEntriesArray;
+    private static class IncomingRingBuffer {
+        private static final int SIZE_FIELD_USED_ENTRIES = Integer.BYTES;
+        private static final int SIZE_FIELD_FRONT = Integer.BYTES;
+        private static final int SIZE_FIELD_BACK = Integer.BYTES;
+        private static final int SIZE_FIELD_SIZE = Integer.BYTES;
 
         private static final int SIZE_FIELD_ENTRY_SOURCE_NODE_ID = Short.BYTES;
         private static final int SIZE_FIELD_ENTRY_FC_DATA = Byte.BYTES;
+        private static final int SIZE_FIELD_ENTRY_PADDING = Byte.BYTES;
+        private static final int SIZE_FIELD_DATA_LENGTH = Integer.BYTES;
         private static final int SIZE_FIELD_ENTRY_DATA = Long.BYTES;
         private static final int SIZE_FIELD_ENTRY_DATA_RAW = Long.BYTES;
-        private static final int SIZE_FIELD_DATA_LENGTH = Integer.BYTES;
 
         private static final int SIZE_ENTRY_STRUCT =
-                SIZE_FIELD_ENTRY_SOURCE_NODE_ID + SIZE_FIELD_ENTRY_FC_DATA + SIZE_FIELD_ENTRY_DATA +
-                        SIZE_FIELD_ENTRY_DATA_RAW + SIZE_FIELD_DATA_LENGTH;
+                SIZE_FIELD_ENTRY_SOURCE_NODE_ID + SIZE_FIELD_ENTRY_FC_DATA + SIZE_FIELD_ENTRY_PADDING +
+                        SIZE_FIELD_DATA_LENGTH + SIZE_FIELD_ENTRY_DATA + SIZE_FIELD_ENTRY_DATA_RAW;
 
-        // depends on the shared recv queue size, must be initializated in the constructor
-        private final int m_size;
-        private final int m_maxCount;
+        private static final int IDX_USED_ENTRIES = 0;
+        private static final int IDX_FRONT = IDX_USED_ENTRIES + SIZE_FIELD_USED_ENTRIES;
+        private static final int IDX_BACK = IDX_FRONT + SIZE_FIELD_FRONT;
+        private static final int IDX_SIZE = IDX_BACK + SIZE_FIELD_BACK;
 
-        private static final int IDX_COUNT = 0;
-        private static final int IDX_OFFSET = IDX_COUNT + SIZE_FIELD_COUNT;
-        private static final int IDX_ENTRIES = IDX_OFFSET + SIZE_FIELD_OFFSET;
+        private static final int IDX_OFFSET_ENTRIES = IDX_SIZE + SIZE_FIELD_SIZE;
 
         private static final int IDX_ENTRY_SOURCE_NODE_ID = 0;
         private static final int IDX_ENTRY_FC_DATA = IDX_ENTRY_SOURCE_NODE_ID + SIZE_FIELD_ENTRY_SOURCE_NODE_ID;
-        private static final int IDX_ENTRY_PTR_DATA = IDX_ENTRY_FC_DATA + SIZE_FIELD_ENTRY_FC_DATA;
+        private static final int IDX_ENTRY_PADDING = IDX_ENTRY_FC_DATA + SIZE_FIELD_ENTRY_FC_DATA;
+        private static final int IDX_ENTRY_DATA_LENGTH = IDX_ENTRY_PADDING + SIZE_FIELD_ENTRY_PADDING;
+        private static final int IDX_ENTRY_PTR_DATA = IDX_ENTRY_DATA_LENGTH + SIZE_FIELD_DATA_LENGTH;
         private static final int IDX_ENTRY_PTR_DATA_RAW = IDX_ENTRY_PTR_DATA + SIZE_FIELD_ENTRY_DATA;
-        private static final int IDX_ENTRY_DATA_LENGTH = IDX_ENTRY_PTR_DATA_RAW + SIZE_FIELD_ENTRY_DATA_RAW;
 
-        //    struct ReceivedPackage
-        //    {
-        //        uint32_t m_count;
-        //        uint32_t m_offset;
+        //        struct IncomingRingBuffer {
+        //            uint32_t m_usedEntries;
+        //            uint32_t m_front;
+        //            uint32_t m_back;
+        //            uint32_t m_size;
         //
-        //        struct Entry {
-        //            con::NodeId m_sourceNodeId;
-        //            uint8_t m_fcData;
-        //            core::IbMemReg* m_data;
-        //            void* m_dataRaw;
-        //            uint32_t m_dataLength;
-        //        } __attribute__((__packed__)) m_entries[];
-        //    } __attribute__((__packed__));
+        //            struct Entry
+        //            {
+        //                con::NodeId m_sourceNodeId;
+        //                uint8_t m_fcData;
+        //                // ensure proper alignment
+        //                uint8_t m_padding;
+        //                uint32_t m_dataLength;
+        //                core::IbMemReg* m_data;
+        //                void* m_dataRaw;
+        //            } __attribute__((__packed__)) m_entries[];
+        //        } __attribute__((__packed__));
         private final Unsafe m_unsafe;
         private final long m_baseAddress;
+
+        private int m_size;
 
         /**
          * Constructor
          *
          * @param p_addr
          *         Native address pointing to struct
-         * @param p_maxCount
-         *         Max number of elements that can be received (i.e. receive queue size)
          */
-        ReceivedPackage(final long p_addr, final int p_maxCount) {
-            m_maxCount = p_maxCount;
-            m_sizeFieldEntriesArray = SIZE_ENTRY_STRUCT * m_maxCount;
-            m_size = SIZE_FIELD_COUNT + SIZE_FIELD_OFFSET + m_sizeFieldEntriesArray;
-
+        IncomingRingBuffer(final long p_addr) {
             m_unsafe = UnsafeHandler.getInstance().getUnsafe();
             m_baseAddress = p_addr;
+
+            // size won't change, cache
+            m_size = m_unsafe.getInt(m_baseAddress + IDX_SIZE);
+
+            if (m_size < 0) {
+                throw new IllegalStateException("IRB, invalid value for size: " + m_size);
+            }
         }
 
-        /**
-         * Get the number of entries of the receive package
-         */
-        public int getCount() {
-            int tmp = m_unsafe.getInt(m_baseAddress + IDX_COUNT);
+        int getUsedEntries() {
+            int tmp = m_unsafe.getInt(m_baseAddress + IDX_USED_ENTRIES);
 
-            if (tmp < 0) {
-                throw new IllegalStateException("RecvPackage count < 0: " + tmp);
-            }
-
-            if (tmp > m_maxCount) {
-                throw new IllegalStateException("RecvPackage count > max " + m_maxCount + ": " + tmp);
+            if (tmp < 0 || tmp > m_size) {
+                throw new IllegalStateException("IRB, invalid value for used entries: " + tmp);
             }
 
             return tmp;
         }
 
         /**
-         * Get the start offset for the entries
+         * Get the size of the ring buffer
          */
-        public int getOffset() {
-            int tmp = m_unsafe.getInt(m_baseAddress + IDX_OFFSET);
+        int getSize() {
+            return m_size;
+        }
 
-            if (tmp < 0) {
-                throw new IllegalStateException("RecvPackage offset < 0: " + tmp);
-            }
+        /**
+         * Get the number of entries of the receive package
+         */
+        int getFront() {
+            int tmp = m_unsafe.getInt(m_baseAddress + IDX_FRONT);
 
-            if (tmp > m_maxCount) {
-                throw new IllegalStateException("RecvPackage offset > max " + m_maxCount + ": " + tmp);
+            if (tmp < 0 || tmp > m_size) {
+                throw new IllegalStateException("IRB, invalid value fro front: " + tmp);
             }
 
             return tmp;
@@ -1039,7 +1046,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
          */
         short getSourceNodeId(final int p_idx) {
             return m_unsafe.getShort(
-                    m_baseAddress + IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_SOURCE_NODE_ID);
+                    m_baseAddress + IDX_OFFSET_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_SOURCE_NODE_ID);
         }
 
         /**
@@ -1049,10 +1056,28 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
          *         Index of the entry
          */
         byte getFcData(final int p_idx) {
-            byte tmp = m_unsafe.getByte(m_baseAddress + IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_FC_DATA);
+            byte tmp = m_unsafe.getByte(
+                    m_baseAddress + IDX_OFFSET_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_FC_DATA);
 
             if (tmp < 0) {
-                throw new IllegalStateException("RecvPackage fcData < 0: " + tmp);
+                throw new IllegalStateException("IRB fcData < 0: " + tmp);
+            }
+
+            return tmp;
+        }
+
+        /**
+         * Get the length of data received
+         *
+         * @param p_idx
+         *         Index of the entry
+         */
+        int getDataLength(final int p_idx) {
+            int tmp = m_unsafe.getInt(
+                    m_baseAddress + IDX_OFFSET_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_DATA_LENGTH);
+
+            if (tmp < 0) {
+                throw new IllegalStateException("IRB data length < 0: " + tmp);
             }
 
             return tmp;
@@ -1065,7 +1090,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
          *         Index of the entry
          */
         public long getData(final int p_idx) {
-            return m_unsafe.getLong(m_baseAddress + IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_PTR_DATA);
+            return m_unsafe.getLong(
+                    m_baseAddress + IDX_OFFSET_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_PTR_DATA);
         }
 
         /**
@@ -1075,23 +1101,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
          *         Index of the entry
          */
         long getDataRaw(final int p_idx) {
-            return m_unsafe.getLong(m_baseAddress + IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_PTR_DATA_RAW);
-        }
-
-        /**
-         * Get the length of data received
-         *
-         * @param p_idx
-         *         Index of the entry
-         */
-        int getDataLength(final int p_idx) {
-            int tmp = m_unsafe.getInt(m_baseAddress + IDX_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_DATA_LENGTH);
-
-            if (tmp < 0) {
-                throw new IllegalStateException("RecvPackage data length < 0: " + tmp);
-            }
-
-            return tmp;
+            return m_unsafe.getLong(
+                    m_baseAddress + IDX_OFFSET_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_PTR_DATA_RAW);
         }
     }
 }
