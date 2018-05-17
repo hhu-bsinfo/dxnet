@@ -88,6 +88,7 @@ public final class DXNetMain implements MessageReceiver {
 
     private static DXNet ms_dxnet;
 
+    private static int ms_printIntervalMs = 1000;
     private static int ms_workload = 0;
     private static long ms_sendCount = 10000;
     private static long ms_recvCount = 10000;
@@ -139,9 +140,9 @@ public final class DXNetMain implements MessageReceiver {
         // first workload, to configure remaining parameters
         Supplier[] workloads = new Supplier[] {WorkloadA::new, WorkloadB::new, WorkloadC::new, WorkloadD::new};
 
-        AbstractWorkload[] threadArray = new AbstractWorkload[ms_threads];
+        Workload[] threadArray = new Workload[ms_threads];
         for (int i = 0; i < ms_threads; i++) {
-            threadArray[i] = (AbstractWorkload) workloads[ms_workload].get();
+            threadArray[i] = (Workload) workloads[ms_workload].get();
             threadArray[i].setName(String.valueOf(i));
             ms_objectPooling = threadArray[i].objectPooling();
         }
@@ -244,7 +245,7 @@ public final class DXNetMain implements MessageReceiver {
             while (true) {
                 try {
                     ms_dxnet.sendMessage(resp);
-                } catch (NetworkException e) {
+                } catch (NetworkException ignored) {
                     LockSupport.parkNanos(100);
                     continue;
                 }
@@ -361,40 +362,43 @@ public final class DXNetMain implements MessageReceiver {
 
         loadConfiguration(p_args[0]);
 
-        if (p_args.length < 7) {
+        if (p_args.length < 8) {
             System.out.println("To execute benchmarks with a valid configuration file:");
             System.out.println(
-                    "Args: <config_file> <workload> <send count> <recv count> <size (full message: header + payload)> <send/app threads> <node id>" +
-                            " [send target node ids ...]");
+                    "Args: <config_file> <print interval ms> <workload> <send count> <recv count> <size> " +
+                            "(full message: header + payload)> <send/app threads> <node id> " +
+                            "[send target node ids ...]");
             System.exit(-1);
         }
 
-        ms_workload = Integer.parseInt(p_args[1]);
+        ms_printIntervalMs = Integer.parseInt(p_args[1]);
+        ms_workload = Integer.parseInt(p_args[2]);
         if (ms_workload < 0 || ms_workload > 3) {
             System.out.println("Invalid workload " + ms_workload + " specified");
             System.exit(-1);
         }
 
-        ms_sendCount = Long.parseLong(p_args[2]);
-        ms_recvCount = Long.parseLong(p_args[3]);
-        ms_messagePayloadSize = Integer.parseInt(p_args[4]);
-        ms_threads = Integer.parseInt(p_args[5]);
-        ms_ownNodeId = Short.parseShort(p_args[6]);
+        ms_sendCount = Long.parseLong(p_args[3]);
+        ms_recvCount = Long.parseLong(p_args[4]);
+        ms_messagePayloadSize = Integer.parseInt(p_args[5]);
+        ms_threads = Integer.parseInt(p_args[6]);
+        ms_ownNodeId = Short.parseShort(p_args[7]);
 
         ms_size = ms_messagePayloadSize + ObjectSizeUtil.sizeofCompactedNumber(ms_messagePayloadSize) + 10;
 
         StringBuilder targets = new StringBuilder();
 
-        for (int i = 7; i < p_args.length; i++) {
+        for (int i = 8; i < p_args.length; i++) {
             ms_targetNodeIds.add(Short.parseShort(p_args[i]));
             targets.append(p_args[i]);
-            targets.append(" ");
+            targets.append(' ');
         }
 
         System.out.printf(
-                "Parameters: workload %d, send count %d (per target), recv count %d (all), size %d (payload size %d), threads %d, own node id 0x%X," +
-                        " targets %s\n", ms_workload, ms_sendCount, ms_recvCount, ms_size, ms_messagePayloadSize,
-                ms_threads, ms_ownNodeId, targets.toString());
+                "Parameters: print interval ms %d, workload %d, send count %d (per target), recv count %d (all), " +
+                        "size %d (payload size %d), threads %d, own node id 0x%X, targets %s\n", ms_printIntervalMs,
+                ms_workload, ms_sendCount, ms_recvCount, ms_size, ms_messagePayloadSize, ms_threads, ms_ownNodeId,
+                targets.toString());
     }
 
     private static void loadConfiguration(final String p_configPath) {
@@ -578,7 +582,7 @@ public final class DXNetMain implements MessageReceiver {
                 }
             }
         } catch (final SocketException ignored) {
-            System.out.printf("Could not get network interfaces for ip confirmation\n");
+            System.out.println("Could not get network interfaces for ip confirmation");
         } finally {
             if (!found) {
                 System.out.printf("Could not find network interface with address %s\n", myAddress.getHostAddress());
@@ -630,10 +634,10 @@ public final class DXNetMain implements MessageReceiver {
                 try {
                     ms_dxnet.sendSync(req, -1, true);
                     break;
-                } catch (NetworkException e) {
+                } catch (NetworkException ignored) {
                     try {
                         Thread.sleep(1000);
-                    } catch (InterruptedException ignored) {
+                    } catch (InterruptedException ignored2) {
 
                     }
                 }
@@ -655,46 +659,56 @@ public final class DXNetMain implements MessageReceiver {
             final long p_maxRttNs, final long p_totalMessages) {
         if (p_minRttNs != 0 && p_maxRttNs != 0) {
             System.out.printf(
-                    "[%s RESULTS]\n[%s WORKLOAD] %d\n[%s MSG SIZE] %d\n[%s MSG PAYLOAD SIZE] %d\n[%s THREADS] %d\n[%s MSG HANDLERS] %d\n[%s RUNTIME] %d ms\n" +
-                            "[%s TIME PER MESSAGE] %d ns\n[%s THROUGHPUT PAYLOAD] %f MB/s\n[%s THROUGHPUT] %f MB/s\n[RTT REQ-RESP AVG] %d us\n" +
-                            "[RTT REQ-RESP MIN] %d us\n[RTT REQ-RESP MAX] %d us\n[%s TIMEOUTS REQ-RESP] %d\n", p_name,
-                    p_name, ms_workload, p_name, ms_size,
-                    p_name, ms_messagePayloadSize, p_name, ms_threads, p_name,
-                    ms_context.getCoreConfig().getNumMessageHandlerThreads(), p_name,
-                    p_timeDiffNs / 1000 / 1000, p_name, p_totalMessages != 0 ? p_timeDiffNs / p_totalMessages : 0,
-                    p_name,
-                    p_totalMessages != 0 ? (double) p_totalMessages * ms_messagePayloadSize / 1024 / 1024 /
+                    "[%s RESULTS]\n[%s WORKLOAD] %d\n[%s MSG SIZE] %d\n[%s MSG PAYLOAD SIZE] %d\n[%s THREADS] %d\n" +
+                            "[%s MSG HANDLERS] %d\n[%s RUNTIME] %d ms\n[%s TIME PER MESSAGE] %d ns\n" +
+                            "[%s THROUGHPUT MESSAGE] %d\n[%s THROUGHPUT PAYLOAD] %f MB/s\n[%s THROUGHPUT] %f MB/s\n" +
+                            "[RTT REQ-RESP AVG] %d us\n[RTT REQ-RESP MIN] %d us\n[RTT REQ-RESP MAX] %d us\n" +
+                            "[%s TIMEOUTS REQ-RESP] %d\n", p_name,
+                    p_name, ms_workload,
+                    p_name, ms_size,
+                    p_name, ms_messagePayloadSize,
+                    p_name, ms_threads,
+                    p_name, ms_context.getCoreConfig().getNumMessageHandlerThreads(),
+                    p_name, p_timeDiffNs / 1000 / 1000,
+                    p_name, p_totalMessages != 0 ? p_timeDiffNs / p_totalMessages : 0,
+                    p_name, p_totalMessages != 0 ? p_totalMessages / p_timeDiffNs / 1000 / 1000 / 1000 : 0,
+                    p_name, p_totalMessages != 0 ? (double) p_totalMessages * ms_messagePayloadSize / 1024 / 1024 /
                             ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0,
                     p_name, p_totalMessages != 0 ? (double) p_totalMessages * ms_size / 1024 / 1024 /
                             ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0,
-                    ms_reqRespRTTSumNs.get() / ms_messagesSent.get() / 1000, p_minRttNs / 1000, p_maxRttNs / 1000,
+                    ms_reqRespRTTSumNs.get() / ms_messagesSent.get() / 1000,
+                    p_minRttNs / 1000,
+                    p_maxRttNs / 1000,
                     p_name, ms_reqRespTimeouts.get());
         } else {
             System.out.printf(
-                    "[%s RESULTS]\n" + "[%s WORKLOAD] %d\n" + "[%s MSG SIZE] %d\n[%s MSG PAYLOAD SIZE] %d\n" +
-                            "[%s THREADS] %d\n" + "[%s MSG HANDLERS] %d\n" +
-                            "[%s RUNTIME] %d ms\n" + "[%s TIME PER MESSAGE] %d ns\n" +
-                            "[%s THROUGHPUT PAYLOAD] %f MB/s\n" + "[%s THROUGHPUT] %f MB/s\n",
-                    p_name, p_name, ms_workload, p_name, ms_size, p_name, ms_messagePayloadSize, p_name, ms_threads,
+                    "[%s RESULTS]\n[%s WORKLOAD] %d\n[%s MSG SIZE] %d\n[%s MSG PAYLOAD SIZE] %d\n[%s THREADS] %d\n" +
+                            "[%s MSG HANDLERS] %d\n[%s RUNTIME] %d ms\n[%s TIME PER MESSAGE] %d ns\n" +
+                            "[%s THROUGHPUT MESSAGE] %d\n[%s THROUGHPUT PAYLOAD] %f MB/s\n[%s THROUGHPUT] %f MB/s\n",
                     p_name,
-                    ms_context.getCoreConfig().getNumMessageHandlerThreads(), p_name, p_timeDiffNs / 1000 / 1000,
-                    p_name,
-                    p_totalMessages != 0 ? p_timeDiffNs / p_totalMessages : p_totalMessages, p_name,
-                    p_totalMessages != 0 ? (double) p_totalMessages * ms_messagePayloadSize / 1024 / 1024 /
+                    p_name, ms_workload,
+                    p_name, ms_size,
+                    p_name, ms_messagePayloadSize,
+                    p_name, ms_threads,
+                    p_name, ms_context.getCoreConfig().getNumMessageHandlerThreads(),
+                    p_name, p_timeDiffNs / 1000 / 1000,
+                    p_name, p_totalMessages != 0 ? p_timeDiffNs / p_totalMessages : p_totalMessages,
+                    p_name, p_totalMessages != 0 ? p_totalMessages / p_timeDiffNs / 1000 / 1000 / 1000 : 0,
+                    p_name, p_totalMessages != 0 ? (double) p_totalMessages * ms_messagePayloadSize / 1024 / 1024 /
                             ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0,
                     p_name, p_totalMessages != 0 ? (double) p_totalMessages * ms_size / 1024 / 1024 /
                             ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0);
         }
     }
 
-    private abstract static class AbstractWorkload extends Thread {
+    private static class Workload extends Thread {
         private boolean m_withRequests;
         private boolean m_objectPooling;
 
         long m_rttMinNs;
         long m_rttMaxNs;
 
-        AbstractWorkload(final boolean p_withRequests, final boolean p_objectPooling) {
+        Workload(final boolean p_withRequests, final boolean p_objectPooling) {
             m_withRequests = p_withRequests;
             m_objectPooling = p_objectPooling;
 
@@ -720,7 +734,7 @@ public final class DXNetMain implements MessageReceiver {
     }
 
     // msg + pooling = a
-    private static class WorkloadA extends AbstractWorkload {
+    private static class WorkloadA extends Workload {
 
         WorkloadA() {
             super(false, true);
@@ -758,7 +772,7 @@ public final class DXNetMain implements MessageReceiver {
     }
 
     // msg + no pooling = b
-    private static class WorkloadB extends AbstractWorkload {
+    private static class WorkloadB extends Workload {
 
         WorkloadB() {
             super(false, false);
@@ -792,7 +806,7 @@ public final class DXNetMain implements MessageReceiver {
     }
 
     // req + pooling = c
-    private static class WorkloadC extends AbstractWorkload {
+    private static class WorkloadC extends Workload {
 
         WorkloadC() {
             super(true, true);
@@ -852,7 +866,7 @@ public final class DXNetMain implements MessageReceiver {
     }
 
     // req + no pooling = d
-    private static class WorkloadD extends AbstractWorkload {
+    private static class WorkloadD extends Workload {
 
         WorkloadD() {
             super(true, false);
@@ -904,7 +918,7 @@ public final class DXNetMain implements MessageReceiver {
         private volatile boolean m_run = true;
         private int m_intervalMs;
 
-        public ProgressThread(final int p_intervalMs) {
+        ProgressThread(final int p_intervalMs) {
             m_intervalMs = p_intervalMs;
         }
 
@@ -918,6 +932,10 @@ public final class DXNetMain implements MessageReceiver {
             }
         }
 
+        private long m_prevSent;
+        private long m_prevRecv;
+        private long m_prevTime = System.nanoTime();
+
         @Override
         public void run() {
             while (m_run) {
@@ -927,24 +945,56 @@ public final class DXNetMain implements MessageReceiver {
 
                 }
 
-                long messagesSent = ms_messagesSent.get();
-                long messagesRecv = ms_messagesReceived.get();
-
+                long totalMessagesSent = ms_messagesSent.get();
+                long totalMessagesRecv = ms_messagesReceived.get();
                 long time = System.nanoTime();
+
+                long messagesSentDelta = totalMessagesSent - m_prevSent;
+                long messagesRecvDelta = totalMessagesRecv - m_prevRecv;
+
+                long timeDiffSendDelta = ms_timeStartSend != 0 ? time - m_prevTime : 1;
+                long timeDiffRecvDelta = ms_timeStartRecv != 0 ? time - m_prevTime : 1;
+
                 long timeDiffSend = ms_timeStartSend != 0 ? time - ms_timeStartSend : 1;
                 long timeDiffRecv = ms_timeStartRecv != 0 ? time - ms_timeStartRecv : 1;
+
                 System.out.printf(
-                        "[PROGRESS] %d sec: Sent %d%% (%d), Recv %d%% (%d), Sent-Recv-Diff %d, TX %f, RX %f, TXP %f, RXP %f, ReqRespTimeouts: %d\n",
-                        timeDiffSend / 1000 / 1000 / 1000, ms_sendCount != 0 ?
-                                (int) ((float) messagesSent / ms_sendCount / ms_targetNodeIds.size() * 100) : 0,
-                        messagesSent, ms_recvCount != 0 ? (int) ((float) messagesRecv / ms_recvCount * 100) : 0,
-                        messagesRecv, messagesSent - messagesRecv,
-                        (double) messagesSent * ms_size / 1024 / 1024 / ((double) timeDiffSend / 1000 / 1000 / 1000),
-                        (double) messagesRecv * ms_size / 1024 / 1024 / ((double) timeDiffRecv / 1000 / 1000 / 1000),
-                        (double) messagesSent * ms_messagePayloadSize / 1024 / 1024 /
+                        "[PROGRESS] %d sec [TOTAL: TXM %d%% (%d), RXM %d%% (%d), TXM-RXM-DELTA %d]" +
+                                "[AVG: TX=%f, RX=%f, TXP=%f, RXP=%f, TXM=%f, RXM=%f]" +
+                                "[CUR: TX=%f, RX=%f, TXP=%f, RXP=%f, TXM=%f, RXM=%f][ReqRespTimeouts=%d]\n",
+                        timeDiffSend / 1000 / 1000 / 1000,
+                        ms_sendCount != 0 ?
+                                (int) ((float) totalMessagesSent / ms_sendCount / ms_targetNodeIds.size() * 100) : 0,
+                        totalMessagesSent,
+                        ms_recvCount != 0 ? (int) ((float) totalMessagesRecv / ms_recvCount * 100) : 0,
+                        totalMessagesRecv,
+                        totalMessagesSent - totalMessagesRecv,
+                        (double) totalMessagesSent * ms_size / 1024 / 1024 /
                                 ((double) timeDiffSend / 1000 / 1000 / 1000),
-                        (double) messagesRecv * ms_messagePayloadSize / 1024 / 1024 /
-                                ((double) timeDiffRecv / 1000 / 1000 / 1000), ms_reqRespTimeouts.get());
+                        (double) totalMessagesRecv * ms_size / 1024 / 1024 /
+                                ((double) timeDiffRecv / 1000 / 1000 / 1000),
+                        (double) totalMessagesSent * ms_messagePayloadSize / 1024 / 1024 /
+                                ((double) timeDiffSend / 1000 / 1000 / 1000),
+                        (double) totalMessagesRecv * ms_messagePayloadSize / 1024 / 1024 /
+                                ((double) timeDiffRecv / 1000 / 1000 / 1000),
+                        (double) totalMessagesSent / ((double) timeDiffSend / 1000 / 1000 / 1000),
+                        (double) totalMessagesRecv / ((double) timeDiffRecv / 1000 / 1000 / 1000),
+                        (double) messagesSentDelta * ms_size / 1024 / 1024 /
+                                ((double) timeDiffSendDelta / 1000 / 1000 / 1000),
+                        (double) messagesRecvDelta * ms_size / 1024 / 1024 /
+                                ((double) timeDiffRecvDelta / 1000 / 1000 / 1000),
+                        (double) messagesSentDelta * ms_messagePayloadSize / 1024 / 1024 /
+                                ((double) timeDiffSendDelta / 1000 / 1000 / 1000),
+                        (double) messagesRecvDelta * ms_messagePayloadSize / 1024 / 1024 /
+                                ((double) timeDiffRecvDelta / 1000 / 1000 / 1000),
+                        (double) messagesSentDelta / ((double) timeDiffSendDelta / 1000 / 1000 / 1000),
+                        (double) messagesRecvDelta / ((double) timeDiffRecvDelta / 1000 / 1000 / 1000),
+                        ms_reqRespTimeouts.get());
+
+                // for delta/current values
+                m_prevSent = totalMessagesSent;
+                m_prevRecv = totalMessagesRecv;
+                m_prevTime = time;
             }
         }
     }
