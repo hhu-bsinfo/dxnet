@@ -57,23 +57,22 @@ class IBFlowControl extends AbstractFlowControl {
      * @return The number of flow control windows to confirm
      */
     public byte getFlowControlData() {
-        byte ret;
+        if (m_flowControlWindowSize != 0) {
+            // not using CAS here requires this to be called by a single thread, only
+            byte ret = (byte) (m_receivedBytes.get() / m_flowControlWindowSizeThreshold);
 
-        // not using CAS here requires this to be called by a single thread, only
-        ret = (byte) (m_receivedBytes.get() / m_flowControlWindowSizeThreshold);
-        if (ret == 0) {
-            if (m_fcDataPosted > 0) {
-                throw new IllegalStateException("No fc data available but said to be posted");
+            if (ret == 0) {
+                if (m_fcDataPosted > 0) {
+                    throw new IllegalStateException("No fc data available but said to be posted");
+                }
+
+                return 0;
             }
 
+            return (byte) (ret - m_fcDataPosted);
+        } else {
             return 0;
         }
-
-        // #if LOGGER >= TRACE
-        LOGGER.trace("getFlowControlData (%X): %d", m_destinationNodeID, ret);
-        // #endif /* LOGGER >= TRACE */
-
-        return (byte) (ret - m_fcDataPosted);
     }
 
     /**
@@ -95,21 +94,19 @@ class IBFlowControl extends AbstractFlowControl {
     public void flowControlDataSendConfirmed(final byte p_fcData) {
         int bytesLeft;
 
-        bytesLeft = m_receivedBytes.addAndGet(-(m_flowControlWindowSizeThreshold * p_fcData));
+        if (m_flowControlWindowSize != 0) {
+            bytesLeft = m_receivedBytes.addAndGet(-(m_flowControlWindowSizeThreshold * p_fcData));
 
-        if (bytesLeft < 0) {
-            throw new IllegalStateException("Negative flow control");
+            if (bytesLeft < 0) {
+                throw new IllegalStateException("Negative flow control");
+            }
+
+            m_fcDataPosted -= p_fcData;
+
+            if (m_fcDataPosted < 0) {
+                throw new IllegalStateException("FC data posted state negative");
+            }
         }
-
-        m_fcDataPosted -= p_fcData;
-
-        if (m_fcDataPosted < 0) {
-            throw new IllegalStateException("FC data posted state negative");
-        }
-
-        // #if LOGGER >= TRACE
-        LOGGER.trace("flowControlDataSendConfirmed (%X): state fc left %d", m_destinationNodeID, bytesLeft);
-        // #endif /* LOGGER >= TRACE */
     }
 
     @Override

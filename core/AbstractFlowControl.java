@@ -40,7 +40,7 @@ public abstract class AbstractFlowControl {
 
     protected final short m_destinationNodeID;
 
-    private final int m_flowControlWindowSize;
+    protected final int m_flowControlWindowSize;
     private final float m_flowControlWindowThreshold;
     protected final int m_flowControlWindowSizeThreshold;
 
