@@ -847,15 +847,13 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         private static final int SIZE_FIELD_FC_DATA_WRITTEN = Byte.BYTES;
         private static final int SIZE_FIELD_FC_DATA_WRITTEN_ARRAY = SIZE_FIELD_FC_DATA_WRITTEN * 0xFFFF;
         private static final int SIZE_FIELD_NODE_ID = Short.BYTES;
-        private final int m_sizeFieldNodeIdsArray;
-
-        // depends on max num connections, must be initializated in the constructor
-        private final int m_size;
 
         private static final int IDX_NUM_ITEMS = 0;
         private static final int IDX_BYTES_WRITTEN = IDX_NUM_ITEMS + SIZE_FIELD_NUM_NODES;
         private static final int IDX_FC_DATA_WRITTEN = IDX_BYTES_WRITTEN + SIZE_FIELD_NUM_BYTES_WRITTEN_ARRAY;
         private static final int IDX_NODE_IDS = IDX_FC_DATA_WRITTEN + SIZE_FIELD_FC_DATA_WRITTEN_ARRAY;
+
+        private final int m_numNodes;
 
         //    struct CompletedWorkList
         //    {
@@ -876,9 +874,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
          *         Max number of nodes that can be connected (connection limit)
          */
         CompletedWorkList(final long p_addr, final int p_numNodes) {
-            m_sizeFieldNodeIdsArray = SIZE_FIELD_NODE_ID * p_numNodes;
-            m_size = SIZE_FIELD_NUM_NODES + SIZE_FIELD_NUM_BYTES_WRITTEN_ARRAY + SIZE_FIELD_FC_DATA_WRITTEN_ARRAY +
-                    m_sizeFieldNodeIdsArray;
+            m_numNodes = p_numNodes;
 
             m_unsafe = UnsafeHandler.getInstance().getUnsafe();
             m_baseAddress = p_addr;
@@ -930,6 +926,10 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
          *         Index of the work completion list
          */
         public short getNodeId(final int p_idx) {
+            if (p_idx >= m_numNodes) {
+                throw new IllegalStateException("Node id index out of bounds: " + p_idx + " > " + m_numNodes);
+            }
+
             return m_unsafe.getShort(m_baseAddress + IDX_NODE_IDS + p_idx * SIZE_FIELD_NODE_ID);
         }
     }
