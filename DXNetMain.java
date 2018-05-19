@@ -46,6 +46,7 @@ import com.google.gson.JsonElement;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import de.hhu.bsinfo.dxnet.core.AbstractPipeIn;
 import de.hhu.bsinfo.dxnet.core.Message;
 import de.hhu.bsinfo.dxnet.core.NetworkException;
 import de.hhu.bsinfo.dxnet.main.messages.BenchmarkMessage;
@@ -61,6 +62,8 @@ import de.hhu.bsinfo.dxutils.StorageUnitGsonSerializer;
 import de.hhu.bsinfo.dxutils.TimeUnitGsonSerializer;
 import de.hhu.bsinfo.dxutils.serialization.ObjectSizeUtil;
 import de.hhu.bsinfo.dxutils.stats.StatisticsManager;
+import de.hhu.bsinfo.dxutils.stats.Time;
+import de.hhu.bsinfo.dxutils.stats.Value;
 import de.hhu.bsinfo.dxutils.unit.StorageUnit;
 import de.hhu.bsinfo.dxutils.unit.TimeUnit;
 import de.hhu.bsinfo.pt.PerfTimer;
@@ -118,7 +121,6 @@ public final class DXNetMain implements MessageReceiver {
     private static volatile long ms_timeEndReceiver;
     private static AtomicLong ms_messagesReceived = new AtomicLong(0);
     private static AtomicLong ms_messagesSent = new AtomicLong(0);
-    private static AtomicLong ms_reqRespRTTSumNs = new AtomicLong(0);
     private static AtomicLong ms_reqRespTimeouts = new AtomicLong(0);
 
     public static void main(final String[] p_arguments) {
@@ -218,12 +220,18 @@ public final class DXNetMain implements MessageReceiver {
             }
         }
 
-        printResults("SEND", timeEndSender - ms_timeStartSend, minRttNs, maxRttNs,
-                ms_sendCount * ms_targetNodeIds.size());
-        printResults("RECV", ms_timeEndReceiver - ms_timeStartRecv, 0, 0, ms_recvCount);
+        try {
+            // wait a moment before printing results to ensure everything's flushed
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        printResults(timeEndSender - ms_timeStartSend, ms_timeEndReceiver - ms_timeStartRecv,
+                ms_sendCount * ms_targetNodeIds.size(), ms_recvCount);
 
         try {
-            Thread.sleep(3000);
+            Thread.sleep(1000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -655,50 +663,71 @@ public final class DXNetMain implements MessageReceiver {
         }
     }
 
-    private static void printResults(final String p_name, final long p_timeDiffNs, final long p_minRttNs,
-            final long p_maxRttNs, final long p_totalMessages) {
-        if (p_minRttNs != 0 && p_maxRttNs != 0) {
-            System.out.printf(
-                    "[%s RESULTS]\n[%s WORKLOAD] %d\n[%s MSG SIZE] %d\n[%s MSG PAYLOAD SIZE] %d\n[%s THREADS] %d\n" +
-                            "[%s MSG HANDLERS] %d\n[%s RUNTIME] %d ms\n[%s TIME PER MESSAGE] %d ns\n" +
-                            "[%s THROUGHPUT MESSAGE] %d\n[%s THROUGHPUT PAYLOAD] %f MB/s\n[%s THROUGHPUT] %f MB/s\n" +
-                            "[RTT REQ-RESP AVG] %d us\n[RTT REQ-RESP MIN] %d us\n[RTT REQ-RESP MAX] %d us\n" +
-                            "[%s TIMEOUTS REQ-RESP] %d\n", p_name,
-                    p_name, ms_workload,
-                    p_name, ms_size,
-                    p_name, ms_messagePayloadSize,
-                    p_name, ms_threads,
-                    p_name, ms_context.getCoreConfig().getNumMessageHandlerThreads(),
-                    p_name, p_timeDiffNs / 1000 / 1000,
-                    p_name, p_totalMessages != 0 ? p_timeDiffNs / p_totalMessages : 0,
-                    p_name, p_totalMessages != 0 ? p_totalMessages / p_timeDiffNs / 1000 / 1000 / 1000 : 0,
-                    p_name, p_totalMessages != 0 ? (double) p_totalMessages * ms_messagePayloadSize / 1024 / 1024 /
-                            ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0,
-                    p_name, p_totalMessages != 0 ? (double) p_totalMessages * ms_size / 1024 / 1024 /
-                            ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0,
-                    ms_reqRespRTTSumNs.get() / ms_messagesSent.get() / 1000,
-                    p_minRttNs / 1000,
-                    p_maxRttNs / 1000,
-                    p_name, ms_reqRespTimeouts.get());
-        } else {
-            System.out.printf(
-                    "[%s RESULTS]\n[%s WORKLOAD] %d\n[%s MSG SIZE] %d\n[%s MSG PAYLOAD SIZE] %d\n[%s THREADS] %d\n" +
-                            "[%s MSG HANDLERS] %d\n[%s RUNTIME] %d ms\n[%s TIME PER MESSAGE] %d ns\n" +
-                            "[%s THROUGHPUT MESSAGE] %d\n[%s THROUGHPUT PAYLOAD] %f MB/s\n[%s THROUGHPUT] %f MB/s\n",
-                    p_name,
-                    p_name, ms_workload,
-                    p_name, ms_size,
-                    p_name, ms_messagePayloadSize,
-                    p_name, ms_threads,
-                    p_name, ms_context.getCoreConfig().getNumMessageHandlerThreads(),
-                    p_name, p_timeDiffNs / 1000 / 1000,
-                    p_name, p_totalMessages != 0 ? p_timeDiffNs / p_totalMessages : p_totalMessages,
-                    p_name, p_totalMessages != 0 ? p_totalMessages / p_timeDiffNs / 1000 / 1000 / 1000 : 0,
-                    p_name, p_totalMessages != 0 ? (double) p_totalMessages * ms_messagePayloadSize / 1024 / 1024 /
-                            ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0,
-                    p_name, p_totalMessages != 0 ? (double) p_totalMessages * ms_size / 1024 / 1024 /
-                            ((double) p_timeDiffNs / 1000 / 1000 / 1000) : 0);
+    private static void printResults(final double p_timeSendNs, final long p_timeRecvNs, final long p_sendTotalMessages,
+            final long p_recvTotalMessages) {
+        long rttCount = 0;
+        double rttMinUs = 0;
+        double rttMaxUs = 0;
+        double rttAvgUs = 0;
+        double rtt95Us = 0;
+        double rtt99Us = 0;
+        double rtt999Us = 0;
+
+        // we sent requests, print with rtt values and percentiles if available
+        if (AbstractPipeIn.SOP_REQ_RESP_RTT.getAvg() != 0 ||
+                AbstractPipeIn.SOP_REQ_RESP_RTT_VAL.getAvgValue() != 0) {
+            // "benchmark mode" enabled which records percentiles
+            if (AbstractPipeIn.SOP_REQ_RESP_RTT.getAvg() != 0) {
+                // sort results first
+                AbstractPipeIn.SOP_REQ_RESP_RTT.sortValues();
+
+                rttCount = AbstractPipeIn.SOP_REQ_RESP_RTT.getCounter();
+                rttMinUs = AbstractPipeIn.SOP_REQ_RESP_RTT.getMin(Time.Prefix.MICRO);
+                rttMaxUs = AbstractPipeIn.SOP_REQ_RESP_RTT.getMax(Time.Prefix.MICRO);
+                rttAvgUs = AbstractPipeIn.SOP_REQ_RESP_RTT.getAvg(Time.Prefix.MICRO);
+                rtt95Us = AbstractPipeIn.SOP_REQ_RESP_RTT.getPercentileScore(0.95f, Time.Prefix.MICRO);
+                rtt99Us = AbstractPipeIn.SOP_REQ_RESP_RTT.getPercentileScore(0.99f, Time.Prefix.MICRO);
+                rtt999Us = AbstractPipeIn.SOP_REQ_RESP_RTT.getPercentileScore(0.999f, Time.Prefix.MICRO);
+            } else {
+                // min, max and avg only
+                rttCount = AbstractPipeIn.SOP_REQ_RESP_RTT_VAL.getCounter();
+                rttMinUs = AbstractPipeIn.SOP_REQ_RESP_RTT_VAL.getMinValue(Value.Prefix.KILO);
+                rttMaxUs = AbstractPipeIn.SOP_REQ_RESP_RTT_VAL.getMaxValue(Value.Prefix.KILO);
+                rttAvgUs = (long) AbstractPipeIn.SOP_REQ_RESP_RTT_VAL.getAvgValue(Value.Prefix.KILO);
+            }
         }
+
+        double timeSendSec = p_timeSendNs / 1000.0 / 1000.0 / 1000.0;
+        double timeRecvSec = p_timeRecvNs / 1000.0 / 1000.0 / 1000.0;
+
+        double sendTp =
+                p_sendTotalMessages != 0 ? (double) p_sendTotalMessages * ms_size / 1024 / 1024 / timeSendSec : 0;
+        double sendTpPayload = p_sendTotalMessages != 0 ?
+                (double) p_sendTotalMessages * ms_messagePayloadSize / 1024 / 1024 / timeSendSec : 0;
+        double sendTpMMsg = p_sendTotalMessages != 0 ? (double) p_sendTotalMessages / 1000.0 / 1000.0 / timeSendSec : 0;
+
+        double recvTp =
+                p_recvTotalMessages != 0 ? (double) p_recvTotalMessages * ms_size / 1024 / 1024 / timeRecvSec : 0;
+        double recvTpPayload = p_recvTotalMessages != 0 ?
+                (double) p_recvTotalMessages * ms_messagePayloadSize / 1024 / 1024 / timeRecvSec : 0;
+        double recvTpMMsg = p_recvTotalMessages != 0 ? (double) p_recvTotalMessages / 1000.0 / 1000.0 / timeRecvSec : 0;
+
+        System.out.printf(
+                "=========================================================================================\n" +
+                        "[RESULTS]\n" +
+                        "[RESULTS PARAMS: Workload=%d, MsgSize=%d, MsgPayloadSize=%d, Threads=%d, MsgHandlers=%d]\n" +
+                        "[RESULTS SEND: Runtime=%.3f sec, Msgs=%d, X=%.3f mb/s, XP=%.3f mb/s, XM=%.6f milmsg/s]\n" +
+                        "[RESULTS RECV: Runtime=%.3f sec, Msgs=%d, X=%.3f mb/s, XP=%.3f mb/s, XM=%.6f milmsg/s]\n" +
+                        "[RESULTS LATENCY: Msgs=%d, Avg=%.3f us, Min=%.3f us, Max=%.3f us, 95th=%.3f us, " +
+                        "99th=%.3f us, 99.9th=%.3f us]\n" +
+                        "[RESULTS ERRORS: ReqRespTimeouts=%d]\n" +
+                        "=========================================================================================\n",
+                ms_workload, ms_size, ms_messagePayloadSize, ms_threads,
+                ms_context.getCoreConfig().getNumMessageHandlerThreads(),
+                timeSendSec, p_sendTotalMessages, sendTp, sendTpPayload, sendTpMMsg,
+                timeRecvSec, p_recvTotalMessages, recvTp, recvTpPayload, recvTpMMsg,
+                rttCount, rttAvgUs, rttMinUs, rttMaxUs, rtt95Us, rtt99Us, rtt999Us,
+                ms_reqRespTimeouts.get());
     }
 
     private static class Workload extends Thread {
@@ -839,20 +868,7 @@ public final class DXNetMain implements MessageReceiver {
                     try {
                         requests[j].reuse();
 
-                        long start = System.nanoTime();
-
                         ms_dxnet.sendSync(requests[j], -1, true);
-
-                        long delta = System.nanoTime() - start;
-                        ms_reqRespRTTSumNs.addAndGet(delta);
-
-                        if (delta > m_rttMaxNs) {
-                            m_rttMaxNs = delta;
-                        }
-
-                        if (delta < m_rttMinNs) {
-                            m_rttMinNs = delta;
-                        }
 
                         ms_messagesSent.incrementAndGet();
                     } catch (NetworkException e) {
@@ -888,20 +904,7 @@ public final class DXNetMain implements MessageReceiver {
                     try {
                         BenchmarkRequest request = new BenchmarkRequest(destinationList.get(j), ms_messagePayloadSize);
 
-                        long start = System.nanoTime();
-
                         ms_dxnet.sendSync(request, -1, true);
-
-                        long delta = System.nanoTime() - start;
-                        ms_reqRespRTTSumNs.addAndGet(delta);
-
-                        if (delta > m_rttMaxNs) {
-                            m_rttMaxNs = delta;
-                        }
-
-                        if (delta < m_rttMinNs) {
-                            m_rttMinNs = delta;
-                        }
 
                         ms_messagesSent.incrementAndGet();
                     } catch (NetworkException e) {
