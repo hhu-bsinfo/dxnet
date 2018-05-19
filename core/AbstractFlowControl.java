@@ -142,7 +142,20 @@ public abstract class AbstractFlowControl {
             m_sopWait.start();
             // #endif /* STATISTICS */
 
+            long start = System.nanoTime();
+            long counter = 0;
+
             while (m_unconfirmedBytes.get() > m_flowControlWindowSize) {
+                long cur = System.nanoTime();
+
+                if (cur - start > 2000 * 1000 * 1000L) {
+                    counter++;
+                    // #if LOGGER >= WARN
+                    LOGGER.warn("Waiting for flow control for %d seconds", counter * 2);
+                    // #endif /* LOGGER >= WARN */
+                    start = cur;
+                }
+
                 LockSupport.parkNanos(100);
             }
 
