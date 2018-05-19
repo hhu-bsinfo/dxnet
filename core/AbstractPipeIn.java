@@ -33,18 +33,18 @@ import de.hhu.bsinfo.dxutils.stats.Value;
  * @author Stefan Nothaas, stefan.nothaas@hhu.de, 09.06.2017
  */
 public abstract class AbstractPipeIn {
+    public static final TimePercentile SOP_REQ_RESP_RTT = new TimePercentile(AbstractPipeIn.class, "ReqRespRTT");
+    public static final Value SOP_REQ_RESP_RTT_VAL = new Value(AbstractPipeIn.class, "ReqRespRTTVal");
     private static final Time SOP_PROCESS = new Time(AbstractPipeIn.class, "ProcessBuffer");
     private static final Value SOP_FULFILL = new Value(AbstractPipeIn.class, "FulfillRequest");
     private static final Time SOP_WAIT_SLOT = new Time(AbstractPipeIn.class, "WaitSlot");
-    private static final TimePercentile SOP_REQ_RESP_RTT = new TimePercentile(AbstractPipeIn.class, "ReqRespRTT");
-    private static final Value SOP_REQ_RESP_RTT_VAL = new Value(AbstractPipeIn.class, "ReqRespRTTVal");
 
     static {
+        StatisticsManager.get().registerOperation(AbstractPipeIn.class, SOP_REQ_RESP_RTT);
+        StatisticsManager.get().registerOperation(AbstractPipeIn.class, SOP_REQ_RESP_RTT_VAL);
         StatisticsManager.get().registerOperation(AbstractPipeIn.class, SOP_PROCESS);
         StatisticsManager.get().registerOperation(AbstractPipeIn.class, SOP_FULFILL);
         StatisticsManager.get().registerOperation(AbstractPipeIn.class, SOP_WAIT_SLOT);
-        StatisticsManager.get().registerOperation(AbstractPipeIn.class, SOP_REQ_RESP_RTT);
-        StatisticsManager.get().registerOperation(AbstractPipeIn.class, SOP_REQ_RESP_RTT_VAL);
     }
 
     private static final int BUFFER_SLOTS = 8;
