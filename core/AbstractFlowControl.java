@@ -201,7 +201,11 @@ public abstract class AbstractFlowControl {
                 p_confirmedWindows * m_flowControlWindowSizeThreshold);
         // #endif /* LOGGER >= TRACE */
 
-        m_unconfirmedBytes.addAndGet(-(p_confirmedWindows * m_flowControlWindowSizeThreshold));
+        long tmp = m_unconfirmedBytes.addAndGet(-(p_confirmedWindows * m_flowControlWindowSizeThreshold));
+        
+        if (tmp < 0) {
+            throw new IllegalStateException("Flow control underflow: " + tmp + ", " + p_confirmedWindows);
+        }
     }
 
     @Override
