@@ -16,7 +16,7 @@
 
 package de.hhu.bsinfo.dxnet.core;
 
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 
 import org.apache.logging.log4j.LogManager;
@@ -44,8 +44,8 @@ public abstract class AbstractFlowControl {
     private final float m_flowControlWindowThreshold;
     protected final int m_flowControlWindowSizeThreshold;
 
-    private AtomicInteger m_unconfirmedBytes;
-    protected AtomicInteger m_receivedBytes;
+    private AtomicLong m_unconfirmedBytes;
+    protected AtomicLong m_receivedBytes;
 
     private final TimePool m_sopWait;
     private StateStatistics m_stateStats;
@@ -78,8 +78,8 @@ public abstract class AbstractFlowControl {
 
         m_flowControlWindowSizeThreshold = (int) (m_flowControlWindowSize * m_flowControlWindowThreshold);
 
-        m_unconfirmedBytes = new AtomicInteger(0);
-        m_receivedBytes = new AtomicInteger(0);
+        m_unconfirmedBytes = new AtomicLong(0);
+        m_receivedBytes = new AtomicLong(0);
 
         m_sopWait = new TimePool(AbstractFlowControl.class, "Wait-" + NodeID.toHexStringShort(m_destinationNodeID));
         m_stateStats = new StateStatistics();
@@ -176,7 +176,7 @@ public abstract class AbstractFlowControl {
      *         Number of bytes received
      */
     void dataReceived(final int p_receivedBytes) {
-        int receivedBytes = m_receivedBytes.addAndGet(p_receivedBytes);
+        long receivedBytes = m_receivedBytes.addAndGet(p_receivedBytes);
 
         if (m_flowControlWindowSizeThreshold != 0.0f && receivedBytes >= m_flowControlWindowSizeThreshold) {
             try {

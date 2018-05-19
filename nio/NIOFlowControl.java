@@ -47,8 +47,9 @@ public class NIOFlowControl extends AbstractFlowControl {
      * @param p_connection
      *         the NIO connection.
      */
-    NIOFlowControl(final short p_destinationNodeId, final int p_flowControlWindowSize, final float p_flowControlWindowThreshold,
-            final NIOSelector p_nioSelector, final NIOConnection p_connection) {
+    NIOFlowControl(final short p_destinationNodeId, final int p_flowControlWindowSize,
+            final float p_flowControlWindowThreshold, final NIOSelector p_nioSelector,
+            final NIOConnection p_connection) {
         super(p_destinationNodeId, p_flowControlWindowSize, p_flowControlWindowThreshold);
 
         m_nioSelector = p_nioSelector;
@@ -62,7 +63,7 @@ public class NIOFlowControl extends AbstractFlowControl {
 
     @Override
     public byte getAndResetFlowControlData() {
-        int bytesLeft;
+        long bytesLeft;
         byte ret;
 
         // not using CAS here requires this to be called by a single thread, only

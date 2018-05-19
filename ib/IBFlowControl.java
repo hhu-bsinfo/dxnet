@@ -92,7 +92,7 @@ class IBFlowControl extends AbstractFlowControl {
      *         Amount of fc data that was confirmed
      */
     public void flowControlDataSendConfirmed(final byte p_fcData) {
-        int bytesLeft;
+        long bytesLeft;
 
         if (m_flowControlWindowSize != 0) {
             bytesLeft = m_receivedBytes.addAndGet(-(m_flowControlWindowSizeThreshold * p_fcData));

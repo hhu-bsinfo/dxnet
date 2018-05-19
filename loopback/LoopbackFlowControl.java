@@ -36,8 +36,9 @@ public class LoopbackFlowControl extends AbstractFlowControl {
 
     private final ByteBuffer m_flowControlByte;
 
-    LoopbackFlowControl(final short p_destinationNodeId, final int p_flowControlWindowSize, final float p_flowControlWindowThreshold,
-            final LoopbackSendThread p_loopbackSendThread, final LoopbackConnection p_connection) {
+    LoopbackFlowControl(final short p_destinationNodeId, final int p_flowControlWindowSize,
+            final float p_flowControlWindowThreshold, final LoopbackSendThread p_loopbackSendThread,
+            final LoopbackConnection p_connection) {
         super(p_destinationNodeId, p_flowControlWindowSize, p_flowControlWindowThreshold);
 
         m_loopbackSendThread = p_loopbackSendThread;
@@ -58,7 +59,7 @@ public class LoopbackFlowControl extends AbstractFlowControl {
 
     @Override
     public byte getAndResetFlowControlData() {
-        int bytesLeft;
+        long bytesLeft;
         byte ret;
 
         // not using CAS here requires this to be called by a single thread, only
