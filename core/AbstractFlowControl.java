@@ -50,8 +50,6 @@ public abstract class AbstractFlowControl {
     private final TimePool m_sopWait;
     private StateStatistics m_stateStats;
 
-    private AtomicLong m_fcUnderflowCounter;
-
     /**
      * Constructor
      *
@@ -88,8 +86,6 @@ public abstract class AbstractFlowControl {
 
         StatisticsManager.get().registerOperation(AbstractFlowControl.class, m_sopWait);
         StatisticsManager.get().registerOperation(AbstractFlowControl.class, m_stateStats);
-
-        m_fcUnderflowCounter = new AtomicLong(0);
 
         // #if LOGGER >= DEBUG
         LOGGER.debug("Flow control settings for node 0x%X: window size %d, threshold %f", p_destinationNodeID,
@@ -207,23 +203,8 @@ public abstract class AbstractFlowControl {
 
         long curState = m_unconfirmedBytes.addAndGet(-(p_confirmedWindows * m_flowControlWindowSizeThreshold));
 
-        // FIXME work around for IB
-        // If the flow control window is set very low (e.g. 0.1) for medium sized messages (e.g. 512 byte)
-        // on bi-directional communication, flow control underflows either for brief moments or even for a larger
-        // time frame. The application is still running but this might be a bug I haven't found so far
-        // (and by the time of writing this, I don't have the time to debug this)
-        // Workaround: Increase the window size until no warnings are printed anymore
         if (curState < 0) {
-            long tmp = m_fcUnderflowCounter.getAndIncrement();
-
-            if (tmp % 10000 == 0) {
-                // #if LOGGER >= WARN
-                LOGGER.warn("Flow control underflow %d %d, counter %d. This might either be a bug or, if using IB, " +
-                                "the FC window threshold might be too low (consider increasing it)",
-                        curState, p_confirmedWindows, tmp);
-                // #endif /* LOGGER >= WARN */
-            }
-
+            throw new IllegalStateException("Flow control underflow: " + curState);
         }
     }
 
