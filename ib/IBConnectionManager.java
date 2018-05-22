@@ -325,6 +325,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         closeConnection(m_connections[p_nodeId & 0xFFFF], true);
     }
 
+    static int asdf = 0;
+
     @Override
     public int received(final long p_incomingRingBuffer) {
         int processed = 0;
@@ -364,6 +366,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                             ptrDataHandle, ptrData, dataLength);
                     // #endif /* LOGGER >= ERROR */
 
+                    processed++;
+
                     // skip package
                     continue;
                 }
@@ -377,19 +381,23 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                     LOGGER.error("Getting connection for recv of node 0x%X failed", sourceNodeId, e);
                     // #endif /* LOGGER >= ERROR */
 
+                    processed++;
+
                     // if that happens we lose data which is quite bad...I don't see any proper fix for this atm
                     continue;
                 }
 
-                if (fcData > 0) {
-                    connection.getPipeIn().handleFlowControlData(fcData);
-                }
-
                 if (dataLength > 0) {
-                    // TODO batch/multi push buffers?
                     if (!m_incomingBufferQueue.pushBuffer(connection, null, ptrDataHandle, ptrData, dataLength)) {
                         break;
                     }
+                }
+
+                if (fcData > 0) {
+                    // FIXME process FC AFTER data to avoid processing FC data multiple times
+                    // TODO this is not optimal because we want FC data to be processed with the highest priority
+                    // if the pool is full, FC data can be processed nevertheless which isn't done right now
+                    connection.getPipeIn().handleFlowControlData(fcData);
                 }
 
                 processed++;
