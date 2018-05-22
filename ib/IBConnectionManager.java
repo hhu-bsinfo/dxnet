@@ -324,9 +324,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
 
         closeConnection(m_connections[p_nodeId & 0xFFFF], true);
     }
-
-    static int asdf = 0;
-
+    
     @Override
     public int received(final long p_incomingRingBuffer) {
         int processed = 0;
@@ -358,19 +356,9 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                 long ptrDataHandle = m_incomingRingBuffer.getData(offset);
                 long ptrData = m_incomingRingBuffer.getDataRaw(offset);
 
-                // sanity checks
-                if (sourceNodeId == NodeID.INVALID_ID || fcData == 0 && (ptrDataHandle == 0 || ptrData == 0 ||
-                        dataLength == 0)) {
-                    // #if LOGGER >= ERROR
-                    LOGGER.error("Illegal state, invalid receive package: 0x%X %d 0x%X 0x%X %d", sourceNodeId, fcData,
-                            ptrDataHandle, ptrData, dataLength);
-                    // #endif /* LOGGER >= ERROR */
-
-                    processed++;
-
-                    // skip package
-                    continue;
-                }
+                // packages might have no data and no fc data because it was a fc data only package and the IBQ
+                // was full in one of the previous iterations. Thus, we processed the fc data with a higher priority
+                // in a separate loop further below and cleared it to avoid duplicate processing
 
                 IBConnection connection;
 
@@ -394,13 +382,46 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                 }
 
                 if (fcData > 0) {
-                    // FIXME process FC AFTER data to avoid processing FC data multiple times
-                    // TODO this is not optimal because we want FC data to be processed with the highest priority
-                    // if the pool is full, FC data can be processed nevertheless which isn't done right now
+                    // process FC AFTER data to avoid processing FC data multiple times (see further below IBQ full)
                     connection.getPipeIn().handleFlowControlData(fcData);
                 }
 
                 processed++;
+            }
+
+            if (processed != usedEntries) {
+                // IBQ is full but there might be some more flow control to process
+                // don't wait for IBQ to empty but process now instead
+                // to avoid processing any FC data which is attached to so far unprocessed buffers again,
+                // we have to clear it explicitly
+                for (int i = processed; i < usedEntries; i++) {
+                    int offset = (front + i) % size;
+
+                    short sourceNodeId = m_incomingRingBuffer.getSourceNodeId(offset);
+                    int fcData = m_incomingRingBuffer.getFcData(offset);
+
+                    if (fcData > 0) {
+                        IBConnection connection;
+
+                        try {
+                            connection = (IBConnection) getConnection(sourceNodeId);
+                        } catch (final NetworkException e) {
+                            // #if LOGGER >= ERROR
+                            LOGGER.error("Getting connection for recv of node 0x%X failed", sourceNodeId, e);
+                            // #endif /* LOGGER >= ERROR */
+
+                            processed++;
+
+                            // if that happens we lose data which is quite bad...I don't see any proper fix for this atm
+                            continue;
+                        }
+
+                        connection.getPipeIn().handleFlowControlData(fcData);
+
+                        // clear data to avoid duplicate processing
+                        m_incomingRingBuffer.clearFcData(offset);
+                    }
+                }
             }
 
             // #ifdef STATISTICS
@@ -1052,6 +1073,18 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         int getFcData(final int p_idx) {
             return m_unsafe.getByte(
                     m_baseAddress + IDX_OFFSET_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_FC_DATA) & 0xFF;
+        }
+
+        /**
+         * Clear the flow control data. This is only done if the fc data is processed with a higher priority when the
+         * IBQ is full. There is no need to clear it in the standard processing path
+         *
+         * @param p_idx
+         *         Index of the entry
+         */
+        void clearFcData(final int p_idx) {
+            m_unsafe.putByte(
+                    m_baseAddress + IDX_OFFSET_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_FC_DATA, (byte) 0);
         }
 
         /**
