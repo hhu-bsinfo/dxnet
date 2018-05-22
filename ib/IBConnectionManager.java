@@ -471,14 +471,6 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
 
                 prevConnection.getPipeOut().dataSendPosted(numBytesPosted);
                 prevConnection.getPipeOut().flowControlDataSendPosted(fcDataPosted);
-
-                // FIXME something's broken with flow control handling. flow control underflows if "correctly" handled
-                // once the data is confirmed to be sent. basically, it shouldn't matter for FC data because there
-                // are no buffers involved that must be kept until sent confirmation.
-                // considering the fc data sent here seems to improve flow control handled as well?
-                // needs further testing and debugging. there might be a bug with handling FC data as well
-                // (see underflow issues)
-                prevConnection.getPipeOut().flowControlDataSendConfirmed(fcDataPosted);
             } catch (final NetworkException e) {
                 // #if LOGGER >= ERROR
                 LOGGER.error("Getting connection 0x%X for processing prev results failed", nodeId);
@@ -527,7 +519,6 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             for (int i = 0; i < numItems; i++) {
                 short nodeId = m_completedWorkList.getNodeId(i);
                 int processedBytes = m_completedWorkList.getNumBytesWritten(nodeId & 0xFFFF);
-                int processedFcData = m_completedWorkList.getFcDataWritten(nodeId & 0xFFFF);
 
                 try {
                     IBConnection prevConnection = (IBConnection) getConnection(nodeId);

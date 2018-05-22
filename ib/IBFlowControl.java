@@ -31,8 +31,6 @@ class IBFlowControl extends AbstractFlowControl {
 
     private final IBWriteInterestManager m_writeInterestManager;
 
-    private int m_fcDataPosted;
-
     /**
      * Constructor
      *
@@ -52,7 +50,7 @@ class IBFlowControl extends AbstractFlowControl {
     }
 
     /**
-     * Get but don't remove flow control data before a confirmation is received.
+     * Get but don't remove flow control data before it is confirmed posted
      *
      * @return The number of flow control windows to confirm
      */
@@ -64,13 +62,6 @@ class IBFlowControl extends AbstractFlowControl {
             if (ret == 0) {
                 return ret;
             }
-
-            if (ret < m_fcDataPosted) {
-                throw new IllegalStateException("Fc data avail (" + ret + ") < posted (" + m_fcDataPosted + ')');
-            }
-
-            // consider what's already posted but not confirmed
-            ret -= m_fcDataPosted;
 
             if (ret < 0) {
                 throw new IllegalStateException("Flow control minus posted negative: " + ret);
@@ -89,22 +80,13 @@ class IBFlowControl extends AbstractFlowControl {
     }
 
     /**
-     * Call, once flow control data is posted (but not confirmed to be sent, yet)
+     * Call, once flow control data is posted. We don't have to consider when it is confirmed sent
+     * because there are no buffers or state we have to keep until then
      *
      * @param p_fcData
      *         Fc data posted
      */
     public void flowControlDataSendPosted(final int p_fcData) {
-        m_fcDataPosted += p_fcData;
-    }
-
-    /**
-     * Call, once a confirmation is received that the data was actually sent
-     *
-     * @param p_fcData
-     *         Amount of fc data that was confirmed
-     */
-    public void flowControlDataSendConfirmed(final int p_fcData) {
         long bytesLeft;
 
         if (m_flowControlWindowSize != 0) {
@@ -112,12 +94,6 @@ class IBFlowControl extends AbstractFlowControl {
 
             if (bytesLeft < 0) {
                 throw new IllegalStateException("Negative flow control");
-            }
-
-            m_fcDataPosted -= p_fcData;
-
-            if (m_fcDataPosted < 0) {
-                throw new IllegalStateException("FC data posted state negative");
             }
         }
     }

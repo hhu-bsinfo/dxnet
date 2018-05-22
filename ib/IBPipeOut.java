@@ -84,7 +84,7 @@ class IBPipeOut extends AbstractPipeOut {
     }
 
     /**
-     * Get but don't remove flow control data before a confirmation is received.
+     * Get but don't remove flow control data before it is confirmed posted.
      *
      * @return The number of flow control windows to confirm
      */
@@ -93,23 +93,14 @@ class IBPipeOut extends AbstractPipeOut {
     }
 
     /**
-     * Call, once flow control data is posted (but not confirmed to be sent, yet)
+     * Call, once flow control data is posted. We don't have to consider when it is confirmed sent
+     * because there are no buffers or state we have to keep until then
      *
      * @param p_fcDataPosted
      *         Fc data posted
      */
     void flowControlDataSendPosted(final int p_fcDataPosted) {
         ((IBFlowControl) getFlowControl()).flowControlDataSendPosted(p_fcDataPosted);
-    }
-
-    /**
-     * Call, once a confirmation is received that the data was actually sent
-     *
-     * @param p_fcData
-     *         Amount of fc data that was confirmed
-     */
-    void flowControlDataSendConfirmed(final int p_fcData) {
-        ((IBFlowControl) getFlowControl()).flowControlDataSendConfirmed(p_fcData);
     }
 
     @Override
