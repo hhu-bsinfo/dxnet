@@ -56,20 +56,33 @@ class IBFlowControl extends AbstractFlowControl {
      *
      * @return The number of flow control windows to confirm
      */
-    public byte getFlowControlData() {
+    public int getFlowControlData() {
         if (m_flowControlWindowSize != 0) {
             // not using CAS here requires this to be called by a single thread, only
-            byte ret = (byte) (m_receivedBytes.get() / m_flowControlWindowSizeThreshold);
+            int ret = (int) (m_receivedBytes.get() / m_flowControlWindowSizeThreshold);
 
             if (ret == 0) {
-                if (m_fcDataPosted > 0) {
-                    throw new IllegalStateException("No fc data available but said to be posted");
-                }
-
-                return 0;
+                return ret;
             }
 
-            return (byte) (ret - m_fcDataPosted);
+            if (ret < m_fcDataPosted) {
+                throw new IllegalStateException("Fc data avail (" + ret + ") < posted (" + m_fcDataPosted + ')');
+            }
+
+            // consider what's already posted but not confirmed
+            ret -= m_fcDataPosted;
+
+            if (ret < 0) {
+                throw new IllegalStateException("Flow control minus posted negative: " + ret);
+            }
+
+            // happens if fc is smaller threshold and a very large chunk is posted
+            // this might exceed the available range of a uint8_t in the native code
+            if (ret > 255) {
+                ret = 255;
+            }
+
+            return ret;
         } else {
             return 0;
         }
@@ -81,7 +94,7 @@ class IBFlowControl extends AbstractFlowControl {
      * @param p_fcData
      *         Fc data posted
      */
-    public void flowControlDataSendPosted(final byte p_fcData) {
+    public void flowControlDataSendPosted(final int p_fcData) {
         m_fcDataPosted += p_fcData;
     }
 
@@ -91,7 +104,7 @@ class IBFlowControl extends AbstractFlowControl {
      * @param p_fcData
      *         Amount of fc data that was confirmed
      */
-    public void flowControlDataSendConfirmed(final byte p_fcData) {
+    public void flowControlDataSendConfirmed(final int p_fcData) {
         long bytesLeft;
 
         if (m_flowControlWindowSize != 0) {

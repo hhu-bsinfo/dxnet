@@ -351,7 +351,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                 int offset = (front + i) % size;
 
                 short sourceNodeId = m_incomingRingBuffer.getSourceNodeId(offset);
-                short fcData = m_incomingRingBuffer.getFcData(offset);
+                int fcData = m_incomingRingBuffer.getFcData(offset);
                 int dataLength = m_incomingRingBuffer.getDataLength(offset);
                 long ptrDataHandle = m_incomingRingBuffer.getData(offset);
                 long ptrData = m_incomingRingBuffer.getDataRaw(offset);
@@ -382,7 +382,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                 }
 
                 if (fcData > 0) {
-                    connection.getPipeIn().handleFlowControlData((byte) fcData);
+                    connection.getPipeIn().handleFlowControlData(fcData);
                 }
 
                 if (dataLength > 0) {
@@ -463,8 +463,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         if (nodeId != NodeID.INVALID_ID) {
             int numBytesPosted = m_prevWorkPackageResults.getNumBytesPosted();
             int numBytesNotPosted = m_prevWorkPackageResults.getNumBytesNotPosted();
-            byte fcDataPosted = m_prevWorkPackageResults.getFcDataPosted();
-            byte fcDataNotPosted = m_prevWorkPackageResults.getFcDataNotPosted();
+            int fcDataPosted = m_prevWorkPackageResults.getFcDataPosted();
+            int fcDataNotPosted = m_prevWorkPackageResults.getFcDataNotPosted();
 
             try {
                 IBConnection prevConnection = (IBConnection) getConnection(nodeId);
@@ -519,7 +519,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             for (int i = 0; i < numItems; i++) {
                 short nodeId = m_completedWorkList.getNodeId(i);
                 int processedBytes = m_completedWorkList.getNumBytesWritten(nodeId & 0xFFFF);
-                byte processedFcData = m_completedWorkList.getFcDataWritten(nodeId & 0xFFFF);
+                int processedFcData = m_completedWorkList.getFcDataWritten(nodeId & 0xFFFF);
 
                 try {
                     IBConnection prevConnection = (IBConnection) getConnection(nodeId);
@@ -613,7 +613,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
 
         // process flow control interests
         if (fcInterests > 0) {
-            byte fcData = connection.getPipeOut().getFlowControlData();
+            int fcData = connection.getPipeOut().getFlowControlData();
 
             if (fcData > 0) {
                 m_nextWorkPackage.setFlowControlData(fcData);
@@ -716,12 +716,16 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
          * @param p_data
          *         Value to set
          */
-        void setFlowControlData(final byte p_data) {
+        void setFlowControlData(final int p_data) {
             if (p_data < 0) {
                 throw new IllegalStateException("NextWorkPackage fcData < 0: " + p_data);
             }
 
-            m_unsafe.putByte(m_baseAddress + IDX_FLOW_CONTROL_DATA, p_data);
+            if (p_data > 255) {
+                throw new IllegalStateException("NextWorkPackage fcData > 255: " + p_data);
+            }
+
+            m_unsafe.putByte(m_baseAddress + IDX_FLOW_CONTROL_DATA, (byte) (p_data & 0xFF));
         }
 
         /**
@@ -813,27 +817,17 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         /**
          * Get the amount of fc data posted on the last work request
          */
-        byte getFcDataPosted() {
-            byte tmp = m_unsafe.getByte(m_baseAddress + IDX_FC_DATA_POSTED);
-
-            if (tmp < 0) {
-                throw new IllegalStateException("PrevWorkPackageResults fcDataPosted < 0: " + tmp);
-            }
-
-            return tmp;
+        int getFcDataPosted() {
+            // use the full range of a uint8_t
+            return m_unsafe.getByte(m_baseAddress + IDX_FC_DATA_POSTED) & 0xFF;
         }
 
         /**
          * Get the amount of fc data could not be posted (queue full)
          */
-        byte getFcDataNotPosted() {
-            byte tmp = m_unsafe.getByte(m_baseAddress + IDX_FC_DATA_NOT_POSTED);
-
-            if (tmp < 0) {
-                throw new IllegalStateException("PrevWorkPackageResults fcDataNotPosted < 0: " + tmp);
-            }
-
-            return tmp;
+        int getFcDataNotPosted() {
+            // use the full range of a uint8_t
+            return m_unsafe.getByte(m_baseAddress + IDX_FC_DATA_NOT_POSTED) & 0xFF;
         }
     }
 
@@ -909,14 +903,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
          * @param p_idx
          *         Index of the work completion list
          */
-        byte getFcDataWritten(final int p_idx) {
-            byte tmp = m_unsafe.getByte(m_baseAddress + IDX_FC_DATA_WRITTEN + p_idx * SIZE_FIELD_FC_DATA_WRITTEN);
-
-            if (tmp < 0) {
-                throw new IllegalStateException("CompletedWorkList fcData < 0: " + tmp);
-            }
-
-            return tmp;
+        int getFcDataWritten(final int p_idx) {
+            return m_unsafe.getByte(m_baseAddress + IDX_FC_DATA_WRITTEN + p_idx * SIZE_FIELD_FC_DATA_WRITTEN) & 0xFF;
         }
 
         /**
@@ -1055,15 +1043,9 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
          * @param p_idx
          *         Index of the entry
          */
-        byte getFcData(final int p_idx) {
-            byte tmp = m_unsafe.getByte(
-                    m_baseAddress + IDX_OFFSET_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_FC_DATA);
-
-            if (tmp < 0) {
-                throw new IllegalStateException("IRB fcData < 0: " + tmp);
-            }
-
-            return tmp;
+        int getFcData(final int p_idx) {
+            return m_unsafe.getByte(
+                    m_baseAddress + IDX_OFFSET_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_FC_DATA) & 0xFF;
         }
 
         /**

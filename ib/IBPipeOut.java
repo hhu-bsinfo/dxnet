@@ -88,7 +88,7 @@ class IBPipeOut extends AbstractPipeOut {
      *
      * @return The number of flow control windows to confirm
      */
-    byte getFlowControlData() {
+    int getFlowControlData() {
         return ((IBFlowControl) getFlowControl()).getFlowControlData();
     }
 
@@ -98,7 +98,7 @@ class IBPipeOut extends AbstractPipeOut {
      * @param p_fcDataPosted
      *         Fc data posted
      */
-    void flowControlDataSendPosted(final byte p_fcDataPosted) {
+    void flowControlDataSendPosted(final int p_fcDataPosted) {
         ((IBFlowControl) getFlowControl()).flowControlDataSendPosted(p_fcDataPosted);
     }
 
@@ -108,7 +108,7 @@ class IBPipeOut extends AbstractPipeOut {
      * @param p_fcData
      *         Amount of fc data that was confirmed
      */
-    void flowControlDataSendConfirmed(final byte p_fcData) {
+    void flowControlDataSendConfirmed(final int p_fcData) {
         ((IBFlowControl) getFlowControl()).flowControlDataSendConfirmed(p_fcData);
     }
 

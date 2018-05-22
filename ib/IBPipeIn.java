@@ -63,7 +63,7 @@ class IBPipeIn extends AbstractPipeIn {
      * @param p_confirmedWindows
      *         Number of windows confirmed by the remote
      */
-    void handleFlowControlData(final byte p_confirmedWindows) {
+    void handleFlowControlData(final int p_confirmedWindows) {
         getFlowControl().handleFlowControlData(p_confirmedWindows);
     }
 
