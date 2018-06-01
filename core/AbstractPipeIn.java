@@ -24,8 +24,9 @@ import de.hhu.bsinfo.dxutils.NodeID;
 import de.hhu.bsinfo.dxutils.UnsafeMemory;
 import de.hhu.bsinfo.dxutils.stats.StatisticsManager;
 import de.hhu.bsinfo.dxutils.stats.Time;
-import de.hhu.bsinfo.dxutils.stats.TimePercentile;
+import de.hhu.bsinfo.dxutils.stats.TimePercentilePool;
 import de.hhu.bsinfo.dxutils.stats.Value;
+import de.hhu.bsinfo.dxutils.stats.ValuePool;
 
 /**
  * Endpoint for incoming data on a connection.
@@ -33,8 +34,9 @@ import de.hhu.bsinfo.dxutils.stats.Value;
  * @author Stefan Nothaas, stefan.nothaas@hhu.de, 09.06.2017
  */
 public abstract class AbstractPipeIn {
-    public static final TimePercentile SOP_REQ_RESP_RTT = new TimePercentile(AbstractPipeIn.class, "ReqRespRTT");
-    public static final Value SOP_REQ_RESP_RTT_VAL = new Value(AbstractPipeIn.class, "ReqRespRTTVal");
+    public static final TimePercentilePool SOP_REQ_RESP_RTT = new TimePercentilePool(AbstractPipeIn.class,
+            "ReqRespRTT");
+    public static final ValuePool SOP_REQ_RESP_RTT_VAL = new ValuePool(AbstractPipeIn.class, "ReqRespRTTVal");
     private static final Time SOP_PROCESS = new Time(AbstractPipeIn.class, "ProcessBuffer");
     private static final Value SOP_FULFILL = new Value(AbstractPipeIn.class, "FulfillRequest");
     private static final Time SOP_WAIT_SLOT = new Time(AbstractPipeIn.class, "WaitSlot");
