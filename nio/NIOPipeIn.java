@@ -19,6 +19,7 @@ package de.hhu.bsinfo.dxnet.nio;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.util.concurrent.locks.LockSupport;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -45,6 +46,7 @@ class NIOPipeIn extends AbstractPipeIn {
 
     private static final Time SOP_READ = new Time(NIOPipeIn.class, "Read");
     private static final Time SOP_WRITE_FLOW_CONTROL = new Time(NIOPipeIn.class, "WriteFC");
+    private static final Time SOP_IBQ_WAIT_PUSH = new Time(IncomingBufferQueue.class, "WaitPush");
 
     static {
         StatisticsManager.get().registerOperation(NIOPipeIn.class, SOP_READ);
@@ -57,6 +59,8 @@ class NIOPipeIn extends AbstractPipeIn {
     private final ByteBuffer m_flowControlByte;
 
     private final NIOConnection m_parentConnection;
+
+    private long m_queueFullCounter;
 
     /**
      * Creates a NIO PipeIn. Incoming channel is neither created nor binded here!
@@ -167,8 +171,33 @@ class NIOPipeIn extends AbstractPipeIn {
                         getDestinationNodeID());
                 // #endif /* LOGGER >= TRACE */
 
-                m_incomingBufferQueue.pushBuffer(m_parentConnection, directBufferWrapper, 0,
-                        directBufferWrapper.getAddress(), buffer.remaining());
+                if (!m_incomingBufferQueue.pushBuffer(m_parentConnection, directBufferWrapper, 0,
+                        directBufferWrapper.getAddress(), buffer.remaining())) {
+                    // #ifdef STATISTICS
+                    SOP_IBQ_WAIT_PUSH.start();
+                    // #endif /* STATISTICS */
+
+                    do {
+                        m_queueFullCounter++;
+
+                        // avoid flooding the log
+                        if (m_queueFullCounter % 100000 == 0) {
+                            // #if LOGGER == WARN
+                            LOGGER.warn("IBQ is full count: %d. If this message appears often (with a high counter) " +
+                                    "you should consider increasing the number message handlers to avoid " +
+                                    "performance penalties", m_queueFullCounter);
+                            // #endif /* LOGGER == WARN */
+                        }
+
+                        LockSupport.parkNanos(100);
+
+                    } while (!m_incomingBufferQueue.pushBuffer(m_parentConnection, directBufferWrapper, 0,
+                            directBufferWrapper.getAddress(), buffer.remaining()));
+
+                    // #ifdef STATISTICS
+                    SOP_IBQ_WAIT_PUSH.stop();
+                    // #endif /* STATISTICS */
+                }
 
                 break;
             }

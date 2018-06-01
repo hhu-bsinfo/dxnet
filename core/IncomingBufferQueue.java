@@ -181,8 +181,6 @@ public class IncomingBufferQueue {
         }
 
         if ((m_posBack + m_maxCapacityBufferCount & 0x7FFFFFFF) == m_posFront) {
-            // TODO for NIO and loopback: refactoring still necessary because no active waiting here anymore
-
             // #ifdef STATISTICS
             SOP_PUSH_FULL_COUNT.inc();
             // #endif /* STATISTICS */
