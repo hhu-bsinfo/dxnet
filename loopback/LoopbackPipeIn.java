@@ -17,6 +17,10 @@
 package de.hhu.bsinfo.dxnet.loopback;
 
 import java.nio.ByteBuffer;
+import java.util.concurrent.locks.LockSupport;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import de.hhu.bsinfo.dxnet.MessageHandlers;
 import de.hhu.bsinfo.dxnet.core.AbstractFlowControl;
@@ -27,16 +31,21 @@ import de.hhu.bsinfo.dxnet.core.LocalMessageHeaderPool;
 import de.hhu.bsinfo.dxnet.core.MessageDirectory;
 import de.hhu.bsinfo.dxnet.core.RequestMap;
 import de.hhu.bsinfo.dxutils.stats.StatisticsManager;
+import de.hhu.bsinfo.dxutils.stats.Time;
 import de.hhu.bsinfo.dxutils.stats.TimePool;
 
 /**
  * Created by nothaas on 6/9/17.
  */
 public class LoopbackPipeIn extends AbstractPipeIn {
+    private static final Logger LOGGER = LogManager.getFormatterLogger(LoopbackPipeIn.class.getSimpleName());
+
     private static final TimePool SOP_COPY = new TimePool(LoopbackPipeIn.class, "Copy");
+    private static final Time SOP_IBQ_WAIT_PUSH = new Time(IncomingBufferQueue.class, "WaitPush");
 
     static {
         StatisticsManager.get().registerOperation(LoopbackPipeIn.class, SOP_COPY);
+        StatisticsManager.get().registerOperation(LoopbackPipeIn.class, SOP_IBQ_WAIT_PUSH);
     }
 
     private final BufferPool m_bufferPool;
@@ -44,6 +53,8 @@ public class LoopbackPipeIn extends AbstractPipeIn {
     private LoopbackConnection m_parentConnection;
 
     private final ByteBuffer m_flowControlByte;
+
+    private long m_queueFullCounter;
 
     LoopbackPipeIn(final short p_ownNodeId, final short p_destinationNodeId,
             final LocalMessageHeaderPool p_messageHeaderPool, final AbstractFlowControl p_flowControl,
@@ -98,8 +109,33 @@ public class LoopbackPipeIn extends AbstractPipeIn {
         SOP_COPY.stop();
         // #endif /* STATISTICS */
 
-        m_incomingBufferQueue.pushBuffer(m_parentConnection, directBufferWrapper, 0, directBufferWrapper.getAddress(),
-                ret);
+        if (!m_incomingBufferQueue.pushBuffer(m_parentConnection, directBufferWrapper, 0,
+                directBufferWrapper.getAddress(), ret)) {
+            // #ifdef STATISTICS
+            SOP_IBQ_WAIT_PUSH.start();
+            // #endif /* STATISTICS */
+
+            do {
+                m_queueFullCounter++;
+
+                // avoid flooding the log
+                if (m_queueFullCounter % 100000 == 0) {
+                    // #if LOGGER == WARN
+                    LOGGER.warn("IBQ is full count: %d. If this message appears often (with a high counter) you " +
+                            "should consider increasing the number message handlers to avoid performance " +
+                            "penalties", m_queueFullCounter);
+                    // #endif /* LOGGER == WARN */
+                }
+
+                LockSupport.parkNanos(100);
+
+            } while (!m_incomingBufferQueue.pushBuffer(m_parentConnection, directBufferWrapper, 0,
+                    directBufferWrapper.getAddress(), ret));
+
+            // #ifdef STATISTICS
+            SOP_IBQ_WAIT_PUSH.stop();
+            // #endif /* STATISTICS */
+        }
 
         return ret;
     }
