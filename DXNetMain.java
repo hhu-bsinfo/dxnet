@@ -980,8 +980,8 @@ public final class DXNetMain implements MessageReceiver {
                                 ((double) timeDiffSend / 1000 / 1000 / 1000),
                         (double) totalMessagesRecv * ms_messagePayloadSize / 1024 / 1024 /
                                 ((double) timeDiffRecv / 1000 / 1000 / 1000),
-                        (double) totalMessagesSent / ((double) timeDiffSend / 1000 / 1000 / 1000),
-                        (double) totalMessagesRecv / ((double) timeDiffRecv / 1000 / 1000 / 1000),
+                        (double) totalMessagesSent / ((double) timeDiffSend / 1000 / 1000 / 1000) / 1000 / 1000,
+                        (double) totalMessagesRecv / ((double) timeDiffRecv / 1000 / 1000 / 1000) / 1000 / 1000,
                         (double) messagesSentDelta * ms_size / 1024 / 1024 /
                                 ((double) timeDiffSendDelta / 1000 / 1000 / 1000),
                         (double) messagesRecvDelta * ms_size / 1024 / 1024 /
@@ -990,8 +990,8 @@ public final class DXNetMain implements MessageReceiver {
                                 ((double) timeDiffSendDelta / 1000 / 1000 / 1000),
                         (double) messagesRecvDelta * ms_messagePayloadSize / 1024 / 1024 /
                                 ((double) timeDiffRecvDelta / 1000 / 1000 / 1000),
-                        (double) messagesSentDelta / ((double) timeDiffSendDelta / 1000 / 1000 / 1000),
-                        (double) messagesRecvDelta / ((double) timeDiffRecvDelta / 1000 / 1000 / 1000),
+                        (double) messagesSentDelta / ((double) timeDiffSendDelta / 1000 / 1000 / 1000) / 1000 / 1000,
+                        (double) messagesRecvDelta / ((double) timeDiffRecvDelta / 1000 / 1000 / 1000) / 1000 / 1000,
                         ms_reqRespTimeouts.get());
 
                 // for delta/current values
