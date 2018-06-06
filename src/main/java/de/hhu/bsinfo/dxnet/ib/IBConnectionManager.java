@@ -18,8 +18,6 @@ package de.hhu.bsinfo.dxnet.ib;
 
 import java.net.InetSocketAddress;
 
-import sun.misc.Unsafe;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -50,6 +48,7 @@ import de.hhu.bsinfo.dxutils.stats.Value;
  *
  * @author Stefan Nothaas, stefan.nothaas@hhu.de, 13.06.2017
  */
+@SuppressWarnings("sunapi")
 public class IBConnectionManager extends AbstractConnectionManager implements MsgrcJNIBinding.CallbackHandler {
     private static final Logger LOGGER = LogManager.getFormatterLogger(IBConnectionManager.class.getSimpleName());
 
@@ -685,7 +684,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         //        uint8_t m_flowControlData;
         //        con::NodeId m_nodeId;
         //    } __attribute__((packed));
-        private final Unsafe m_unsafe;
+        private final sun.misc.Unsafe m_unsafe;
         private final long m_baseAddress;
 
         /**
@@ -794,7 +793,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         //        uint8_t m_fcDataPosted;
         //        uint8_t m_fcDataNotPosted;
         //    } __attribute__((packed));
-        private final Unsafe m_unsafe;
+        private final sun.misc.Unsafe m_unsafe;
         private final long m_baseAddress;
 
         /**
@@ -883,7 +882,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         //        uint8_t m_fcDataWritten[con::NODE_ID_MAX_NUM_NODES];
         //        con::NodeId m_nodeIds[];
         //    } __attribute__((packed));
-        private final Unsafe m_unsafe;
+        private final sun.misc.Unsafe m_unsafe;
         private final long m_baseAddress;
 
         /**
@@ -1000,7 +999,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         //                void* m_dataRaw;
         //            } __attribute__((__packed__)) m_entries[];
         //        } __attribute__((__packed__));
-        private final Unsafe m_unsafe;
+        private final sun.misc.Unsafe m_unsafe;
         private final long m_baseAddress;
 
         private int m_size;
