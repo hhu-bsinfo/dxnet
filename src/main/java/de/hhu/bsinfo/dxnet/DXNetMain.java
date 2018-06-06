@@ -66,7 +66,6 @@ import de.hhu.bsinfo.dxutils.stats.Time;
 import de.hhu.bsinfo.dxutils.stats.Value;
 import de.hhu.bsinfo.dxutils.unit.StorageUnit;
 import de.hhu.bsinfo.dxutils.unit.TimeUnit;
-import de.hhu.bsinfo.pt.PerfTimer;
 
 /**
  * DXNet benchmark test application. Use this to run various types of
@@ -485,23 +484,6 @@ public final class DXNetMain implements MessageReceiver {
                 System.load(file.getAbsolutePath());
             }
         }
-
-        switch (ms_context.getPerfTimerForceType().toLowerCase()) {
-            case "rdtscp":
-                PerfTimer.init(PerfTimer.Type.RDTSCP);
-                break;
-            case "rdtsc":
-                PerfTimer.init(PerfTimer.Type.RDTSC);
-                break;
-            case "nanotime":
-                PerfTimer.init(PerfTimer.Type.SYSTEM_NANO_TIME);
-                break;
-            default:
-                PerfTimer.init(PerfTimer.Type.SYSTEM_NANO_TIME);
-                break;
-        }
-
-        LOGGER.info("Perf timer type initialized: %s", PerfTimer.getType());
 
         StatisticsManager.get().setPrintInterval((int) ms_context.getStatisticsManagerPrintInterval().getMs());
     }
