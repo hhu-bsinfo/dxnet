@@ -542,7 +542,7 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
             throw m_exception;
         }
 
-        int startPosition = m_currentPosition;
+        int startPosition = m_skippedBytes + m_currentPosition;
         if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
             // Array length and array were read before, return passed array
             m_skippedBytes += ObjectSizeUtil.sizeofCompactedNumber(p_array.length) + p_array.length;
@@ -590,7 +590,7 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
             throw m_exception;
         }
 
-        int startPosition = m_currentPosition;
+        int startPosition = m_skippedBytes + m_currentPosition;
         if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
             // Array length and array were read before, return passed array
             m_skippedBytes += ObjectSizeUtil.sizeofCompactedNumber(p_array.length) + p_array.length * Short.BYTES;
@@ -638,7 +638,7 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
             throw m_exception;
         }
 
-        int startPosition = m_currentPosition;
+        int startPosition = m_skippedBytes + m_currentPosition;
         if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
             // Array length and array were read before, return passed array
             m_skippedBytes += ObjectSizeUtil.sizeofCompactedNumber(p_array.length) + p_array.length * Integer.BYTES;
@@ -686,7 +686,7 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
             throw m_exception;
         }
 
-        int startPosition = m_currentPosition;
+        int startPosition = m_skippedBytes + m_currentPosition;
         if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
             // Array length and array were read before, return passed array
             m_skippedBytes += ObjectSizeUtil.sizeofCompactedNumber(p_array.length) + p_array.length * Long.BYTES;
