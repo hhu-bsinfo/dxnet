@@ -476,6 +476,9 @@ public class OutgoingRingBuffer {
             p_pipeOut.bufferPosted(allWrittenBytes - previouslyWrittenBytes);
 
             if (p_messageSize == allWrittenBytes) {
+                m_posFrontConsumer.set(
+                        (posFrontConsumer & 0x7FFFFFFF) +
+                        (((posFrontConsumer & 0xFFFFFFFF00000000L) + 1 & 0x7FFFFFFF) << 32));
                 break;
             }
 

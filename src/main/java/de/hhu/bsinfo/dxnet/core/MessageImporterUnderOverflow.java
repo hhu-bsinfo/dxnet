@@ -64,7 +64,7 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
 
     @Override
     public int getNumberOfReadBytes() {
-        return m_currentPosition + m_skipBytes;
+        return m_currentPosition + m_skippedBytes;
     }
 
     @Override
@@ -414,7 +414,7 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
             if (m_currentPosition + p_length - bytesCopied >= m_bufferSize) {
                 // Overflow
                 UnsafeMemory.readBytes(m_bufferAddress + m_currentPosition, p_array, p_offset + bytesCopied, m_bufferSize - m_currentPosition);
-                m_unfinishedOperation.setIndex(m_skippedBytes);
+                m_unfinishedOperation.setIndex(m_skippedBytes + m_currentPosition);
                 m_currentPosition = m_bufferSize;
                 m_skippedBytes = m_skipBytes;
                 throw m_exception;
