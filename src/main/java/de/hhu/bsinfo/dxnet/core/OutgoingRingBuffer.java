@@ -214,6 +214,8 @@ public class OutgoingRingBuffer {
                     /* Leave serialization area */
                     leaveSerializationArea(posFrontProducer, newPosFrontProducer, p_messageSize);
 
+                    p_pipeOut.bufferPosted(p_messageSize);
+
                     break;
                 } else {
                     // #ifdef STATISTICS
@@ -231,11 +233,14 @@ public class OutgoingRingBuffer {
                     posFrontProducer = m_posFrontProducer.get();
                     long newPosFrontProducer = enterSerializationArea(posFrontProducer, p_messageSize);
                     if (newPosFrontProducer == -1) {
+                        m_largeMessageBeingWritten.set(false);
                         continue;
                     }
 
                     // Fill free space with message and continue as soon as more space is available
                     serializeLargeMessage(p_message, p_messageSize, posFrontProducer, p_pipeOut);
+
+                    // Serialization area is left in serializeLargeMessage()
 
                     m_largeMessageBeingWritten.set(false);
                     break;
@@ -253,10 +258,6 @@ public class OutgoingRingBuffer {
         // #ifdef STATISTICS
         m_sopDataPosted.add(p_messageSize);
         // #endif /* STATISTICS */
-
-        // FIXME: this should be moved to the if branch above because the serializeLargeMessage method calls this
-        // as well. needs to be tested and verified
-        p_pipeOut.bufferPosted(p_messageSize);
     }
 
     /**
@@ -292,9 +293,6 @@ public class OutgoingRingBuffer {
      */
     private void leaveSerializationArea(final long p_posFrontProducer, final long p_newPosFrontProducer,
             final int p_messageSize) {
-        /*while (!m_posFrontConsumer.compareAndSet(p_posFrontProducer, p_newPosFrontProducer)) {
-            Thread.yield();
-        }*/
         int posFrontArray = (int) (p_posFrontProducer >> 32) & 0x7FFFFFFF;
         long newPosFrontProducer = p_newPosFrontProducer;
 
@@ -357,8 +355,8 @@ public class OutgoingRingBuffer {
                         0x7FFFFFFF; // Add message size -> new posFront for producers
                 newPosFrontProducer += (long) (posFrontArray + 1 & 0x7FFFFFFF) <<
                         32; // Increment pos -> new posFront in message size array
-                if (!m_posFrontConsumer.compareAndSet(oldPosFrontProducer,
-                        (newPosFrontProducer & 0x7FFFFFFF) + (-1L << 32))) {
+                if (!m_posFrontConsumer
+                        .compareAndSet(oldPosFrontProducer, (newPosFrontProducer & 0x7FFFFFFF) + (-1L << 32))) {
                     // Another thread committed this serialization already -> nothing to do for this thread
                     break;
                 }
@@ -392,8 +390,8 @@ public class OutgoingRingBuffer {
         // Get exporter (default or overflow). Small messages are written at once, but might be split into two parts
         // if ring buffer overflows during writing.
         MessageExporterCollection exporterCollection = m_exporterPool.getInstance();
-        AbstractMessageExporter exporter = exporterCollection.getMessageExporter(
-                p_messageSize > m_bufferSize - p_start);
+        AbstractMessageExporter exporter =
+                exporterCollection.getMessageExporter(p_messageSize > m_bufferSize - p_start);
         exporter.setBuffer(m_bufferAddr, m_bufferSize);
         exporter.setPosition(p_start);
 
@@ -421,8 +419,7 @@ public class OutgoingRingBuffer {
      *         if message could not be serialized
      */
     private void serializeLargeMessage(final Message p_message, final int p_messageSize,
-            final long p_oldPosFrontProducer, final AbstractPipeOut p_pipeOut)
-            throws NetworkException {
+            final long p_oldPosFrontProducer, final AbstractPipeOut p_pipeOut) throws NetworkException {
         long posFrontConsumer = p_oldPosFrontProducer;
         int posBack = m_posBack;
         int allWrittenBytes = 0;
@@ -476,9 +473,10 @@ public class OutgoingRingBuffer {
             p_pipeOut.bufferPosted(allWrittenBytes - previouslyWrittenBytes);
 
             if (p_messageSize == allWrittenBytes) {
-                m_posFrontConsumer.set(
-                        (posFrontConsumer & 0x7FFFFFFF) +
-                        (((posFrontConsumer & 0xFFFFFFFF00000000L) + 1 & 0x7FFFFFFF) << 32));
+                // All bytes have been written -> set pointer in ORB and CUB to leave serialization area
+                int posFrontArray = (int) ((p_oldPosFrontProducer >> 32) + 1) & 0x7FFFFFFF;
+                m_posFrontConsumer.set((posFrontConsumer & 0x7FFFFFFF) + ((long) posFrontArray << 32));
+                m_posBackArray.set(posFrontArray);
                 break;
             }
 
