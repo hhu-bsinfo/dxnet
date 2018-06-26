@@ -164,7 +164,10 @@ class LargeMessageExporter extends AbstractMessageExporter {
         if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
             // Short was written before
             m_skippedBytes += Short.BYTES;
-        } else {
+        } else if (m_skippedBytes < m_skipBytes - Short.BYTES) {
+			// Short is part of an array and was written before
+            m_skippedBytes += Short.BYTES;
+		} else {
             int bytesToSkip = 0;
 
             if (m_skippedBytes < m_skipBytes) {
@@ -227,7 +230,10 @@ class LargeMessageExporter extends AbstractMessageExporter {
         if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
             // Int was written before
             m_skippedBytes += Integer.BYTES;
-        } else {
+        } else if (m_skippedBytes < m_skipBytes - Integer.BYTES) {
+			// Int is part of an array and was written before
+            m_skippedBytes += Integer.BYTES;
+		} else {
             int bytesToSkip = 0;
 
             if (m_skippedBytes < m_skipBytes) {
@@ -290,7 +296,10 @@ class LargeMessageExporter extends AbstractMessageExporter {
         if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
             // Long was written before
             m_skippedBytes += Long.BYTES;
-        } else {
+        } else if (m_skippedBytes < m_skipBytes - Long.BYTES) {
+			// Long is part of an array and was written before
+            m_skippedBytes += Long.BYTES;
+		} else {
             int bytesToSkip = 0;
 
             if (m_skippedBytes < m_skipBytes) {
@@ -353,7 +362,10 @@ class LargeMessageExporter extends AbstractMessageExporter {
         if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
             // Float was written before
             m_skippedBytes += Float.BYTES;
-        } else {
+        } else if (m_skippedBytes < m_skipBytes - Float.BYTES) {
+			// Float is part of an array and was written before
+            m_skippedBytes += Float.BYTES;
+		} else {
             writeInt(Float.floatToRawIntBits(p_v));
         }
     }
@@ -363,7 +375,10 @@ class LargeMessageExporter extends AbstractMessageExporter {
         if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
             // Double was written before
             m_skippedBytes += Double.BYTES;
-        } else {
+        } else if (m_skippedBytes < m_skipBytes - Double.BYTES) {
+			// Double is part of an array and was written before
+            m_skippedBytes += Double.BYTES;
+		} else {
             writeLong(Double.doubleToRawLongBits(p_v));
         }
     }
@@ -372,11 +387,13 @@ class LargeMessageExporter extends AbstractMessageExporter {
     public void writeCompactNumber(final int p_v) {
         int length = ObjectSizeUtil.sizeofCompactedNumber(p_v);
 
-        if (m_skippedBytes < m_unfinishedOperation.getIndex() || m_skipBytes - m_skippedBytes >
-                length /* special case: writing of an array was interrupted (-> skippedBytes == index), but not during writing of compact number */) {
+        if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
             // Compact number was written before
             m_skippedBytes += length;
-        } else {
+        } else if (m_skippedBytes < m_skipBytes - length) {
+			// Special case: writing of an array was interrupted (-> skippedBytes == index), but not during writing of compact number
+            m_skippedBytes += length;
+		} else {
 			int startPosition = getNumberOfWrittenBytes();
 			
             int bytesToSkip = 0;
@@ -537,7 +554,7 @@ class LargeMessageExporter extends AbstractMessageExporter {
     public void writeShortArray(final short[] p_array) {
         if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
             // Array length and array were written before
-            m_skippedBytes += ObjectSizeUtil.sizeofCompactedNumber(p_array.length) + p_array.length;
+            m_skippedBytes += ObjectSizeUtil.sizeofCompactedNumber(p_array.length) + p_array.length * Short.BYTES;
         } else {
             int startPosition = getNumberOfWrittenBytes();
             writeCompactNumber(p_array.length);
@@ -555,7 +572,7 @@ class LargeMessageExporter extends AbstractMessageExporter {
     public void writeIntArray(final int[] p_array) {
         if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
             // Array length and array were written before
-            m_skippedBytes += ObjectSizeUtil.sizeofCompactedNumber(p_array.length) + p_array.length;
+            m_skippedBytes += ObjectSizeUtil.sizeofCompactedNumber(p_array.length) + p_array.length * Integer.BYTES;
         } else {
             int startPosition = getNumberOfWrittenBytes();
             writeCompactNumber(p_array.length);
@@ -571,9 +588,9 @@ class LargeMessageExporter extends AbstractMessageExporter {
 
     @Override
     public void writeLongArray(final long[] p_array) {
-        if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
+        if (m_skippedBytes < m_unfinishedOperation.getIndex()) {			
             // Array length and array were written before
-            m_skippedBytes += ObjectSizeUtil.sizeofCompactedNumber(p_array.length) + p_array.length;
+            m_skippedBytes += ObjectSizeUtil.sizeofCompactedNumber(p_array.length) + p_array.length * Long.BYTES;
         } else {
             int startPosition = getNumberOfWrittenBytes();
             writeCompactNumber(p_array.length);

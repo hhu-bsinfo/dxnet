@@ -49,18 +49,6 @@ public class BenchmarkRequest extends Request {
         m_data = new byte[p_size];
     }
 
-    /**
-     * Creates an instance of BenchmarkRequest
-     *
-     * @param p_destination
-     *         the destination nodeID
-     */
-    public BenchmarkRequest(final short p_destination, final byte[] p_data) {
-        super(p_destination, Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_REQUEST);
-
-        m_data = p_data;
-    }
-
     @Override
     protected final int getPayloadLength() {
         return ObjectSizeUtil.sizeofByteArray(m_data);
