@@ -371,10 +371,8 @@ public final class DXNetMain implements MessageReceiver {
 
         if (p_args.length < 8) {
             System.out.println("To execute benchmarks with a valid configuration file:");
-            System.out.println(
-                    "Args: <config_file> <print interval ms> <workload> <send count> <recv count> <size> " +
-                            "(full message: header + payload)> <send/app threads> <node id> " +
-                            "[send target node ids ...]");
+            System.out.println("Args: <config_file> <print interval ms> <workload> <send count> <recv count> <size> " +
+                    "(full message: header + payload)> <send/app threads> <node id> " + "[send target node ids ...]");
             System.exit(-1);
         }
 
@@ -401,11 +399,11 @@ public final class DXNetMain implements MessageReceiver {
             targets.append(' ');
         }
 
-        System.out.printf(
-                "Parameters: print interval ms %d, workload %d, send count %d (per target), recv count %d (all), " +
-                        "size %d (payload size %d), threads %d, own node id 0x%X, targets %s\n", ms_printIntervalMs,
-                ms_workload, ms_sendCount, ms_recvCount, ms_size, ms_messagePayloadSize, ms_threads, ms_ownNodeId,
-                targets.toString());
+        System.out
+                .printf("Parameters: print interval ms %d, workload %d, send count %d (per target), recv count %d (all), " +
+                                "size %d (payload size %d), threads %d, own node id 0x%X, targets %s\n", ms_printIntervalMs,
+                        ms_workload, ms_sendCount, ms_recvCount, ms_size, ms_messagePayloadSize, ms_threads,
+                        ms_ownNodeId, targets.toString());
     }
 
     private static void loadConfiguration(final String p_configPath) {
@@ -413,10 +411,9 @@ public final class DXNetMain implements MessageReceiver {
         ms_context = new DXNetConfig();
         File file = new File(p_configPath);
 
-        Gson gson = new GsonBuilder().setPrettyPrinting().excludeFieldsWithoutExposeAnnotation().registerTypeAdapter(
-                StorageUnit.class,
-                new StorageUnitGsonSerializer()).registerTypeAdapter(TimeUnit.class, new TimeUnitGsonSerializer())
-                .create();
+        Gson gson = new GsonBuilder().setPrettyPrinting().excludeFieldsWithoutExposeAnnotation()
+                .registerTypeAdapter(StorageUnit.class, new StorageUnitGsonSerializer())
+                .registerTypeAdapter(TimeUnit.class, new TimeUnitGsonSerializer()).create();
 
         if (!file.exists()) {
             try {
@@ -656,8 +653,7 @@ public final class DXNetMain implements MessageReceiver {
         double rtt999Us = 0;
 
         // we sent requests, print with rtt values and percentiles if available
-        if (AbstractPipeIn.SOP_REQ_RESP_RTT.getAvg() != 0 ||
-                AbstractPipeIn.SOP_REQ_RESP_RTT_VAL.getAvgValue() != 0) {
+        if (AbstractPipeIn.SOP_REQ_RESP_RTT.getAvg() != 0 || AbstractPipeIn.SOP_REQ_RESP_RTT_VAL.getAvgValue() != 0) {
             // "benchmark mode" enabled which records percentiles
             if (AbstractPipeIn.SOP_REQ_RESP_RTT.getAvg() != 0) {
                 // sort results first
@@ -694,22 +690,20 @@ public final class DXNetMain implements MessageReceiver {
                 (double) p_recvTotalMessages * ms_messagePayloadSize / 1024 / 1024 / timeRecvSec : 0;
         double recvTpMMsg = p_recvTotalMessages != 0 ? (double) p_recvTotalMessages / 1000.0 / 1000.0 / timeRecvSec : 0;
 
-        System.out.printf(
-                "=========================================================================================\n" +
-                        "[RESULTS]\n" +
-                        "[RESULTS PARAMS: Workload=%d, MsgSize=%d, MsgPayloadSize=%d, Threads=%d, MsgHandlers=%d]\n" +
-                        "[RESULTS SEND: Runtime=%.3f sec, Msgs=%d, X=%.3f mb/s, XP=%.3f mb/s, XM=%.6f milmsg/s]\n" +
-                        "[RESULTS RECV: Runtime=%.3f sec, Msgs=%d, X=%.3f mb/s, XP=%.3f mb/s, XM=%.6f milmsg/s]\n" +
-                        "[RESULTS LATENCY: Msgs=%d, Avg=%.3f us, Min=%.3f us, Max=%.3f us, 95th=%.3f us, " +
-                        "99th=%.3f us, 99.9th=%.3f us]\n" +
-                        "[RESULTS ERRORS: ReqRespTimeouts=%d]\n" +
-                        "=========================================================================================\n",
-                ms_workload, ms_size, ms_messagePayloadSize, ms_threads,
-                ms_context.getCoreConfig().getNumMessageHandlerThreads(),
-                timeSendSec, p_sendTotalMessages, sendTp, sendTpPayload, sendTpMMsg,
-                timeRecvSec, p_recvTotalMessages, recvTp, recvTpPayload, recvTpMMsg,
-                rttCount, rttAvgUs, rttMinUs, rttMaxUs, rtt95Us, rtt99Us, rtt999Us,
-                ms_reqRespTimeouts.get());
+        System.out
+                .printf("=========================================================================================\n" +
+                                "[RESULTS]\n" +
+                                "[RESULTS PARAMS: Workload=%d, MsgSize=%d, MsgPayloadSize=%d, Threads=%d, MsgHandlers=%d]\n" +
+                                "[RESULTS SEND: Runtime=%.3f sec, Msgs=%d, X=%.3f mb/s, XP=%.3f mb/s, XM=%.6f milmsg/s]\n" +
+                                "[RESULTS RECV: Runtime=%.3f sec, Msgs=%d, X=%.3f mb/s, XP=%.3f mb/s, XM=%.6f milmsg/s]\n" +
+                                "[RESULTS LATENCY: Msgs=%d, Avg=%.3f us, Min=%.3f us, Max=%.3f us, 95th=%.3f us, " +
+                                "99th=%.3f us, 99.9th=%.3f us]\n" + "[RESULTS ERRORS: ReqRespTimeouts=%d]\n" +
+                                "=========================================================================================\n",
+                        ms_workload, ms_size, ms_messagePayloadSize, ms_threads,
+                        ms_context.getCoreConfig().getNumMessageHandlerThreads(), timeSendSec, p_sendTotalMessages,
+                        sendTp, sendTpPayload, sendTpMMsg, timeRecvSec, p_recvTotalMessages, recvTp, recvTpPayload,
+                        recvTpMMsg, rttCount, rttAvgUs, rttMinUs, rttMaxUs, rtt95Us, rtt99Us, rtt999Us,
+                        ms_reqRespTimeouts.get());
     }
 
     private static class Workload extends Thread {
@@ -943,17 +937,14 @@ public final class DXNetMain implements MessageReceiver {
                 long timeDiffSend = ms_timeStartSend != 0 ? time - ms_timeStartSend : 1;
                 long timeDiffRecv = ms_timeStartRecv != 0 ? time - ms_timeStartRecv : 1;
 
-                System.out.printf(
-                        "[PROGRESS] %d sec [TOTAL: TXM %d%% (%d), RXM %d%% (%d), TXM-RXM-DELTA %d]" +
+                System.out.printf("[PROGRESS] %d sec [TOTAL: TXM %d%% (%d), RXM %d%% (%d), TXM-RXM-DELTA %d]" +
                                 "[AVG: TX=%f, RX=%f, TXP=%f, RXP=%f, TXM=%f, RXM=%f]" +
                                 "[CUR: TX=%f, RX=%f, TXP=%f, RXP=%f, TXM=%f, RXM=%f][ReqRespTimeouts=%d]\n",
-                        timeDiffSend / 1000 / 1000 / 1000,
-                        ms_sendCount != 0 ?
+                        timeDiffSend / 1000 / 1000 / 1000, ms_sendCount != 0 ?
                                 (int) ((float) totalMessagesSent / ms_sendCount / ms_targetNodeIds.size() * 100) : 0,
                         totalMessagesSent,
                         ms_recvCount != 0 ? (int) ((float) totalMessagesRecv / ms_recvCount * 100) : 0,
-                        totalMessagesRecv,
-                        totalMessagesSent - totalMessagesRecv,
+                        totalMessagesRecv, totalMessagesSent - totalMessagesRecv,
                         (double) totalMessagesSent * ms_size / 1024 / 1024 /
                                 ((double) timeDiffSend / 1000 / 1000 / 1000),
                         (double) totalMessagesRecv * ms_size / 1024 / 1024 /

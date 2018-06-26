@@ -66,7 +66,8 @@ class NIOSelector extends Thread {
      * @param p_osBufferSize
      *         the size of incoming and outgoing buffers
      */
-    NIOSelector(final NIOConnectionManager p_connectionManager, final int p_port, final int p_connectionTimeout, final int p_osBufferSize) {
+    NIOSelector(final NIOConnectionManager p_connectionManager, final int p_port, final int p_connectionTimeout,
+            final int p_osBufferSize) {
         m_serverChannel = null;
         m_selector = null;
 
@@ -89,7 +90,9 @@ class NIOSelector extends Thread {
                 int receiveBufferSize = m_serverChannel.socket().getReceiveBufferSize();
                 if (receiveBufferSize < m_osBufferSize) {
                     // #if LOGGER >= WARN
-                    LOGGER.warn("Receive buffer could not be set properly. Check OS settings! Requested: %d, actual: %d", m_osBufferSize, receiveBufferSize);
+                    LOGGER.warn(
+                            "Receive buffer could not be set properly. Check OS settings! Requested: %d, actual: %d",
+                            m_osBufferSize, receiveBufferSize);
                     // #endif /* LOGGER >= WARN */
                 }
                 m_serverChannel.socket().bind(new InetSocketAddress(p_port));
@@ -410,8 +413,9 @@ class NIOSelector extends Thread {
                 while (iterator.hasNext()) {
                     SelectionKey key = iterator.next();
                     if (key.isValid() && key.attachment() != null) {
-                        ret.append("\t [").append(NodeID.toHexString(((NIOConnection) key.attachment()).getDestinationNodeID())).append(", ")
-                                .append(Integer.toBinaryString(key.interestOps())).append("]\n");
+                        ret.append("\t [")
+                                .append(NodeID.toHexString(((NIOConnection) key.attachment()).getDestinationNodeID()))
+                                .append(", ").append(Integer.toBinaryString(key.interestOps())).append("]\n");
                         ret.append("\t\t").append(key.attachment()).append('\n');
                     }
                 }

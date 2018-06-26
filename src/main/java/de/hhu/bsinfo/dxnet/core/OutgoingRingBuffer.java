@@ -144,7 +144,7 @@ public class OutgoingRingBuffer {
      * @return whether the ring-buffer is empty or not
      */
     public boolean isEmpty() {
-        return m_posBack == m_posFrontProducer.get();
+        return m_posBack == (m_posFrontProducer.get() & 0x7FFFFFFF);
     }
 
     /**
