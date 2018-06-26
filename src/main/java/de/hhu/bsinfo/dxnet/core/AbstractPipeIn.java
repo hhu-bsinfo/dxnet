@@ -34,8 +34,8 @@ import de.hhu.bsinfo.dxutils.stats.ValuePool;
  * @author Stefan Nothaas, stefan.nothaas@hhu.de, 09.06.2017
  */
 public abstract class AbstractPipeIn {
-    public static final TimePercentilePool SOP_REQ_RESP_RTT = new TimePercentilePool(AbstractPipeIn.class,
-            "ReqRespRTT");
+    public static final TimePercentilePool SOP_REQ_RESP_RTT =
+            new TimePercentilePool(AbstractPipeIn.class, "ReqRespRTT");
     public static final ValuePool SOP_REQ_RESP_RTT_VAL = new ValuePool(AbstractPipeIn.class, "ReqRespRTTVal");
     private static final Time SOP_PROCESS = new Time(AbstractPipeIn.class, "ProcessBuffer");
     private static final Value SOP_FULFILL = new Value(AbstractPipeIn.class, "FulfillRequest");
@@ -153,8 +153,8 @@ public abstract class AbstractPipeIn {
 
     @Override
     public String toString() {
-        return "PipeIn[m_ownNodeID " + NodeID.toHexString(m_ownNodeID) + ", m_destinationNodeID " + NodeID.toHexString(
-                m_destinationNodeID) + ", m_flowControl " + m_flowControl + ", m_receivedMessages " +
+        return "PipeIn[m_ownNodeID " + NodeID.toHexString(m_ownNodeID) + ", m_destinationNodeID " +
+                NodeID.toHexString(m_destinationNodeID) + ", m_flowControl " + m_flowControl + ", m_receivedMessages " +
                 m_receivedMessages + ']';
     }
 
@@ -283,12 +283,10 @@ public abstract class AbstractPipeIn {
                             "index is start of message header): " + builder + "\nImporterCollectionState:\n" +
                             m_importers);
                 } else {
-                    throw new NetworkException(
-                            "Invalid message type " + type + ", subtype " + subtype +
-                                    ", not registered in message directory. Current message header: " +
-                                    messageHeader + "\nBuffer section (first index is start of message header): " +
-                                    builder + "\nImporterCollectionState:\n" +
-                                    m_importers);
+                    throw new NetworkException("Invalid message type " + type + ", subtype " + subtype +
+                            ", not registered in message directory. Current message header: " + messageHeader +
+                            "\nBuffer section (first index is start of message header): " + builder +
+                            "\nImporterCollectionState:\n" + m_importers);
                 }
             }
 
@@ -306,10 +304,8 @@ public abstract class AbstractPipeIn {
                 // End of current data stream in importer, incomplete message
                 // Last message is separated -> take over creation to provide message reference for next buffer
 
-                Message message =
-                        createAndImportMessage(messageHeader, address, currentPosition, bytesAvailable,
-                                m_unfinishedOperation, m_importers, m_messageHeaderPool,
-                                m_slotPosition);
+                Message message = createAndImportMessage(messageHeader, address, currentPosition, bytesAvailable,
+                        m_unfinishedOperation, m_importers, m_messageHeaderPool, slot);
 
                 if (!m_unfinishedOperation.isEmpty()) {
                     // Overflow + underflow: transfer state of unfinished operation to new unfinished operation
@@ -334,13 +330,14 @@ public abstract class AbstractPipeIn {
             // Delegate to message handlers
 
             if (m_unfinishedOperation.isEmpty()) {
-                messageHeader.setMessageInformation(this, m_dummyOperation, address, currentPosition, bytesAvailable,
-                        slot);
+                messageHeader
+                        .setMessageInformation(this, m_dummyOperation, address, currentPosition, bytesAvailable, slot);
                 currentPosition += payloadSize;
             } else {
                 // The message was not finished with last buffer but with current one
-                messageHeader.setMessageInformation(this, m_unfinishedOperation, address, currentPosition,
-                        bytesAvailable, slot);
+                messageHeader
+                        .setMessageInformation(this, m_unfinishedOperation, address, currentPosition, bytesAvailable,
+                                slot);
                 currentPosition += payloadSize - m_unfinishedOperation.getBytesCopied();
                 // Switch to unfinished operation from current slot as soon as last message of last buffer is completed
                 m_unfinishedOperation = m_slotUnfinishedOperations[slotUnfinishedOperation];
@@ -392,10 +389,9 @@ public abstract class AbstractPipeIn {
      *         if de-serialization failed
      */
     Message createAndImportMessage(final MessageHeader p_header, final long p_address, final int p_currentPosition,
-            final int p_bytesAvailable,
-            final UnfinishedImExporterOperation p_unfinishedOperation,
-            final MessageImporterCollection p_importerCollection,
-            final LocalMessageHeaderPool p_messageHeaderPool, final int p_slot) throws NetworkException {
+            final int p_bytesAvailable, final UnfinishedImExporterOperation p_unfinishedOperation,
+            final MessageImporterCollection p_importerCollection, final LocalMessageHeaderPool p_messageHeaderPool,
+            final int p_slot) throws NetworkException {
         Message message;
 
         if (p_unfinishedOperation.isEmpty() || !p_unfinishedOperation.wasMessageCreated()) {
@@ -442,12 +438,11 @@ public abstract class AbstractPipeIn {
         }
 
         if (message.getPayloadLength() != p_header.getPayloadSize()) {
-            throw new NetworkException(
-                    "Read message size in header differs from calculated size. Size in header " +
-                            (p_header.getPayloadSize() + Message.HEADER_SIZE) +
-                            " bytes, expected " + (message.getPayloadLength() + Message.HEADER_SIZE) +
-                            " bytes (including header). Check getPayloadLength method of message type " +
-                            message.getClass().getSimpleName());
+            throw new NetworkException("Read message size in header differs from calculated size. Size in header " +
+                    (p_header.getPayloadSize() + Message.HEADER_SIZE) + " bytes, expected " +
+                    (message.getPayloadLength() + Message.HEADER_SIZE) +
+                    " bytes (including header). Check getPayloadLength method of message type " +
+                    message.getClass().getSimpleName());
         }
 
         finishHeader(p_header, p_slot, p_messageHeaderPool);
@@ -596,10 +591,8 @@ public abstract class AbstractPipeIn {
         try {
             ret = m_messageDirectory.getInstance(type, subtype);
         } catch (final Exception e) {
-            throw new NetworkException(
-                    "Unable to create message of type " + type + ", subtype " + subtype +
-                            ". Type is missing in message directory. Current message header " +
-                            p_header, e);
+            throw new NetworkException("Unable to create message of type " + type + ", subtype " + subtype +
+                    ". Type is missing in message directory. Current message header " + p_header, e);
         }
 
         ret.initialize(p_header, m_ownNodeID, m_destinationNodeID);
@@ -624,11 +617,10 @@ public abstract class AbstractPipeIn {
      *         the importer collection
      */
     private static void readHeader(final MessageHeader p_header, final int p_currentPosition, final long p_address,
-            final int p_bytesAvailable,
-            final UnfinishedImExporterOperation p_unfinishedOperation,
+            final int p_bytesAvailable, final UnfinishedImExporterOperation p_unfinishedOperation,
             final MessageImporterCollection p_importerCollection) {
-        AbstractMessageImporter importer =
-                p_importerCollection.getImporter(Message.HEADER_SIZE, p_address, p_currentPosition, p_bytesAvailable,
+        AbstractMessageImporter importer = p_importerCollection
+                .getImporter(Message.HEADER_SIZE, p_address, p_currentPosition, p_bytesAvailable,
                         p_unfinishedOperation);
 
         try {
@@ -660,13 +652,11 @@ public abstract class AbstractPipeIn {
      *         if de-serialization failed
      */
     private static boolean readPayload(final int p_currentPosition, final Message p_message, final long p_address,
-            final int p_bytesAvailable,
-            final int p_bytesToRead, final UnfinishedImExporterOperation p_unfinishedOperation,
-            final MessageImporterCollection p_importerCollection)
-            throws NetworkException {
-        AbstractMessageImporter importer =
-                p_importerCollection.getImporter(p_bytesToRead, p_address, p_currentPosition, p_bytesAvailable,
-                        p_unfinishedOperation);
+            final int p_bytesAvailable, final int p_bytesToRead,
+            final UnfinishedImExporterOperation p_unfinishedOperation,
+            final MessageImporterCollection p_importerCollection) throws NetworkException {
+        AbstractMessageImporter importer = p_importerCollection
+                .getImporter(p_bytesToRead, p_address, p_currentPosition, p_bytesAvailable, p_unfinishedOperation);
 
         try {
             p_message.readPayload(importer, p_bytesToRead);
@@ -678,9 +668,8 @@ public abstract class AbstractPipeIn {
         int readBytes = importer.getNumberOfReadBytes();
         if (readBytes < p_bytesToRead) {
             throw new NetworkException("Message buffer is too large: " + p_bytesToRead + " > " + readBytes +
-                    " (payload in bytes), current Message: " +
-                    p_message.getClass().getName() + ", importer type: " + importer.getClass().getSimpleName() +
-                    ", importer detail: " + importer +
+                    " (payload in bytes), current Message: " + p_message.getClass().getName() + ", importer type: " +
+                    importer.getClass().getSimpleName() + ", importer detail: " + importer +
                     "\nImporterCollectionState:\n" + p_importerCollection);
         }
 

@@ -42,7 +42,7 @@ import de.hhu.bsinfo.dxutils.stats.Time;
  * @author Kevin Beineke, kevin.beineke@hhu.de, 18.03.2017
  */
 class NIOPipeIn extends AbstractPipeIn {
-    private static final Logger LOGGER = LogManager.getFormatterLogger(AbstractPipeIn.class.getSimpleName());
+    private static final Logger LOGGER = LogManager.getFormatterLogger(NIOPipeIn.class.getSimpleName());
 
     private static final Time SOP_READ = new Time(NIOPipeIn.class, "Read");
     private static final Time SOP_WRITE_FLOW_CONTROL = new Time(NIOPipeIn.class, "WriteFC");
@@ -89,12 +89,11 @@ class NIOPipeIn extends AbstractPipeIn {
      *         True to enable benchmark mode and record all RTT values to calculate percentile
      */
     NIOPipeIn(final short p_ownNodeId, final short p_destinationNodeId,
-            final LocalMessageHeaderPool p_messageHeaderPool,
-            final AbstractFlowControl p_flowControl, final MessageDirectory p_messageDirectory,
-            final RequestMap p_requestMap,
+            final LocalMessageHeaderPool p_messageHeaderPool, final AbstractFlowControl p_flowControl,
+            final MessageDirectory p_messageDirectory, final RequestMap p_requestMap,
             final MessageHandlers p_messageHandlers, final BufferPool p_bufferPool,
-            final IncomingBufferQueue p_incomingBufferQueue,
-            final NIOConnection p_parentConnection, final boolean p_benchmarkMode) {
+            final IncomingBufferQueue p_incomingBufferQueue, final NIOConnection p_parentConnection,
+            final boolean p_benchmarkMode) {
         super(p_ownNodeId, p_destinationNodeId, p_messageHeaderPool, p_flowControl, p_messageDirectory, p_requestMap,
                 p_messageHandlers, p_benchmarkMode);
 
@@ -171,8 +170,9 @@ class NIOPipeIn extends AbstractPipeIn {
                         getDestinationNodeID());
                 // #endif /* LOGGER >= TRACE */
 
-                if (!m_incomingBufferQueue.pushBuffer(m_parentConnection, directBufferWrapper, 0,
-                        directBufferWrapper.getAddress(), buffer.remaining())) {
+                if (!m_incomingBufferQueue
+                        .pushBuffer(m_parentConnection, directBufferWrapper, 0, directBufferWrapper.getAddress(),
+                                buffer.remaining())) {
                     // #ifdef STATISTICS
                     SOP_IBQ_WAIT_PUSH.start();
                     // #endif /* STATISTICS */
@@ -191,8 +191,9 @@ class NIOPipeIn extends AbstractPipeIn {
 
                         LockSupport.parkNanos(100);
 
-                    } while (!m_incomingBufferQueue.pushBuffer(m_parentConnection, directBufferWrapper, 0,
-                            directBufferWrapper.getAddress(), buffer.remaining()));
+                    } while (!m_incomingBufferQueue
+                            .pushBuffer(m_parentConnection, directBufferWrapper, 0, directBufferWrapper.getAddress(),
+                                    buffer.remaining()));
 
                     // #ifdef STATISTICS
                     SOP_IBQ_WAIT_PUSH.stop();
