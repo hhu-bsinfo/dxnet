@@ -393,48 +393,61 @@ public abstract class AbstractPipeIn {
             final MessageImporterCollection p_importerCollection, final LocalMessageHeaderPool p_messageHeaderPool,
             final int p_slot) throws NetworkException {
         Message message;
+        Request request;
+
+        if (p_header.isAborted()) {
+            // this is a response which is split to several buffers and is too late to be used
+            if (p_unfinishedOperation.getBytesCopied() + p_bytesAvailable >= p_header.getPayloadSize()) {
+                finishHeader(p_header, p_slot, p_messageHeaderPool);
+            } else {
+                // do not return message header to pool!
+                updateBufferSlot(p_slot);
+            }
+
+            return p_unfinishedOperation.getMessage();
+        }
 
         if (p_unfinishedOperation.isEmpty() || !p_unfinishedOperation.wasMessageCreated()) {
             // Create a new message
             message = createMessage(p_header);
+
+            // Important: set corresponding request BEFORE readPayload. The call might use the request
+            if (message.isResponse()) {
+
+                // hack:
+                // to avoid copying data multiple times, some responses use the same objects provided
+                // with the request to directly write the data to them instead of creating a temporary
+                // object in the response, de-serializing the data and then copying from the temporary object
+                // to the object that should receive the data in the first place. (example DXRAM: get request/response)
+                // This is only possible, if we have a reference to the original request within the response
+                // while reading from the network byte buffer. But in this low level stage, we (usually) don't have
+                // access to requests/responses. So we exploit the request map to get our corresponding request
+                // before de-serializing the network buffer for every request.
+                Response response = (Response) message;
+                request = m_requestMap.getRequest(response);
+
+                // abort if request timed out but response arrived very late
+                // which results in not finding the corresponding request anymore
+                // just drop the response because the data for it is already skipped
+                if (request == null) {
+                    // cleanup
+                    if (p_bytesAvailable < p_header.getPayloadSize()) {
+                        // if the response is split we have to abort the response deserialization
+                        p_header.abort();
+                        // do not return message header to pool!
+                        updateBufferSlot(p_slot);
+                    } else {
+                        finishHeader(p_header, p_slot, p_messageHeaderPool);
+                    }
+
+                    return message;
+                }
+
+                response.setCorrespondingRequest(request);
+            }
         } else {
             // Continue with partly de-serialized message
             message = p_unfinishedOperation.getMessage();
-        }
-
-        // Important: set corresponding request BEFORE readPayload. The call might use the request
-        Request request = null;
-        if (message.isResponse()) {
-
-            // hack:
-            // to avoid copying data multiple times, some responses use the same objects provided
-            // with the request to directly write the data to them instead of creating a temporary
-            // object in the response, de-serializing the data and then copying from the temporary object
-            // to the object that should receive the data in the first place. (example DXRAM: get request/response)
-            // This is only possible, if we have a reference to the original request within the response
-            // while reading from the network byte buffer. But in this low level stage, we (usually) don't have
-            // access to requests/responses. So we exploit the request map to get our corresponding request
-            // before de-serializing the network buffer for every request.
-            Response response = (Response) message;
-            request = m_requestMap.getRequest(response);
-
-            // abort if request timed out but response arrived very late
-            // which results in not finding the corresponding request anymore
-            // just drop the response because the data for it is already skipped
-            // cannot be skipped if request is incomplete
-            boolean hasOverflow =
-                    p_currentPosition + p_header.getPayloadSize() - p_unfinishedOperation.getBytesCopied() >
-                            p_bytesAvailable;
-            if (request == null && !hasOverflow) {
-                // cleanup
-                finishHeader(p_header, p_slot, p_messageHeaderPool);
-
-                return null;
-            }
-
-            if (request != null) {
-                response.setCorrespondingRequest(request);
-            }
         }
 
         if (!readPayload(p_currentPosition, message, p_address, p_bytesAvailable, p_header.getPayloadSize(),
@@ -454,11 +467,6 @@ public abstract class AbstractPipeIn {
         finishHeader(p_header, p_slot, p_messageHeaderPool);
 
         if (message.isResponse()) {
-            if (request == null) {
-                // Request is not available, probably because of a time-out
-                return null;
-            }
-
             long timeReceiveResponse;
             Response response = (Response) message;
 
