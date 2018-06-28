@@ -55,8 +55,9 @@ class LargeMessageExporter extends AbstractMessageExporter {
 
     @Override
     public String toString() {
-        return "m_bufferAddress 0x" + Long.toHexString(m_bufferAddress) + ", m_bufferSize " + m_bufferSize + ", m_currentPosition " + m_currentPosition +
-                ", m_startPosition " + m_startPosition + ", m_endPosition " + m_endPosition + ", m_skipBytes " + m_skipBytes + ", m_skippedBytes " +
+        return "m_bufferAddress 0x" + Long.toHexString(m_bufferAddress) + ", m_bufferSize " + m_bufferSize +
+                ", m_currentPosition " + m_currentPosition + ", m_startPosition " + m_startPosition +
+                ", m_endPosition " + m_endPosition + ", m_skipBytes " + m_skipBytes + ", m_skippedBytes " +
                 m_skippedBytes + ", m_unfinishedOperation " + m_unfinishedOperation;
     }
 
@@ -165,9 +166,9 @@ class LargeMessageExporter extends AbstractMessageExporter {
             // Short was written before
             m_skippedBytes += Short.BYTES;
         } else if (m_skippedBytes < m_skipBytes - Short.BYTES) {
-			// Short is part of an array and was written before
+            // Short is part of an array and was written before
             m_skippedBytes += Short.BYTES;
-		} else {
+        } else {
             int bytesToSkip = 0;
 
             if (m_skippedBytes < m_skipBytes) {
@@ -231,9 +232,9 @@ class LargeMessageExporter extends AbstractMessageExporter {
             // Int was written before
             m_skippedBytes += Integer.BYTES;
         } else if (m_skippedBytes < m_skipBytes - Integer.BYTES) {
-			// Int is part of an array and was written before
+            // Int is part of an array and was written before
             m_skippedBytes += Integer.BYTES;
-		} else {
+        } else {
             int bytesToSkip = 0;
 
             if (m_skippedBytes < m_skipBytes) {
@@ -297,9 +298,9 @@ class LargeMessageExporter extends AbstractMessageExporter {
             // Long was written before
             m_skippedBytes += Long.BYTES;
         } else if (m_skippedBytes < m_skipBytes - Long.BYTES) {
-			// Long is part of an array and was written before
+            // Long is part of an array and was written before
             m_skippedBytes += Long.BYTES;
-		} else {
+        } else {
             int bytesToSkip = 0;
 
             if (m_skippedBytes < m_skipBytes) {
@@ -363,9 +364,9 @@ class LargeMessageExporter extends AbstractMessageExporter {
             // Float was written before
             m_skippedBytes += Float.BYTES;
         } else if (m_skippedBytes < m_skipBytes - Float.BYTES) {
-			// Float is part of an array and was written before
+            // Float is part of an array and was written before
             m_skippedBytes += Float.BYTES;
-		} else {
+        } else {
             writeInt(Float.floatToRawIntBits(p_v));
         }
     }
@@ -376,9 +377,9 @@ class LargeMessageExporter extends AbstractMessageExporter {
             // Double was written before
             m_skippedBytes += Double.BYTES;
         } else if (m_skippedBytes < m_skipBytes - Double.BYTES) {
-			// Double is part of an array and was written before
+            // Double is part of an array and was written before
             m_skippedBytes += Double.BYTES;
-		} else {
+        } else {
             writeLong(Double.doubleToRawLongBits(p_v));
         }
     }
@@ -391,11 +392,12 @@ class LargeMessageExporter extends AbstractMessageExporter {
             // Compact number was written before
             m_skippedBytes += length;
         } else if (m_skippedBytes < m_skipBytes - length) {
-			// Special case: writing of an array was interrupted (-> skippedBytes == index), but not during writing of compact number
+            // Special case: writing of an array was interrupted (-> skippedBytes == index),
+            // but not during writing of compact number
             m_skippedBytes += length;
-		} else {
-			int startPosition = getNumberOfWrittenBytes();
-			
+        } else {
+            int startPosition = getNumberOfWrittenBytes();
+
             int bytesToSkip = 0;
             if (m_skippedBytes < m_skipBytes) {
                 // Compact number was partly serialized -> continue
@@ -403,7 +405,7 @@ class LargeMessageExporter extends AbstractMessageExporter {
             }
 
             try {
-				int i;
+                int i;
                 for (i = bytesToSkip; i < length - 1; i++) {
                     writeByte((byte) ((byte) (p_v >> 7 * i) & 0x7F | 0x80));
                 }
@@ -462,11 +464,13 @@ class LargeMessageExporter extends AbstractMessageExporter {
                 if (m_endPosition < m_currentPosition /* limit after ring buffer overflow -> irrelevant */ ||
                         m_currentPosition + bytesToWrite < m_endPosition) {
                     // No message overflow
-                    int ret = UnsafeMemory.writeBytes(m_bufferAddress + m_currentPosition, p_array, offset, bytesToWrite);
+                    int ret =
+                            UnsafeMemory.writeBytes(m_bufferAddress + m_currentPosition, p_array, offset, bytesToWrite);
                     m_currentPosition += Byte.BYTES * ret;
                 } else {
                     // Message overflow
-                    int ret = UnsafeMemory.writeBytes(m_bufferAddress + m_currentPosition, p_array, offset, m_endPosition - m_currentPosition);
+                    int ret = UnsafeMemory.writeBytes(m_bufferAddress + m_currentPosition, p_array, offset,
+                            m_endPosition - m_currentPosition);
                     // Not enough space in buffer currently -> abort
                     m_unfinishedOperation.setIndex(getNumberOfWrittenBytes());
                     m_currentPosition += Byte.BYTES * ret;
@@ -476,10 +480,12 @@ class LargeMessageExporter extends AbstractMessageExporter {
                 // Ring buffer overflow
                 if (m_endPosition < m_currentPosition /* limit after ring buffer overflow */) {
                     // No message overflow for first part
-                    UnsafeMemory.writeBytes(m_bufferAddress + m_currentPosition, p_array, offset, m_bufferSize - m_currentPosition);
+                    UnsafeMemory.writeBytes(m_bufferAddress + m_currentPosition, p_array, offset,
+                            m_bufferSize - m_currentPosition);
                 } else {
                     // Message overflow
-                    int ret = UnsafeMemory.writeBytes(m_bufferAddress + m_currentPosition, p_array, offset, m_endPosition - m_currentPosition);
+                    int ret = UnsafeMemory.writeBytes(m_bufferAddress + m_currentPosition, p_array, offset,
+                            m_endPosition - m_currentPosition);
                     // Not enough space in buffer currently -> abort
                     m_unfinishedOperation.setIndex(getNumberOfWrittenBytes());
                     m_currentPosition += Byte.BYTES * ret;
@@ -489,10 +495,13 @@ class LargeMessageExporter extends AbstractMessageExporter {
                 bytesToWrite -= m_bufferSize - m_currentPosition;
                 if (bytesToWrite < m_endPosition) {
                     // No message overflow for second part
-                    UnsafeMemory.writeBytes(m_bufferAddress, p_array, offset + m_bufferSize - m_currentPosition, bytesToWrite);
+                    UnsafeMemory.writeBytes(m_bufferAddress, p_array, offset + m_bufferSize - m_currentPosition,
+                            bytesToWrite);
                 } else {
                     // Message overflow
-                    int ret = UnsafeMemory.writeBytes(m_bufferAddress, p_array, offset + m_bufferSize - m_currentPosition, m_endPosition);
+                    int ret = UnsafeMemory
+                            .writeBytes(m_bufferAddress, p_array, offset + m_bufferSize - m_currentPosition,
+                                    m_endPosition);
                     // Not enough space in buffer currently -> abort
                     m_unfinishedOperation.setIndex(getNumberOfWrittenBytes());
                     m_currentPosition = Byte.BYTES * ret;
@@ -507,7 +516,13 @@ class LargeMessageExporter extends AbstractMessageExporter {
 
     @Override
     public int writeShorts(final short[] p_array, final int p_offset, final int p_length) {
-        for (int i = 0; i < p_length; i++) {
+        int shortsToSkip = 0;
+        if (m_skippedBytes < m_skipBytes) {
+            shortsToSkip = (m_skipBytes - m_skippedBytes) / Short.BYTES;
+            m_skippedBytes = m_skipBytes - (m_skipBytes - m_skippedBytes) % Short.BYTES;
+        }
+
+        for (int i = shortsToSkip; i < p_length; i++) {
             writeShort(p_array[p_offset + i]);
         }
 
@@ -516,7 +531,13 @@ class LargeMessageExporter extends AbstractMessageExporter {
 
     @Override
     public int writeInts(final int[] p_array, final int p_offset, final int p_length) {
-        for (int i = 0; i < p_length; i++) {
+        int intsToSkip = 0;
+        if (m_skippedBytes < m_skipBytes) {
+            intsToSkip = (m_skipBytes - m_skippedBytes) / Integer.BYTES;
+            m_skippedBytes = m_skipBytes - (m_skipBytes - m_skippedBytes) % Integer.BYTES;
+        }
+
+        for (int i = intsToSkip; i < p_length; i++) {
             writeInt(p_array[p_offset + i]);
         }
 
@@ -525,7 +546,13 @@ class LargeMessageExporter extends AbstractMessageExporter {
 
     @Override
     public int writeLongs(final long[] p_array, final int p_offset, final int p_length) {
-        for (int i = 0; i < p_length; i++) {
+        int longsToSkip = 0;
+        if (m_skippedBytes < m_skipBytes) {
+            longsToSkip = (m_skipBytes - m_skippedBytes) / Long.BYTES;
+            m_skippedBytes = m_skipBytes - (m_skipBytes - m_skippedBytes) % Long.BYTES;
+        }
+
+        for (int i = longsToSkip; i < p_length; i++) {
             writeLong(p_array[p_offset + i]);
         }
 
@@ -588,7 +615,7 @@ class LargeMessageExporter extends AbstractMessageExporter {
 
     @Override
     public void writeLongArray(final long[] p_array) {
-        if (m_skippedBytes < m_unfinishedOperation.getIndex()) {			
+        if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
             // Array length and array were written before
             m_skippedBytes += ObjectSizeUtil.sizeofCompactedNumber(p_array.length) + p_array.length * Long.BYTES;
         } else {

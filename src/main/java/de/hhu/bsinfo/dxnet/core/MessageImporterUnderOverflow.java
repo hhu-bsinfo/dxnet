@@ -52,9 +52,10 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
 
     @Override
     public String toString() {
-        return "m_usedCounter " + getUsedCounter() + ", m_bufferAddress 0x" + Long.toHexString(m_bufferAddress) + ", m_bufferSize " + m_bufferSize +
-                ", m_currentPosition " + m_currentPosition + ", m_skipBytes " + m_skipBytes + ", m_skippedBytes " + m_skippedBytes +
-                ", m_unfinishedOperation (" + m_unfinishedOperation + ')';
+        return "m_usedCounter " + getUsedCounter() + ", m_bufferAddress 0x" + Long.toHexString(m_bufferAddress) +
+                ", m_bufferSize " + m_bufferSize + ", m_currentPosition " + m_currentPosition + ", m_skipBytes " +
+                m_skipBytes + ", m_skippedBytes " + m_skippedBytes + ", m_unfinishedOperation (" +
+                m_unfinishedOperation + ')';
     }
 
     @Override
@@ -413,14 +414,16 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
 
             if (m_currentPosition + p_length - bytesCopied >= m_bufferSize) {
                 // Overflow
-                UnsafeMemory.readBytes(m_bufferAddress + m_currentPosition, p_array, p_offset + bytesCopied, m_bufferSize - m_currentPosition);
+                UnsafeMemory.readBytes(m_bufferAddress + m_currentPosition, p_array, p_offset + bytesCopied,
+                        m_bufferSize - m_currentPosition);
                 m_unfinishedOperation.setIndex(m_skippedBytes + m_currentPosition);
                 m_currentPosition = m_bufferSize;
                 m_skippedBytes = m_skipBytes;
                 throw m_exception;
             }
 
-            UnsafeMemory.readBytes(m_bufferAddress + m_currentPosition, p_array, p_offset + bytesCopied, p_length - bytesCopied);
+            UnsafeMemory.readBytes(m_bufferAddress + m_currentPosition, p_array, p_offset + bytesCopied,
+                    p_length - bytesCopied);
             m_currentPosition += p_length - bytesCopied;
             m_skippedBytes = m_skipBytes;
 
@@ -428,7 +431,8 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
         } else {
             if (m_currentPosition + p_length >= m_bufferSize) {
                 // Overflow
-                UnsafeMemory.readBytes(m_bufferAddress + m_currentPosition, p_array, p_offset, m_bufferSize - m_currentPosition);
+                UnsafeMemory.readBytes(m_bufferAddress + m_currentPosition, p_array, p_offset,
+                        m_bufferSize - m_currentPosition);
                 m_unfinishedOperation.setIndex(m_skippedBytes + m_currentPosition);
                 m_currentPosition = m_bufferSize;
                 throw m_exception;
@@ -460,14 +464,17 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
 
             if (m_currentPosition + p_length - bytesCopied >= m_bufferSize) {
                 // Overflow
-                UnsafeMemory.copyBytes(m_bufferAddress + m_currentPosition, p_byteBufferAddress + p_offset + bytesCopied, m_bufferSize - m_currentPosition);
+                UnsafeMemory
+                        .copyBytes(m_bufferAddress + m_currentPosition, p_byteBufferAddress + p_offset + bytesCopied,
+                                m_bufferSize - m_currentPosition);
                 m_unfinishedOperation.setIndex(m_skippedBytes);
                 m_currentPosition = m_bufferSize;
                 m_skippedBytes = m_skipBytes;
                 throw m_exception;
             }
 
-            UnsafeMemory.copyBytes(m_bufferAddress + m_currentPosition, p_byteBufferAddress + p_offset + bytesCopied, p_length - bytesCopied);
+            UnsafeMemory.copyBytes(m_bufferAddress + m_currentPosition, p_byteBufferAddress + p_offset + bytesCopied,
+                    p_length - bytesCopied);
             m_currentPosition += p_length - bytesCopied;
             m_skippedBytes = m_skipBytes;
 
@@ -475,7 +482,8 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
         } else {
             if (m_currentPosition + p_length >= m_bufferSize) {
                 // Overflow
-                UnsafeMemory.copyBytes(m_bufferAddress + m_currentPosition, p_byteBufferAddress + p_offset, m_bufferSize - m_currentPosition);
+                UnsafeMemory.copyBytes(m_bufferAddress + m_currentPosition, p_byteBufferAddress + p_offset,
+                        m_bufferSize - m_currentPosition);
                 m_unfinishedOperation.setIndex(m_skippedBytes + m_currentPosition);
                 m_currentPosition = m_bufferSize;
                 throw m_exception;
@@ -497,7 +505,13 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
             throw m_exception;
         }
 
-        for (int i = 0; i < p_length; i++) {
+        int shortsToSkip = 0;
+        if (m_skippedBytes < m_skipBytes) {
+            shortsToSkip = (m_skipBytes - m_skippedBytes) / Short.BYTES;
+            m_skippedBytes = m_skipBytes - (m_skipBytes - m_skippedBytes) % Short.BYTES;
+        }
+
+        for (int i = shortsToSkip; i < p_length; i++) {
             p_array[p_offset + i] = readShort(p_array[p_offset + i]);
         }
 
@@ -512,7 +526,13 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
             throw m_exception;
         }
 
-        for (int i = 0; i < p_length; i++) {
+        int intsToSkip = 0;
+        if (m_skippedBytes < m_skipBytes) {
+            intsToSkip = (m_skipBytes - m_skippedBytes) / Integer.BYTES;
+            m_skippedBytes = m_skipBytes - (m_skipBytes - m_skippedBytes) % Integer.BYTES;
+        }
+
+        for (int i = intsToSkip; i < p_length; i++) {
             p_array[p_offset + i] = readInt(p_array[p_offset + i]);
         }
 
@@ -527,7 +547,13 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
             throw m_exception;
         }
 
-        for (int i = 0; i < p_length; i++) {
+        int longsToSkip = 0;
+        if (m_skippedBytes < m_skipBytes) {
+            longsToSkip = (m_skipBytes - m_skippedBytes) / Long.BYTES;
+            m_skippedBytes = m_skipBytes - (m_skipBytes - m_skippedBytes) % Long.BYTES;
+        }
+
+        for (int i = longsToSkip; i < p_length; i++) {
             p_array[p_offset + i] = readLong(p_array[p_offset + i]);
         }
 
