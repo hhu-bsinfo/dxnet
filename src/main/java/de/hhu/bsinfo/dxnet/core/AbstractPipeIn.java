@@ -421,14 +421,20 @@ public abstract class AbstractPipeIn {
             // abort if request timed out but response arrived very late
             // which results in not finding the corresponding request anymore
             // just drop the response because the data for it is already skipped
-            if (request == null) {
+            // cannot be skipped if request is incomplete
+            boolean hasOverflow =
+                    p_currentPosition + p_header.getPayloadSize() - p_unfinishedOperation.getBytesCopied() >
+                            p_bytesAvailable;
+            if (request == null && !hasOverflow) {
                 // cleanup
                 finishHeader(p_header, p_slot, p_messageHeaderPool);
 
                 return null;
             }
 
-            response.setCorrespondingRequest(request);
+            if (request != null) {
+                response.setCorrespondingRequest(request);
+            }
         }
 
         if (!readPayload(p_currentPosition, message, p_address, p_bytesAvailable, p_header.getPayloadSize(),
