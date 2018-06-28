@@ -445,10 +445,14 @@ class LargeMessageExporter extends AbstractMessageExporter {
 
     @Override
     public int writeBytes(final byte[] p_array, final int p_offset, final int p_length) {
+
         if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
             // Byte array was read before
             m_skippedBytes += p_length;
+        } else if (m_skippedBytes < m_skipBytes - p_length) {
+            m_skippedBytes += p_length;
         } else {
+            int startPosition = getNumberOfWrittenBytes();
             int offset = p_offset;
             int bytesToWrite = p_length;
 
@@ -472,7 +476,7 @@ class LargeMessageExporter extends AbstractMessageExporter {
                     int ret = UnsafeMemory.writeBytes(m_bufferAddress + m_currentPosition, p_array, offset,
                             m_endPosition - m_currentPosition);
                     // Not enough space in buffer currently -> abort
-                    m_unfinishedOperation.setIndex(getNumberOfWrittenBytes());
+                    m_unfinishedOperation.setIndex(startPosition);
                     m_currentPosition += Byte.BYTES * ret;
                     throw m_exception;
                 }
@@ -487,7 +491,7 @@ class LargeMessageExporter extends AbstractMessageExporter {
                     int ret = UnsafeMemory.writeBytes(m_bufferAddress + m_currentPosition, p_array, offset,
                             m_endPosition - m_currentPosition);
                     // Not enough space in buffer currently -> abort
-                    m_unfinishedOperation.setIndex(getNumberOfWrittenBytes());
+                    m_unfinishedOperation.setIndex(startPosition);
                     m_currentPosition += Byte.BYTES * ret;
                     throw m_exception;
                 }
@@ -503,7 +507,7 @@ class LargeMessageExporter extends AbstractMessageExporter {
                             .writeBytes(m_bufferAddress, p_array, offset + m_bufferSize - m_currentPosition,
                                     m_endPosition);
                     // Not enough space in buffer currently -> abort
-                    m_unfinishedOperation.setIndex(getNumberOfWrittenBytes());
+                    m_unfinishedOperation.setIndex(startPosition);
                     m_currentPosition = Byte.BYTES * ret;
                     throw m_exception;
                 }
