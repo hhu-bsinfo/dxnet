@@ -43,6 +43,7 @@ public class MessageHeader implements Importable {
     private int m_currentPosition;
     private int m_bytesAvailable;
     private int m_slot;
+    private boolean m_aborted = false;
 
     // Constructors
 
@@ -54,8 +55,8 @@ public class MessageHeader implements Importable {
 
     @Override
     public String toString() {
-        return "m_messageID " + m_messageID + ", m_messageTypeExc " + m_messageTypeExc + ", m_type " + m_type + ", m_subtype " + m_subtype +
-                ", m_payloadSize " + m_payloadSize;
+        return "m_messageID " + m_messageID + ", m_messageTypeExc " + m_messageTypeExc + ", m_type " + m_type +
+                ", m_subtype " + m_subtype + ", m_payloadSize " + m_payloadSize;
     }
 
     /**
@@ -119,6 +120,22 @@ public class MessageHeader implements Importable {
     }
 
     /**
+     * Abort the deserialization of the response because the request was already removed (delayed)
+     */
+    void abort() {
+        m_aborted = true;
+    }
+
+    /**
+     * Check if the response deserialization was aborted
+     *
+     * @return whether the response is delayed (and thus aborted) or not
+     */
+    boolean isAborted() {
+        return m_aborted;
+    }
+
+    /**
      * Initializes an external message importer.
      *
      * @param p_importer
@@ -168,8 +185,8 @@ public class MessageHeader implements Importable {
      * @param p_slot
      *         the buffer slot in pipe
      */
-    void setMessageInformation(final AbstractPipeIn p_pipeIn, final UnfinishedImExporterOperation p_unfinishedOperation, final long p_address,
-            final int p_currentPosition, final int p_bytesAvailable, final int p_slot) {
+    void setMessageInformation(final AbstractPipeIn p_pipeIn, final UnfinishedImExporterOperation p_unfinishedOperation,
+            final long p_address, final int p_currentPosition, final int p_bytesAvailable, final int p_slot) {
         m_pipeIn = p_pipeIn;
         m_unfinishedOperation = p_unfinishedOperation;
         m_address = p_address;
@@ -187,11 +204,11 @@ public class MessageHeader implements Importable {
      * @throws NetworkException
      *         it the message type/subtype is invalid
      */
-    public Message createAndImportMessage(final MessageImporterCollection p_importerCollection, final LocalMessageHeaderPool p_messageHeaderPool)
-            throws NetworkException {
+    public Message createAndImportMessage(final MessageImporterCollection p_importerCollection,
+            final LocalMessageHeaderPool p_messageHeaderPool) throws NetworkException {
         return m_pipeIn
-                .createAndImportMessage(this, m_address, m_currentPosition, m_bytesAvailable, m_unfinishedOperation, p_importerCollection, p_messageHeaderPool,
-                        m_slot);
+                .createAndImportMessage(this, m_address, m_currentPosition, m_bytesAvailable, m_unfinishedOperation,
+                        p_importerCollection, p_messageHeaderPool, m_slot);
     }
 
     @Override
