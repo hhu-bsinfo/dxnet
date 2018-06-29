@@ -192,7 +192,9 @@ public class OutgoingRingBuffer {
 
                 // Small message -> reserve space if message fits in free space
                 int posBack = m_posBack;
-                if ((posBack + m_bufferSize & 0x7FFFFFFF) > (posFrontProducer + p_messageSize & 0x7FFFFFFF) ||
+                if ((posBack + m_bufferSize & 0x7FFFFFFF) > (posFrontProducer + p_messageSize & 0x7FFFFFFF) &&
+                        /* 31-bit overflow in posFront but not posBack (possible for large messages, only) */
+                        (posBack & 0x7FFFFFFF) <= (posFrontProducer & 0x7FFFFFFF) ||
                         /* 31-bit overflow in posBack but not posFront */
                         (posBack + m_bufferSize & 0x7FFFFFFF) < posBack &&
                                 (posFrontProducer + p_messageSize & 0x7FFFFFFF) > posBack) {
@@ -449,7 +451,7 @@ public class OutgoingRingBuffer {
         exporter.setBuffer(m_bufferAddr, m_bufferSize);
 
         // Wait for all small messages being committed to avoid inconsistencies
-        while (posFrontConsumer != m_posFrontConsumer.get()) {
+        while (p_oldPosFrontProducer != m_posFrontConsumer.get()) {
             Thread.yield();
         }
 

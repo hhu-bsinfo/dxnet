@@ -136,7 +136,8 @@ public class Message {
      * @param p_exclusivity
      *         whether this is an exclusive message or not
      */
-    private Message(final int p_messageID, final short p_destination, final byte p_type, final byte p_subtype, final boolean p_exclusivity) {
+    private Message(final int p_messageID, final short p_destination, final byte p_type, final byte p_subtype,
+            final boolean p_exclusivity) {
         assert p_destination != NodeID.INVALID_ID;
 
         m_messageID = p_messageID;
@@ -233,14 +234,16 @@ public class Message {
      * @throws NetworkException
      *         if message could not be serialized
      */
-    public final void serialize(final AbstractMessageExporter p_exporter, final int p_messageSize) throws NetworkException {
+    public final void serialize(final AbstractMessageExporter p_exporter, final int p_messageSize)
+            throws NetworkException {
         writeMessage(p_exporter, p_messageSize - HEADER_SIZE);
     }
 
     @Override
     public final String toString() {
         if (m_source != -1) {
-            return getClass().getSimpleName() + '[' + m_messageID + ", " + NodeID.toHexString(m_source) + ", " + NodeID.toHexString(m_destination) + ']';
+            return getClass().getSimpleName() + '[' + m_messageID + ", " + NodeID.toHexString(m_source) + ", " +
+                    NodeID.toHexString(m_destination) + ']';
         } else {
             return getClass().getSimpleName() + '[' + m_messageID + ", " + NodeID.toHexString(m_destination) + ']';
         }
@@ -391,7 +394,8 @@ public class Message {
      * @throws NetworkException
      *         If writing the message failed
      */
-    private void writeMessage(final AbstractMessageExporter p_exporter, final int p_payloadSize) throws NetworkException {
+    private void writeMessage(final AbstractMessageExporter p_exporter, final int p_payloadSize)
+            throws NetworkException {
         try {
             // Message reused (probably pooled)
             if (m_messageID == m_oldMessageID) {
@@ -410,16 +414,16 @@ public class Message {
             writePayload(p_exporter);
         } catch (final BufferOverflowException e) {
             throw new NetworkException(
-                    "Could not create message " + this + ", because message buffer is too small, payload size " + p_payloadSize + "\nExporterState:\n" +
-                            p_exporter, e);
+                    "Could not create message " + this + ", because message buffer is too small, payload size " +
+                            p_payloadSize + "\nExporterState:\n" + p_exporter, e);
         }
 
         int numberOfWrittenBytes = p_exporter.getNumberOfWrittenBytes();
         int messageSize = p_payloadSize + HEADER_SIZE;
         if (numberOfWrittenBytes < messageSize) {
-            throw new NetworkException(
-                    "Did not create message " + this + ", because message contents are smaller than expected payload size: " + numberOfWrittenBytes + " < " +
-                            messageSize + "\nExporterState:\n" + p_exporter);
+            throw new NetworkException("Did not create message " + this +
+                    ", because message contents are smaller than expected payload size: " + numberOfWrittenBytes +
+                    " < " + messageSize + "\nExporterState:\n" + p_exporter);
         }
 
         m_oldMessageID = m_messageID;

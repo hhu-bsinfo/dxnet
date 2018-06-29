@@ -39,7 +39,8 @@ class LargeMessageExporter extends AbstractMessageExporter {
     private int m_skipBytes;
     private int m_skippedBytes;
 
-    // The unfinished operation from last read (if there is one) and object to store the new unfinished operation in (if there is one)
+    // The unfinished operation from last read (if there is one) and object to store the new unfinished
+    // operation in (if there is one)
     private UnfinishedImExporterOperation m_unfinishedOperation;
 
     // Re-use exception to avoid "new"
@@ -445,7 +446,6 @@ class LargeMessageExporter extends AbstractMessageExporter {
 
     @Override
     public int writeBytes(final byte[] p_array, final int p_offset, final int p_length) {
-
         if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
             // Byte array was read before
             m_skippedBytes += p_length;

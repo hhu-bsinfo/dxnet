@@ -44,8 +44,9 @@ class MessageExporterCollection {
 
     @Override
     public String toString() {
-        return "m_exporter [" + m_exporter + "], m_exporterOverflow [" + m_exporterOverflow + "], m_exporterLargeMessage [" + m_exporterLargeMessage +
-                "], m_unfinishedOperation [" + m_unfinishedOperation + ']';
+        return "m_exporter [" + m_exporter + "], m_exporterOverflow [" + m_exporterOverflow +
+                "], m_exporterLargeMessage [" + m_exporterLargeMessage + "], m_unfinishedOperation [" +
+                m_unfinishedOperation + ']';
     }
 
     /**

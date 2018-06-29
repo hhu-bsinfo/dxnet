@@ -45,8 +45,9 @@ public class MessageImporterCollection {
 
     @Override
     public String toString() {
-        return "m_importer [" + m_importer + "]\nm_importerOverflow [" + m_importerOverflow + "]\nm_importerUnderflow [" + m_importerUnderflow +
-                "]\nm_importerUnderOverflow [" + m_importerUnderOverflow + "]\nCurrent used (" + m_currentUsed.getClass().getSimpleName() + ") [" +
+        return "m_importer [" + m_importer + "]\nm_importerOverflow [" + m_importerOverflow +
+                "]\nm_importerUnderflow [" + m_importerUnderflow + "]\nm_importerUnderOverflow [" +
+                m_importerUnderOverflow + "]\nCurrent used (" + m_currentUsed.getClass().getSimpleName() + ") [" +
                 m_currentUsed + "]\nPrev used (" + m_prevUsed.getClass().getSimpleName() + ") [" + m_prevUsed + ']';
     }
 
@@ -63,8 +64,8 @@ public class MessageImporterCollection {
      *         size of message's payload
      * @return the AbstractMessageImporter
      */
-    AbstractMessageImporter getImporter(final int p_payloadSize, final long p_addr, final int p_position, final int p_bufferSize,
-            final UnfinishedImExporterOperation p_unfinishedOperation) {
+    AbstractMessageImporter getImporter(final int p_payloadSize, final long p_addr, final int p_position,
+            final int p_bufferSize, final UnfinishedImExporterOperation p_unfinishedOperation) {
         AbstractMessageImporter ret;
         int bytesCopied = p_unfinishedOperation.getBytesCopied();
 
