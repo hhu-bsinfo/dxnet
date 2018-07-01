@@ -396,12 +396,11 @@ public abstract class AbstractPipeIn {
         Request request;
 
         if (p_header.isAborted()) {
-            // this is a response which is split to several buffers and is too late to be used
+            // This is a response which is split to several buffers and is too late to be used
             if (p_unfinishedOperation.getBytesCopied() + p_bytesAvailable >= p_header.getPayloadSize()) {
                 finishHeader(p_header, p_slot, p_messageHeaderPool);
             } else {
-                // do not return message header to pool!
-                updateBufferSlot(p_slot);
+                // We do not have to return buffer (executed by MCC) and header (message still incomplete) here!
             }
 
             return p_unfinishedOperation.getMessage();
@@ -413,7 +412,6 @@ public abstract class AbstractPipeIn {
 
             // Important: set corresponding request BEFORE readPayload. The call might use the request
             if (message.isResponse()) {
-
                 // hack:
                 // to avoid copying data multiple times, some responses use the same objects provided
                 // with the request to directly write the data to them instead of creating a temporary
@@ -426,28 +424,31 @@ public abstract class AbstractPipeIn {
                 Response response = (Response) message;
                 request = m_requestMap.getRequest(response);
 
-                // abort if request timed out but response arrived very late
-                // which results in not finding the corresponding request anymore
-                // just drop the response because the data for it is already skipped
-                if (request == null) {
-                    // cleanup
-                    if (p_bytesAvailable < p_header.getPayloadSize()) {
-                        // if the response is split we have to abort the response deserialization
-                        p_header.abort();
-                        // do not return message header to pool!
-                        updateBufferSlot(p_slot);
-                    } else {
-                        finishHeader(p_header, p_slot, p_messageHeaderPool);
-                    }
-
-                    return message;
+                if (request != null) {
+                    response.setCorrespondingRequest(request);
                 }
-
-                response.setCorrespondingRequest(request);
             }
         } else {
             // Continue with partly de-serialized message
             message = p_unfinishedOperation.getMessage();
+        }
+
+        if (message.isResponse()) {
+            request = m_requestMap.getRequest((Response) message);
+
+            // abort if request timed out but response arrived very late
+            // which results in not finding the corresponding request anymore
+            // just drop the response because the data for it is already skipped
+            if (request == null) {
+                // cleanup
+                if (p_unfinishedOperation.getBytesCopied() + p_bytesAvailable >= p_header.getPayloadSize()) {
+                    finishHeader(p_header, p_slot, p_messageHeaderPool);
+                } else {
+                    // We do not have to return buffer (executed by MCC) and header (message still incomplete) here!
+                }
+
+                return message;
+            }
         }
 
         if (!readPayload(p_currentPosition, message, p_address, p_bytesAvailable, p_header.getPayloadSize(),
