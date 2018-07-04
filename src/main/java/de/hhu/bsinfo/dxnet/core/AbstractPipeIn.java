@@ -682,10 +682,11 @@ public abstract class AbstractPipeIn {
 
         int readBytes = importer.getNumberOfReadBytes();
         if (readBytes < p_bytesToRead) {
-            throw new NetworkException("Message buffer is too large: " + p_bytesToRead + " > " + readBytes +
-                    " (payload in bytes), current Message: " + p_message.getClass().getName() + ", importer type: " +
-                    importer.getClass().getSimpleName() + ", importer detail: " + importer +
-                    "\nImporterCollectionState:\n" + p_importerCollection);
+            throw new NetworkException(
+                    "Message deserialization finished too early (without overflow): " + p_bytesToRead +
+                            " (payload size) > " + readBytes + " (deserialized bytes), current Message: " +
+                            p_message.getClass().getName() + ", importer type: " + importer.getClass().getSimpleName() +
+                            ", importer detail: " + importer + "\nImporterCollectionState:\n" + p_importerCollection);
         }
 
         return true;
