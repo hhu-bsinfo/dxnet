@@ -43,8 +43,8 @@ class MessageExporterOverflow extends AbstractMessageExporter {
 
     @Override
     public String toString() {
-        return "m_bufferAddress 0x" + Long.toHexString(m_bufferAddress) + ", m_bufferSize " + m_bufferSize + ", m_currentPosition " + m_currentPosition +
-                ", m_startPosition " + m_startPosition;
+        return "m_bufferAddress 0x" + Long.toHexString(m_bufferAddress) + ", m_bufferSize " + m_bufferSize +
+                ", m_currentPosition " + m_currentPosition + ", m_startPosition " + m_startPosition;
     }
 
     @Override
@@ -93,7 +93,7 @@ class MessageExporterOverflow extends AbstractMessageExporter {
 
     @Override
     public void writeShort(final short p_v) {
-        if (m_currentPosition + Short.BYTES < m_bufferSize) {
+        if (m_currentPosition + Short.BYTES <= m_bufferSize) {
             UnsafeMemory.writeShort(m_bufferAddress + m_currentPosition, p_v);
             m_currentPosition += Short.BYTES;
         } else {
@@ -114,7 +114,7 @@ class MessageExporterOverflow extends AbstractMessageExporter {
 
     @Override
     public void writeInt(final int p_v) {
-        if (m_currentPosition + Integer.BYTES < m_bufferSize) {
+        if (m_currentPosition + Integer.BYTES <= m_bufferSize) {
             UnsafeMemory.writeInt(m_bufferAddress + m_currentPosition, p_v);
             m_currentPosition += Integer.BYTES;
         } else {
@@ -135,7 +135,7 @@ class MessageExporterOverflow extends AbstractMessageExporter {
 
     @Override
     public void writeLong(final long p_v) {
-        if (m_currentPosition + Long.BYTES < m_bufferSize) {
+        if (m_currentPosition + Long.BYTES <= m_bufferSize) {
             UnsafeMemory.writeLong(m_bufferAddress + m_currentPosition, p_v);
             m_currentPosition += Long.BYTES;
         } else {
@@ -202,12 +202,14 @@ class MessageExporterOverflow extends AbstractMessageExporter {
 
     @Override
     public int writeBytes(final byte[] p_array, final int p_offset, final int p_length) {
-        if (m_currentPosition + p_length < m_bufferSize) {
+        if (m_currentPosition + p_length <= m_bufferSize) {
             int ret = UnsafeMemory.writeBytes(m_bufferAddress + m_currentPosition, p_array, p_offset, p_length);
             m_currentPosition += Byte.BYTES * ret;
         } else {
-            UnsafeMemory.writeBytes(m_bufferAddress + m_currentPosition, p_array, p_offset, m_bufferSize - m_currentPosition);
-            UnsafeMemory.writeBytes(m_bufferAddress, p_array, p_offset + m_bufferSize - m_currentPosition, p_length - (m_bufferSize - m_currentPosition));
+            UnsafeMemory.writeBytes(m_bufferAddress + m_currentPosition, p_array, p_offset,
+                    m_bufferSize - m_currentPosition);
+            UnsafeMemory.writeBytes(m_bufferAddress, p_array, p_offset + m_bufferSize - m_currentPosition,
+                    p_length - (m_bufferSize - m_currentPosition));
             m_currentPosition = p_length - (m_bufferSize - m_currentPosition);
         }
 

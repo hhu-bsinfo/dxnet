@@ -23,7 +23,8 @@ import de.hhu.bsinfo.dxutils.serialization.Importable;
 import de.hhu.bsinfo.dxutils.serialization.ObjectSizeUtil;
 
 /**
- * Implementation of an Importer for network messages, used after overflow and with insufficient buffer length (large messages).
+ * Implementation of an Importer for network messages, used after overflow and with
+ * insufficient buffer length (large messages).
  *
  * @author Kevin Beineke, kevin.beineke@hhu.de, 12.07.2017
  */
@@ -37,7 +38,8 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
     private int m_skipBytes;
     private int m_skippedBytes;
 
-    // The unfinished operation from last read (overflow) and when new overflow happens, stores the start of the block that's unfinished (and object)
+    // The unfinished operation from last read (overflow) and when new overflow happens, stores the start of the block
+    // that's unfinished (and object)
     private UnfinishedImExporterOperation m_unfinishedOperation;
 
     // Re-use exception to avoid "new"
@@ -412,7 +414,7 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
             // Bytes were partly de-serialized -> continue
             int bytesCopied = m_skipBytes - m_skippedBytes;
 
-            if (m_currentPosition + p_length - bytesCopied >= m_bufferSize) {
+            if (m_currentPosition + p_length - bytesCopied > m_bufferSize) {
                 // Overflow
                 UnsafeMemory.readBytes(m_bufferAddress + m_currentPosition, p_array, p_offset + bytesCopied,
                         m_bufferSize - m_currentPosition);
@@ -429,7 +431,7 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
 
             return p_length;
         } else {
-            if (m_currentPosition + p_length >= m_bufferSize) {
+            if (m_currentPosition + p_length > m_bufferSize) {
                 // Overflow
                 UnsafeMemory.readBytes(m_bufferAddress + m_currentPosition, p_array, p_offset,
                         m_bufferSize - m_currentPosition);
@@ -462,7 +464,7 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
             // Bytes were partly de-serialized -> continue
             int bytesCopied = m_skipBytes - m_skippedBytes;
 
-            if (m_currentPosition + p_length - bytesCopied >= m_bufferSize) {
+            if (m_currentPosition + p_length - bytesCopied > m_bufferSize) {
                 // Overflow
                 UnsafeMemory
                         .copyBytes(m_bufferAddress + m_currentPosition, p_byteBufferAddress + p_offset + bytesCopied,
@@ -480,7 +482,7 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
 
             return p_length;
         } else {
-            if (m_currentPosition + p_length >= m_bufferSize) {
+            if (m_currentPosition + p_length > m_bufferSize) {
                 // Overflow
                 UnsafeMemory.copyBytes(m_bufferAddress + m_currentPosition, p_byteBufferAddress + p_offset,
                         m_bufferSize - m_currentPosition);
