@@ -594,6 +594,8 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
                 m_unfinishedOperation.setObject(arr);
                 throw e;
             }
+            m_unfinishedOperation.setObject(null);
+
             return arr;
         } else {
             // Read bytes normally as all previously read bytes have been skipped already
@@ -642,6 +644,8 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
                 m_unfinishedOperation.setObject(arr);
                 throw e;
             }
+            m_unfinishedOperation.setObject(null);
+
             return arr;
         } else {
             // Read shorts normally as all previously read bytes have been skipped already
@@ -690,6 +694,8 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
                 m_unfinishedOperation.setObject(arr);
                 throw e;
             }
+            m_unfinishedOperation.setObject(null);
+
             return arr;
         } else {
             // Read integers normally as all previously read bytes have been skipped already
@@ -738,6 +744,8 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
                 m_unfinishedOperation.setObject(arr);
                 throw e;
             }
+            m_unfinishedOperation.setObject(null);
+
             return arr;
         } else {
             // Read longs normally as all previously read bytes have been skipped already
