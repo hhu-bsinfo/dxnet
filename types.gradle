@@ -1,0 +1,34 @@
+buildTypes {
+
+    debug {
+
+        buildConfig {
+
+            typedField "DEBUG", Boolean, true
+
+            typedField "BUILD_TYPE", String, buildType
+
+            typedField "GIT_COMMIT", String, gitCommit
+        }
+    }
+
+    release {
+
+        excludeInvocations 'org.apache.logging.log4j.Logger'
+
+        buildConfig {
+
+            inheritsFrom 'debug'
+
+            typedField "DEBUG", Boolean, false
+        }
+    }
+
+    statistics {
+
+        buildConfig {
+
+            inheritsFrom 'debug'
+        }
+    }
+}
