@@ -228,6 +228,72 @@ class LargeMessageExporter extends AbstractMessageExporter {
     }
 
     @Override
+    public void writeChar(final char p_v) {
+        if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
+            // Char was written before
+            m_skippedBytes += Character.BYTES;
+        } else if (m_skippedBytes < m_skipBytes - Character.BYTES) {
+            // Char is part of an array and was written before
+            m_skippedBytes += Character.BYTES;
+        } else {
+            int bytesToSkip = 0;
+
+            if (m_skippedBytes < m_skipBytes) {
+                // Char was partly serialized -> skip already written bytes
+                bytesToSkip += m_skipBytes - m_skippedBytes;
+                m_skippedBytes = m_skipBytes;
+            }
+
+            if (m_currentPosition + Character.BYTES - bytesToSkip < m_bufferSize) {
+                // No ring buffer overflow
+                for (int i = bytesToSkip; i < Character.BYTES; i++) {
+                    if (m_currentPosition == m_endPosition) {
+                        // Message overflow
+                        // Not enough space in buffer currently -> abort
+                        m_unfinishedOperation.setIndex(getNumberOfWrittenBytes() - i);
+                        throw m_exception;
+                    }
+
+                    // big endian to little endian
+                    UnsafeMemory.writeByte(m_bufferAddress + m_currentPosition, (byte) (p_v >> i * 8 & 0xFF));
+                    m_currentPosition++;
+                }
+            } else {
+                // Ring buffer overflow
+                // Write first part
+                int i;
+                for (i = bytesToSkip; i < Character.BYTES && m_currentPosition < m_bufferSize; i++) {
+                    if (m_currentPosition == m_endPosition) {
+                        // Message overflow
+                        // Not enough space in buffer currently -> abort
+                        m_unfinishedOperation.setIndex(getNumberOfWrittenBytes() - i);
+                        throw m_exception;
+                    }
+
+                    // big endian to little endian
+                    UnsafeMemory.writeByte(m_bufferAddress + m_currentPosition, (byte) (p_v >> i * 8 & 0xFF));
+                    m_currentPosition++;
+                }
+
+                // Write second part
+                m_currentPosition = 0;
+                for (int j = i; j < Character.BYTES; j++) {
+                    if (m_currentPosition == m_endPosition) {
+                        // Message overflow
+                        // Not enough space in buffer currently -> abort
+                        m_unfinishedOperation.setIndex(getNumberOfWrittenBytes() - i);
+                        throw m_exception;
+                    }
+
+                    // big endian to little endian
+                    UnsafeMemory.writeByte(m_bufferAddress + m_currentPosition, (byte) (p_v >> j * 8 & 0xFF));
+                    m_currentPosition++;
+                }
+            }
+        }
+    }
+
+    @Override
     public void writeInt(final int p_v) {
         if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
             // Int was written before
@@ -435,6 +501,11 @@ class LargeMessageExporter extends AbstractMessageExporter {
     }
 
     @Override
+    public int writeChars(final char[] p_array) {
+        return writeChars(p_array, 0, p_array.length);
+    }
+
+    @Override
     public int writeInts(final int[] p_array) {
         return writeInts(p_array, 0, p_array.length);
     }
@@ -534,6 +605,21 @@ class LargeMessageExporter extends AbstractMessageExporter {
     }
 
     @Override
+    public int writeChars(final char[] p_array, final int p_offset, final int p_length) {
+        int charsToSkip = 0;
+        if (m_skippedBytes < m_skipBytes) {
+            charsToSkip = (m_skipBytes - m_skippedBytes) / Character.BYTES;
+            m_skippedBytes = m_skipBytes - (m_skipBytes - m_skippedBytes) % Character.BYTES;
+        }
+
+        for (int i = charsToSkip; i < p_length; i++) {
+            writeChar(p_array[p_offset + i]);
+        }
+
+        return p_length;
+    }
+
+    @Override
     public int writeInts(final int[] p_array, final int p_offset, final int p_length) {
         int intsToSkip = 0;
         if (m_skippedBytes < m_skipBytes) {
@@ -591,6 +677,24 @@ class LargeMessageExporter extends AbstractMessageExporter {
             writeCompactNumber(p_array.length);
             try {
                 writeShorts(p_array);
+            } catch (final ArrayIndexOutOfBoundsException e) {
+                // Not enough space in buffer currently -> abort
+                m_unfinishedOperation.setIndex(startPosition);
+                throw e;
+            }
+        }
+    }
+
+    @Override
+    public void writeCharArray(char[] p_array) {
+        if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
+            // Array length and array were written before
+            m_skippedBytes += ObjectSizeUtil.sizeofCompactedNumber(p_array.length) + p_array.length * Character.BYTES;
+        } else {
+            int startPosition = getNumberOfWrittenBytes();
+            writeCompactNumber(p_array.length);
+            try {
+                writeChars(p_array);
             } catch (final ArrayIndexOutOfBoundsException e) {
                 // Not enough space in buffer currently -> abort
                 m_unfinishedOperation.setIndex(startPosition);

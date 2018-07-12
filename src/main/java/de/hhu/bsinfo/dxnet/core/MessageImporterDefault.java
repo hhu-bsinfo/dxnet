@@ -49,7 +49,8 @@ public class MessageImporterDefault extends AbstractMessageImporter {
 
     @Override
     public String toString() {
-        return "m_usedCounter " + getUsedCounter() + ", m_bufferAddress 0x" + Long.toHexString(m_bufferAddress) + ", m_currentPosition " + m_currentPosition +
+        return "m_usedCounter " + getUsedCounter() + ", m_bufferAddress 0x" + Long.toHexString(m_bufferAddress) +
+                ", m_currentPosition " + m_currentPosition +
                 ", m_startPosition " + m_startPosition;
     }
 
@@ -103,6 +104,14 @@ public class MessageImporterDefault extends AbstractMessageImporter {
     public short readShort(final short p_short) {
         short ret = UnsafeMemory.readShort(m_bufferAddress + m_currentPosition);
         m_currentPosition += Short.BYTES;
+
+        return ret;
+    }
+
+    @Override
+    public char readChar(final char p_char) {
+        char ret = UnsafeMemory.readChar(m_bufferAddress + m_currentPosition);
+        m_currentPosition += Character.BYTES;
 
         return ret;
     }
@@ -174,6 +183,11 @@ public class MessageImporterDefault extends AbstractMessageImporter {
     }
 
     @Override
+    public int readChars(final char[] p_array) {
+        return readChars(p_array, 0, p_array.length);
+    }
+
+    @Override
     public int readInts(final int[] p_array) {
         return readInts(p_array, 0, p_array.length);
     }
@@ -208,6 +222,14 @@ public class MessageImporterDefault extends AbstractMessageImporter {
     }
 
     @Override
+    public int readChars(final char[] p_array, final int p_offset, final int p_length) {
+        int ret = UnsafeMemory.readChars(m_bufferAddress + m_currentPosition, p_array, p_offset, p_length);
+        m_currentPosition += ret * Character.BYTES;
+
+        return ret;
+    }
+
+    @Override
     public int readInts(final int[] p_array, final int p_offset, final int p_length) {
         int ret = UnsafeMemory.readInts(m_bufferAddress + m_currentPosition, p_array, p_offset, p_length);
         m_currentPosition += ret * Integer.BYTES;
@@ -234,6 +256,13 @@ public class MessageImporterDefault extends AbstractMessageImporter {
     public short[] readShortArray(final short[] p_array) {
         short[] arr = new short[readCompactNumber(0)];
         readShorts(arr);
+        return arr;
+    }
+
+    @Override
+    public char[] readCharArray(final char[] p_array) {
+        char[] arr = new char[readCompactNumber(0)];
+        readChars(arr);
         return arr;
     }
 

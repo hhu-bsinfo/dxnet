@@ -143,6 +143,38 @@ class MessageImporterUnderflow extends AbstractMessageImporter {
     }
 
     @Override
+    public char readChar(final char p_char) {
+        if (m_skippedBytes < m_skipBytes) {
+            // Number of bytes to skip might be larger than Character.Bytes if this short was read before
+            int count = 0;
+            char ret = (char) m_unfinishedOperation.getPrimitive();
+            for (int i = m_skipBytes - m_skippedBytes; i < Character.BYTES; i++) {
+                // read little endian byte order to big endian
+                ret |= (UnsafeMemory.readByte(m_bufferAddress + m_currentPosition) & 0xFF) << i * 8;
+                m_currentPosition++;
+                count++;
+            }
+            m_skippedBytes += Character.BYTES - count;
+
+            if (count == 0) {
+                // char was read before, return passed value
+                return p_char;
+            } else {
+                return ret;
+            }
+        } else {
+            // Read short normally as all previously read bytes have been skipped already
+            char ret = 0;
+            for (int i = 0; i < Character.BYTES; i++) {
+                // read little endian byte order to big endian
+                ret |= (UnsafeMemory.readByte(m_bufferAddress + m_currentPosition) & 0xFF) << i * 8;
+                m_currentPosition++;
+            }
+            return ret;
+        }
+    }
+
+    @Override
     public int readInt(final int p_int) {
         if (m_skippedBytes < m_skipBytes) {
             // Number of bytes to skip might be larger than Integer.Bytes if this int was read before
@@ -282,6 +314,11 @@ class MessageImporterUnderflow extends AbstractMessageImporter {
     }
 
     @Override
+    public int readChars(final char[] p_array) {
+        return readChars(p_array, 0, p_array.length);
+    }
+
+    @Override
     public int readInts(int[] p_array) {
         return readInts(p_array, 0, p_array.length);
     }
@@ -343,6 +380,21 @@ class MessageImporterUnderflow extends AbstractMessageImporter {
 
         for (int i = shortsToSkip; i < p_length; i++) {
             p_array[p_offset + i] = readShort(p_array[p_offset + i]);
+        }
+
+        return p_length;
+    }
+
+    @Override
+    public int readChars(final char[] p_array, final int p_offset, final int p_length) {
+        int charsToSkip = 0;
+        if (m_skippedBytes < m_skipBytes) {
+            charsToSkip = (m_skipBytes - m_skippedBytes) / Character.BYTES;
+            m_skippedBytes = m_skipBytes - (m_skipBytes - m_skippedBytes) % Character.BYTES;
+        }
+
+        for (int i = charsToSkip; i < p_length; i++) {
+            p_array[p_offset + i] = readChar(p_array[p_offset + i]);
         }
 
         return p_length;
@@ -428,6 +480,33 @@ class MessageImporterUnderflow extends AbstractMessageImporter {
             // Read shorts normally as all previously read bytes have been skipped already
             short[] arr = new short[readCompactNumber(0)];
             readShorts(arr);
+            return arr;
+        }
+    }
+
+    @Override
+    public char[] readCharArray(final char[] p_array) {
+        if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
+            // Array length and array were read before, return passed array
+            m_skippedBytes += ObjectSizeUtil.sizeofCompactedNumber(p_array.length) + p_array.length * Character.BYTES;
+            return p_array;
+        } else if (m_skippedBytes < m_skipBytes) {
+            // Short array was partly de-serialized -> continue
+            char[] arr;
+            if (m_unfinishedOperation.getObject() == null) {
+                // Array length has not been read completely
+                arr = new char[readCompactNumber(0)];
+            } else {
+                // Array was created before but is incomplete
+                arr = (char[]) m_unfinishedOperation.getObject();
+                m_skippedBytes += ObjectSizeUtil.sizeofCompactedNumber(arr.length);
+            }
+            readChars(arr);
+            return arr;
+        } else {
+            // Read shorts normally as all previously read bytes have been skipped already
+            char[] arr = new char[readCompactNumber(0)];
+            readChars(arr);
             return arr;
         }
     }

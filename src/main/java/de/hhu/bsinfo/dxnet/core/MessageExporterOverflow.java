@@ -113,6 +113,27 @@ class MessageExporterOverflow extends AbstractMessageExporter {
     }
 
     @Override
+    public void writeChar(final char p_v) {
+        if (m_currentPosition + Character.BYTES <= m_bufferSize) {
+            UnsafeMemory.writeChar(m_bufferAddress + m_currentPosition, p_v);
+            m_currentPosition += Character.BYTES;
+        } else {
+            int i;
+            for (i = 0; i < Character.BYTES && m_currentPosition < m_bufferSize; i++) {
+                // big endian to little endian
+                UnsafeMemory.writeByte(m_bufferAddress + m_currentPosition, (byte) (p_v >> i * 8 & 0xFF));
+                m_currentPosition++;
+            }
+            m_currentPosition = 0;
+            for (int j = i; j < Character.BYTES; j++) {
+                // big endian to little endian
+                UnsafeMemory.writeByte(m_bufferAddress + m_currentPosition, (byte) (p_v >> j * 8 & 0xFF));
+                m_currentPosition++;
+            }
+        }
+    }
+
+    @Override
     public void writeInt(final int p_v) {
         if (m_currentPosition + Integer.BYTES <= m_bufferSize) {
             UnsafeMemory.writeInt(m_bufferAddress + m_currentPosition, p_v);
@@ -191,6 +212,11 @@ class MessageExporterOverflow extends AbstractMessageExporter {
     }
 
     @Override
+    public int writeChars(final char[] p_array) {
+        return writeChars(p_array, 0, p_array.length);
+    }
+
+    @Override
     public int writeInts(final int[] p_array) {
         return writeInts(p_array, 0, p_array.length);
     }
@@ -226,6 +252,15 @@ class MessageExporterOverflow extends AbstractMessageExporter {
     }
 
     @Override
+    public int writeChars(final char[] p_array, final int p_offset, final int p_length) {
+        for (int i = 0; i < p_length; i++) {
+            writeChar(p_array[p_offset + i]);
+        }
+
+        return p_length;
+    }
+
+    @Override
     public int writeInts(final int[] p_array, final int p_offset, final int p_length) {
         for (int i = 0; i < p_length; i++) {
             writeInt(p_array[p_offset + i]);
@@ -253,6 +288,12 @@ class MessageExporterOverflow extends AbstractMessageExporter {
     public void writeShortArray(final short[] p_array) {
         writeCompactNumber(p_array.length);
         writeShorts(p_array);
+    }
+
+    @Override
+    public void writeCharArray(final char[] p_array) {
+        writeCompactNumber(p_array.length);
+        writeChars(p_array);
     }
 
     @Override

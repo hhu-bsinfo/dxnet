@@ -42,7 +42,8 @@ class MessageExporterDefault extends AbstractMessageExporter {
 
     @Override
     public String toString() {
-        return "m_bufferAddress 0x" + Long.toHexString(m_bufferAddress) + ", m_currentPosition " + m_currentPosition + ", m_startPosition " + m_startPosition;
+        return "m_bufferAddress 0x" + Long.toHexString(m_bufferAddress) + ", m_currentPosition " + m_currentPosition +
+                ", m_startPosition " + m_startPosition;
     }
 
     @Override
@@ -82,6 +83,12 @@ class MessageExporterDefault extends AbstractMessageExporter {
     public void writeShort(final short p_v) {
         UnsafeMemory.writeShort(m_bufferAddress + m_currentPosition, p_v);
         m_currentPosition += Short.BYTES;
+    }
+
+    @Override
+    public void writeChar(final char p_v) {
+        UnsafeMemory.writeChar(m_bufferAddress + m_currentPosition, p_v);
+        m_currentPosition += Character.BYTES;
     }
 
     @Override
@@ -138,6 +145,11 @@ class MessageExporterDefault extends AbstractMessageExporter {
     }
 
     @Override
+    public int writeChars(char[] p_array) {
+        return writeChars(p_array, 0, p_array.length);
+    }
+
+    @Override
     public int writeInts(final int[] p_array) {
         return writeInts(p_array, 0, p_array.length);
     }
@@ -159,6 +171,14 @@ class MessageExporterDefault extends AbstractMessageExporter {
     public int writeShorts(final short[] p_array, final int p_offset, final int p_length) {
         int ret = UnsafeMemory.writeShorts(m_bufferAddress + m_currentPosition, p_array, p_offset, p_length);
         m_currentPosition += Short.BYTES * ret;
+
+        return ret;
+    }
+
+    @Override
+    public int writeChars(final char[] p_array, final int p_offset, final int p_length) {
+        int ret = UnsafeMemory.writeChars(m_bufferAddress + m_currentPosition, p_array, p_offset, p_length);
+        m_currentPosition += Character.BYTES * ret;
 
         return ret;
     }
@@ -189,6 +209,12 @@ class MessageExporterDefault extends AbstractMessageExporter {
     public void writeShortArray(final short[] p_array) {
         writeCompactNumber(p_array.length);
         writeShorts(p_array);
+    }
+
+    @Override
+    public void writeCharArray(char[] p_array) {
+        writeCompactNumber(p_array.length);
+        writeChars(p_array);
     }
 
     @Override
