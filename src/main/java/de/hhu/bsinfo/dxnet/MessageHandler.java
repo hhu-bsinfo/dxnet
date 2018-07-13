@@ -166,9 +166,9 @@ class MessageHandler extends Thread {
                         SOP_EXECUTE.stop();
                         // #endif /* STATISTICS */
                     } else {
-                        // #if LOGGER >= ERROR
-                        LOGGER.error("No message receiver was registered for %d, %d!", type, subtype);
-                        // #endif /* LOGGER >= ERROR */
+                        // #if LOGGER >= WARN
+                        LOGGER.warn("No message receiver was registered for %d, %d!", type, subtype);
+                        // #endif /* LOGGER >= WARN */
                     }
                     continue;
                 } else {
@@ -202,9 +202,9 @@ class MessageHandler extends Thread {
                     SOP_EXECUTE.stop();
                     // #endif /* STATISTICS */
                 } else {
-                    // #if LOGGER >= ERROR
-                    LOGGER.error("No message receiver was registered for %d, %d!", type, subtype);
-                    // #endif /* LOGGER >= ERROR */
+                    // #if LOGGER >= WARN
+                    LOGGER.warn("No message receiver was registered for %d, %d!", type, subtype);
+                    // #endif /* LOGGER >= WARN */
                 }
             }
         }
