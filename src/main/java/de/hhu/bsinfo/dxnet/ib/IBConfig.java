@@ -41,7 +41,7 @@ public class IBConfig {
     private StorageUnit m_flowControlWindow = new StorageUnit(16, StorageUnit.MB);
 
     @Expose
-    private float m_flowControlWindowThreshold = 0.8f;
+    private float m_flowControlWindowThreshold = 0.1f;
 
     @Expose
     private StorageUnit m_outgoingRingBufferSize = new StorageUnit(4, StorageUnit.MB);
@@ -56,7 +56,7 @@ public class IBConfig {
     private StorageUnit m_incomingBufferSize = new StorageUnit(32, StorageUnit.KB);
 
     @Expose
-    private StorageUnit m_incomingBufferPoolTotalSize = new StorageUnit(1, StorageUnit.GB);
+    private StorageUnit m_incomingBufferPoolTotalSize = new StorageUnit(2, StorageUnit.GB);
 
     @Expose
     private int m_sqSize = 20;
@@ -71,13 +71,13 @@ public class IBConfig {
     private int m_sharedRCQSize = m_srqSize;
 
     @Expose
-    private int m_maxSGEs = 2;
+    private int m_maxSGEs = 4;
 
     @Expose
     private boolean m_enableSignalHandler = false;
 
     @Expose
-    private boolean m_pinSendRecvThreads = true;
+    private boolean m_pinSendRecvThreads = false;
 
     @Expose
     private int m_statisticsThreadPrintIntervalMs = 0;
