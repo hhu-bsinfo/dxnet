@@ -73,9 +73,7 @@ public class LoopbackFlowControl extends AbstractFlowControl {
             throw new IllegalStateException("Negative flow control");
         }
 
-        // #if LOGGER >= TRACE
         LOGGER.trace("getAndResetFlowControlData (%X): %d", m_destinationNodeID, bytesLeft);
-        // #endif /* LOGGER >= TRACE */
 
         return ret;
     }

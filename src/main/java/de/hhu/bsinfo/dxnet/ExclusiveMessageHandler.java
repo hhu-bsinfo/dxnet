@@ -59,9 +59,7 @@ final class ExclusiveMessageHandler {
             final boolean p_overprovisioning) {
         m_exclusiveMessageHeaders = new MessageHeaderStore(EXCLUSIVE_MESSAGE_STORE_SIZE);
 
-        // #if LOGGER >= INFO
         LOGGER.info("Network: ExclusiveMessageHandler: Initialising thread");
-        // #endif /* LOGGER >= INFO */
 
         m_exclusiveMessageHandler = new MessageHandler(p_messageReceivers, m_exclusiveMessageHeaders,
                 p_messageHeaderPool, p_overprovisioning);
@@ -79,13 +77,9 @@ final class ExclusiveMessageHandler {
 
         try {
             m_exclusiveMessageHandler.join();
-            // #if LOGGER >= INFO
             LOGGER.info("Shutdown of ExclusiveMessageHandler successful");
-            // #endif /* LOGGER >= INFO */
         } catch (final InterruptedException e) {
-            // #if LOGGER >= WARN
             LOGGER.warn("Could not wait for exclusive message handler to finish. Interrupted");
-            // #endif /* LOGGER >= WARN */
         }
     }
 

@@ -120,9 +120,7 @@ public abstract class AbstractConnectionManager {
             connectionLock = getConnectionLock(p_destination);
             connectionLock.lock();
 
-            // #if LOGGER >= DEBUG
             LOGGER.debug("Active create connection to: 0x%X", p_destination);
-            // #endif /* LOGGER >= DEBUG */
 
             ret = m_connections[p_destination & 0xFFFF];
             if (ret == null || !ret.getPipeOut().isConnected()) {
@@ -135,15 +133,11 @@ public abstract class AbstractConnectionManager {
                 }
 
                 if (ret != null) {
-                    // #if LOGGER >= DEBUG
                     LOGGER.debug("Connection created: 0x%X", p_destination);
-                    // #endif /* LOGGER >= DEBUG */
 
                     m_connections[p_destination & 0xFFFF] = ret;
                 } else {
-                    // #if LOGGER >= ERROR
                     LOGGER.warn("Connection creation was aborted!");
-                    // #endif /* LOGGER >= ERROR */
                 }
             }
 
@@ -248,9 +242,7 @@ public abstract class AbstractConnectionManager {
             dismiss = m_connections[random & 0xFFFF];
         }
 
-        // #if LOGGER >= WARN
         LOGGER.warn("Removing randomly selected connection 0x%X", (short) random);
-        // #endif /* LOGGER >= WARN */
 
         m_connections[random & 0xFFFF] = null;
         UnsafeHandler.getInstance().getUnsafe().storeFence();

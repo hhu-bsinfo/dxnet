@@ -52,11 +52,9 @@ public final class DynamicExporterPool extends AbstractExporterPool {
         ret = m_exporters.get(threadID);
         if (ret == null) {
             if (m_exporters.size() > THRESHOLD) {
-                // #if LOGGER >= DEBUG
                 LOGGER.debug(
                         "Many threads actively sending messages (>%d). Clearing hash map to reduce memory overhead.",
                         m_exporters.size());
-                // #endif /* LOGGER >= DEBUG */
             }
 
             ret = new MessageExporterCollection();

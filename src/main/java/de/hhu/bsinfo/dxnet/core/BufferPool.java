@@ -155,9 +155,7 @@ public final class BufferPool {
         }
 
         // All buffer pools are empty
-        // #if LOGGER >= WARN
         LOGGER.warn("Insufficient pooled incoming buffers. Allocating temporary buffer with size %d.", m_osBufferSize);
-        // #endif /* LOGGER >= WARN */
 
         return new DirectBufferWrapper(m_osBufferSize);
     }
@@ -262,10 +260,8 @@ public final class BufferPool {
 
         // Return without adding the incoming buffer if pool is full or buffer size is incompatible (was created
         // after initialization)
-        // #if LOGGER >= WARN
         LOGGER.warn("Could not add incoming buffer because size (%d) does not match!",
                 p_directBufferWrapper.getBuffer().capacity());
-        // #endif /* LOGGER >= WARN */
     }
 
     /**

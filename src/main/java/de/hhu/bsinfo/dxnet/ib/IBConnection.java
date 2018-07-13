@@ -92,18 +92,15 @@ class IBConnection extends AbstractConnection<IBPipeIn, IBPipeOut> {
 
         if (!p_force) {
             if (!getPipeOut().isOutgoingQueueEmpty()) {
-                // #if LOGGER >= DEBUG
                 LOGGER.debug("Waiting for all scheduled messages to be sent over to be closed connection!");
-                // #endif /* LOGGER >= DEBUG */
+
                 long start = System.currentTimeMillis();
 
                 while (!getPipeOut().isOutgoingQueueEmpty()) {
                     Thread.yield();
 
                     if (System.currentTimeMillis() - start > 2000) {
-                        // #if LOGGER >= ERROR
                         LOGGER.debug("Waiting for all scheduled messages to be sent over aborted, timeout");
-                        // #endif /* LOGGER >= ERROR */
                         break;
                     }
                 }

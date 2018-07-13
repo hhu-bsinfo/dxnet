@@ -155,86 +155,62 @@ public class DXNetConfig {
      */
     protected boolean verify() {
         if (!new File(m_jniPath).exists()) {
-            // #if LOGGER >= ERROR
             LOGGER.error("Path for JNI libs %s does not exist", m_jniPath);
-            // #endif /* LOGGER >= ERROR */
             return false;
         }
 
         if (m_nodesConfig.size() < 2 && !m_coreConfig.isDeviceLoopback()) {
-            // #if LOGGER >= ERROR
             LOGGER.error("Less than two nodes found in nodes config. At least two nodes required (non loopback)");
-            // #endif /* LOGGER >= ERROR */
             return false;
         }
 
         if (m_coreConfig.getRequestMapSize() <= (int) Math.pow(2, 15)) {
-            // #if LOGGER >= WARN
             LOGGER.warn("Request map entry count is rather small. Requests might be discarded!");
-            // #endif /* LOGGER >= WARN */
             return true;
         }
 
         if ((m_coreConfig.getRequestMapSize() & m_coreConfig.getRequestMapSize() - 1) != 0) {
-            // #if LOGGER >= ERROR
             LOGGER.error("Request map size must be pow2!");
-            // #endif /* LOGGER >= ERROR */
             return true;
         }
 
         if (m_nioConfig.getFlowControlWindow().getBytes() * 2 > m_nioConfig.getOugoingRingBufferSize().getBytes()) {
-            // #if LOGGER >= ERROR
             LOGGER.error("NIO: OS buffer size must be at least twice the size of flow control window size!");
-            // #endif /* LOGGER >= ERROR */
             return false;
         }
 
         if (m_ibConfig.getIncomingBufferSize().getBytes() > m_ibConfig.getOugoingRingBufferSize().getBytes()) {
-            // #if LOGGER >= ERROR
             LOGGER.error("IB in buffer size must be <= outgoing ring buffer size");
-            // #endif /* LOGGER >= ERROR */
             return false;
         }
 
         if (m_nioConfig.getFlowControlWindow().getBytes() > Integer.MAX_VALUE) {
-            // #if LOGGER >= ERROR
             LOGGER.error("NIO: Flow control window size exceeding 2 GB, not allowed");
-            // #endif /* LOGGER >= ERROR */
             return false;
         }
 
         if (m_nioConfig.getFlowControlWindowThreshold() < 1 / Byte.MAX_VALUE) {
-            // #if LOGGER >= ERROR
             LOGGER.error("NIO: Flow control window threshold is too small");
-            // #endif /* LOGGER >= ERROR */
             return false;
         }
 
         if (m_loopbackConfig.getFlowControlWindowThreshold() < 1 / Byte.MAX_VALUE) {
-            // #if LOGGER >= ERROR
             LOGGER.error("Loopback: Flow control window threshold is too small");
-            // #endif /* LOGGER >= ERROR */
             return false;
         }
 
         if (m_ibConfig.getFlowControlWindow().getBytes() > Integer.MAX_VALUE) {
-            // #if LOGGER >= ERROR
             LOGGER.error("IB: Flow control window size exceeding 2 GB, not allowed");
-            // #endif /* LOGGER >= ERROR */
             return false;
         }
 
         if (m_ibConfig.getIncomingBufferSize().getGBDouble() > 2.0) {
-            // #if LOGGER >= ERROR
             LOGGER.error("IB: Exceeding max incoming buffer size of 2GB");
-            // #endif /* LOGGER >= ERROR */
             return false;
         }
 
         if (m_ibConfig.getOugoingRingBufferSize().getGBDouble() > 2.0) {
-            // #if LOGGER >= ERROR
             LOGGER.error("IB: Exceeding max outgoing buffer size of 2GB");
-            // #endif /* LOGGER >= ERROR */
             return false;
         }
 

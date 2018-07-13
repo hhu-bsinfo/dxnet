@@ -112,10 +112,8 @@ public class NIOPipeOut extends AbstractPipeOut {
             m_outgoingChannel.socket().setSendBufferSize(m_bufferSize);
             int sendBufferSize = m_outgoingChannel.socket().getSendBufferSize();
             if (sendBufferSize < m_bufferSize) {
-                // #if LOGGER >= WARN
                 LOGGER.warn("Send buffer size could not be set properly. Check OS settings! Requested: %d, actual: %d",
                         m_bufferSize, sendBufferSize);
-                // #endif /* LOGGER >= WARN */
             }
 
             m_outgoingChannel.connect(m_nodeMap.getAddress(p_nodeID));

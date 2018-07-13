@@ -157,9 +157,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                 m_config.getIncomingBufferPoolTotalSize().getBytes(),
                 (int) m_config.getIncomingBufferSize().getBytes(), m_config.getMaxSGEs())) {
 
-            // #if LOGGER >= DEBUG
             LOGGER.debug("Initializing ibnet failed, check ibnet logs");
-            // #endif /* LOGGER >= DEBUG */
 
             throw new NetworkRuntimeException("Initializing ibnet failed");
         }
@@ -185,9 +183,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
 
     @Override
     public void close() {
-        // #if LOGGER >= DEBUG
         LOGGER.debug("Closing connection manager");
-        // #endif /* LOGGER >= DEBUG */
 
         super.close();
 
@@ -203,14 +199,10 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             throw new NetworkDestinationUnreachableException(p_destination);
         }
 
-        // #ifdef STATISTICS
         SOP_CREATE_CON.start();
-        // #endif /* STATISTICS */
 
         if (m_openConnections == m_maxConnections) {
-            // #if LOGGER >= DEBUG
             LOGGER.debug("Connection max (%d) reached, dismissing random connection", m_maxConnections);
-            // #endif /* LOGGER >= DEBUG */
 
             dismissRandomConnection();
         }
@@ -220,24 +212,16 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
 
         if (res != 0) {
             if (res == 1) {
-                // #if LOGGER >= DEBUG
                 LOGGER.debug("Connection creation (0x%X) time-out. Interval %s ms might be to small", p_destination,
                         m_config.getConnectionCreationTimeout());
-                // #endif /* LOGGER >= DEBUG */
 
-                // #ifdef STATISTICS
                 SOP_CREATE_CON.stop();
-                // #endif /* STATISTICS */
 
                 throw new NetworkException("Connection creation timeout occurred");
             } else {
-                // #if LOGGER >= ERROR
                 LOGGER.error("Connection creation (0x%X) failed", p_destination);
-                // #endif /* LOGGER >= ERROR */
 
-                // #ifdef STATISTICS
                 SOP_CREATE_CON.stop();
-                // #endif /* STATISTICS */
 
                 throw new NetworkException("Connection creation failed");
             }
@@ -246,17 +230,13 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         long sendBufferAddr = MsgrcJNIBinding.getSendBufferAddress(p_destination);
 
         if (sendBufferAddr == -1) {
-            // #ifdef STATISTICS
             SOP_CREATE_CON.stop();
-            // #endif /* STATISTICS */
 
             // might happen on disconnect or if connection is not established in the ibnet subsystem
             throw new NetworkDestinationUnreachableException(p_destination);
         }
 
-        // #if LOGGER >= DEBUG
         LOGGER.debug("Node connected 0x%X, ORB native addr 0x%X", p_destination, sendBufferAddr);
-        // #endif /* LOGGER >= DEBUG */
 
         connection = new IBConnection(m_coreConfig.getOwnNodeId(), p_destination, sendBufferAddr,
                 (int) m_config.getOugoingRingBufferSize().getBytes(), (int) m_config.getFlowControlWindow().getBytes(),
@@ -268,18 +248,14 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
 
         m_openConnections++;
 
-        // #ifdef STATISTICS
         SOP_CREATE_CON.stop();
-        // #endif /* STATISTICS */
 
         return connection;
     }
 
     @Override
     protected void closeConnection(final AbstractConnection p_connection, final boolean p_removeConnection) {
-        // #if LOGGER >= DEBUG
         LOGGER.debug("Closing connection 0x%X", p_connection.getDestinationNodeID());
-        // #endif /* LOGGER >= DEBUG */
 
         p_connection.setPipeInConnected(false);
         p_connection.setPipeOutConnected(false);
@@ -300,27 +276,21 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
 
     @Override
     public void nodeDiscovered(final short p_nodeId) {
-        // #if LOGGER >= DEBUG
         LOGGER.debug("Node discovered 0x%X", p_nodeId);
-        // #endif /* LOGGER >= DEBUG */
 
         m_nodeDiscovered[p_nodeId & 0xFFFF] = true;
     }
 
     @Override
     public void nodeInvalidated(final short p_nodeId) {
-        // #if LOGGER >= DEBUG
         LOGGER.debug("Node invalidated 0x%X", p_nodeId);
-        // #endif /* LOGGER >= DEBUG */
 
         m_nodeDiscovered[p_nodeId & 0xFFFF] = false;
     }
 
     @Override
     public void nodeDisconnected(final short p_nodeId) {
-        // #if LOGGER >= DEBUG
         LOGGER.debug("Node disconnected 0x%X", p_nodeId);
-        // #endif /* LOGGER >= DEBUG */
 
         closeConnection(m_connections[p_nodeId & 0xFFFF], true);
     }
@@ -330,10 +300,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         int processed = 0;
 
         try {
-            // #ifdef STATISTICS
             SOP_RECV.stop();
             SOP_RECV.start();
-            // #endif /* STATISTICS */
 
             // wrap on the first callback, native address is always the same
             if (m_incomingRingBuffer == null) {
@@ -365,9 +333,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                 try {
                     connection = (IBConnection) getConnection(sourceNodeId);
                 } catch (final NetworkException e) {
-                    // #if LOGGER >= ERROR
                     LOGGER.error("Getting connection for recv of node 0x%X failed", sourceNodeId, e);
-                    // #endif /* LOGGER >= ERROR */
 
                     processed++;
 
@@ -406,9 +372,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                         try {
                             connection = (IBConnection) getConnection(sourceNodeId);
                         } catch (final NetworkException e) {
-                            // #if LOGGER >= ERROR
                             LOGGER.error("Getting connection for recv of node 0x%X failed", sourceNodeId, e);
-                            // #endif /* LOGGER >= ERROR */
 
                             processed++;
 
@@ -424,15 +388,11 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                 }
             }
 
-            // #ifdef STATISTICS
             SOP_RECV.nextSection();
-            // #endif /* STATISTICS */
         } catch (Exception e) {
             // print error because we disabled exception handling when executing jni calls
 
-            // #if LOGGER >= ERROR
             LOGGER.error("received unhandled exception", e);
-            // #endif /* LOGGER >= ERROR */
         }
 
         return processed;
@@ -441,34 +401,23 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
     @Override
     public void getNextDataToSend(final long p_nextWorkPackage, final long p_prevResults, final long p_completionList) {
         try {
-            // #ifdef STATISTICS
             SOP_SEND_NEXT_DATA.stop();
             SOP_SEND_NEXT_DATA.start();
-            // #endif /* STATISTICS */
 
             processPrevResults(p_prevResults);
 
-            // #ifdef STATISTICS
             SOP_SEND_NEXT_DATA.nextSection();
-            // #endif /* STATISTICS */
 
             processSendCompletions(p_completionList);
 
-            // #ifdef STATISTICS
             SOP_SEND_NEXT_DATA.nextSection();
-            // #endif /* STATISTICS */
 
             prepareNextDataToSend(p_nextWorkPackage);
 
-            // #ifdef STATISTICS
             SOP_SEND_NEXT_DATA.nextSection();
-            // #endif /* STATISTICS */
         } catch (Exception e) {
             // print error because we disabled exception handling when executing jni calls
-
-            // #if LOGGER >= ERROR
             LOGGER.error("getNextDataToSend unhandled exception", e);
-            // #endif /* LOGGER >= ERROR */
         }
     }
 
@@ -501,9 +450,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                 prevConnection.getPipeOut().dataSendPosted(numBytesPosted);
                 prevConnection.getPipeOut().flowControlDataSendPosted(fcDataPosted);
             } catch (final NetworkException e) {
-                // #if LOGGER >= ERROR
                 LOGGER.error("Getting connection 0x%X for processing prev results failed", nodeId);
-                // #endif /* LOGGER >= ERROR */
             }
 
             // SendThread could not process all bytes because the queue
@@ -511,15 +458,11 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             // still data to send
 
             if (numBytesNotPosted > 0) {
-                // #ifdef STATISTICS
                 SOP_SEND_DATA_POSTED.add(numBytesPosted);
-                // #endif /* STATISTICS */
 
                 m_writeInterestManager.pushBackDataInterest(nodeId);
             } else {
-                // #ifdef STATISTICS
                 SOP_SEND_DATA_POSTED_NONE.inc();
-                // #endif /* STATISTICS */
             }
 
             if (fcDataNotPosted > 0) {
@@ -554,9 +497,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
 
                     prevConnection.getPipeOut().dataSendConfirmed(processedBytes);
                 } catch (final NetworkException e) {
-                    // #if LOGGER >= ERROR
                     LOGGER.error("Getting connection 0x%X for processing work completions failed", nodeId);
-                    // #endif /* LOGGER >= ERROR */
                 }
             }
         }

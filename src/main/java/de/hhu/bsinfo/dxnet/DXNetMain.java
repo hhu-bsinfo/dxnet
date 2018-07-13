@@ -536,10 +536,8 @@ public final class DXNetMain implements MessageReceiver {
         } else if ("Loopback".equals(ms_context.getCoreConfig().getDevice())) {
             LOGGER.debug("Loading loopback...");
         } else {
-            // #if LOGGER >= ERROR
             LOGGER.error("Unknown device %s. Valid options: Ethernet, Infiniband or Loopback.",
                     ms_context.getCoreConfig().getDevice());
-            // #endif /* LOGGER >= ERROR */
             System.exit(-1);
         }
     }

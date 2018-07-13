@@ -87,10 +87,8 @@ public final class RequestMap {
         // if two threads access the same index, e.g. one having a message
         // id of 0 and the other thread with the first overflowed message id
         if (m_pendingRequests[index] != null) {
-            // #if LOGGER >= ERROR
             LOGGER.error("Request %s for idx=%d still registered! Request Map might be too small",
                     m_pendingRequests[index], index);
-            // #endif /* LOGGER >= ERROR */
         }
 
         m_pendingRequests[index] = p_request;

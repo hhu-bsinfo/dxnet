@@ -189,17 +189,13 @@ public class NIOConnection extends AbstractConnection<NIOPipeIn, NIOPipeOut> {
                 if (getPipeOut().getChannel().finishConnect()) {
                     connected(p_key);
                 } else {
-                    // #if LOGGER >= ERROR
                     LOGGER.error("Connection could not be finished: %s", this);
-                    // #endif /* LOGGER >= ERROR */
                 }
             } catch (final IOException ignore) {
                 abortConnectionCreation();
             }
         } else {
-            // #if LOGGER >= WARN
             LOGGER.warn("Connection is not pending, connect aborted: %s", this);
-            // #endif /* LOGGER >= WARN */
         }
     }
 
@@ -209,17 +205,13 @@ public class NIOConnection extends AbstractConnection<NIOPipeIn, NIOPipeOut> {
         if (!p_force) {
             setClosingTimestamp(System.currentTimeMillis());
             if (!getPipeOut().isOutgoingQueueEmpty()) {
-                // #if LOGGER >= DEBUG
                 LOGGER.debug("Waiting for all scheduled messages to be sent over to be closed connection!");
-                // #endif /* LOGGER >= DEBUG */
                 long start = System.currentTimeMillis();
                 while (!getPipeOut().isOutgoingQueueEmpty()) {
                     Thread.yield();
 
                     if (System.currentTimeMillis() - start > 10000) {
-                        // #if LOGGER >= ERROR
                         LOGGER.debug("Waiting for all scheduled messages to be sent over aborted, timeout");
-                        // #endif /* LOGGER >= ERROR */
                         break;
                     }
                 }

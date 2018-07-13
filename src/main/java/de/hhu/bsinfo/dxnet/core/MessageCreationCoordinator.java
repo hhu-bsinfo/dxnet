@@ -121,9 +121,7 @@ public class MessageCreationCoordinator extends Thread {
                 incomingBuffer.getPipeIn().returnProcessedBuffer(incomingBuffer.getDirectBuffer(),
                         incomingBuffer.getBufferHandle());
 
-                // #if LOGGER == ERROR
                 LOGGER.error("Processing incoming buffer failed", e);
-                // #endif /* LOGGER == ERROR */
             }
         }
     }
@@ -132,9 +130,7 @@ public class MessageCreationCoordinator extends Thread {
      * Shutdown the message creator thread
      */
     public void shutdown() {
-        // #if LOGGER == INFO
         LOGGER.info("Message creator shutdown...");
-        // #endif /* LOGGER == INFO */
 
         m_shutdown = true;
 

@@ -129,18 +129,14 @@ public abstract class AbstractPipeOut {
      *         If deserializing the message to the buffer or posting a write request failed
      */
     void postMessage(final Message p_message) throws NetworkException {
-        // #if LOGGER >= TRACE
         LOGGER.trace("Writing message %s to pipe out of dest 0x%X", p_message, m_destinationNodeID);
-        // #endif /* LOGGER >= TRACE */
 
         int messageTotalSize = p_message.getTotalSize();
 
         if (messageTotalSize > 1024 * 1024 * 128) {
-            // #if LOGGER >= WARN
             LOGGER.warn("Performance warning: Sending very large (%d bytes) message. Consider splitting your data to " +
                             "send if possible to benefit from parallelism when messages are received and processed",
                     messageTotalSize);
-            // #endif /* LOGGER >= WARN */
         }
         m_flowControl.dataToSend(messageTotalSize);
 

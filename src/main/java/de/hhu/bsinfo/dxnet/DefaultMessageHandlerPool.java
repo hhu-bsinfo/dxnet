@@ -60,9 +60,7 @@ final class DefaultMessageHandlerPool {
             final boolean p_overprovisioning) {
         m_defaultMessageHeaders = new MessageHeaderStore(SIZE_MESSAGE_STORE);
 
-        // #if LOGGER >= INFO
         LOGGER.info("Network: DefaultMessageHandlerPool: Initialising %d threads", p_numMessageHandlerThreads);
-        // #endif /* LOGGER >= INFO */
 
         MessageHandler t;
         m_threads = new MessageHandler[p_numMessageHandlerThreads];
@@ -90,13 +88,9 @@ final class DefaultMessageHandlerPool {
 
             try {
                 t.join();
-                // #if LOGGER >= INFO
                 LOGGER.info("Shutdown of MessageHandler %d successful", i + 1);
-                // #endif /* LOGGER >= INFO */
             } catch (final InterruptedException e) {
-                // #if LOGGER >= WARN
                 LOGGER.warn("Could not wait for default message handler to finish. Interrupted");
-                // #endif /* LOGGER >= WARN */
             }
         }
     }

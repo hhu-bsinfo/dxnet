@@ -72,9 +72,7 @@ public class LoopbackConnectionManager extends AbstractConnectionManager {
         m_messageHeaderPool = p_messageHeaderPool;
         m_messageHandlers = p_messageHandlers;
 
-        // #if LOGGER >= INFO
         LOGGER.info("Starting LoopbackSendThread...");
-        // #endif /* LOGGER >= INFO */
 
         m_bufferPool = new BufferPool((int) m_loopbackConfig.getOugoingRingBufferSize().getBytes());
         if (m_coreConfig.getExporterPoolType()) {

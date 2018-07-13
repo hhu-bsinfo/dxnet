@@ -62,9 +62,7 @@ class MessageReceiverStore {
 
         // Try again in a loop, if receivers were not registered. Stop if request timeout is reached as answering later has no effect
         if (messageReceiver == null) {
-            // #if LOGGER >= WARN
             LOGGER.warn("Message receiver null for %d, %d! Waiting...", p_type, p_subtype);
-            // #endif /* LOGGER >= WARN */
             deadline = System.currentTimeMillis() + m_requestTimeOut;
 
             while (messageReceiver == null && System.currentTimeMillis() < deadline) {
@@ -111,15 +109,12 @@ class MessageReceiverStore {
             }
 
             if (m_receivers[p_type][p_subtype] != null) {
-                // #if LOGGER >= WARN
                 LOGGER.warn("Receiver for %d %d is already registered", p_type, p_subtype);
-                // #endif /* LOGGER >= WARN */
             }
             m_receivers[p_type][p_subtype] = p_receiver;
 
-            // #if LOGGER >= TRACE
             LOGGER.trace("Added new MessageReceiver %s for %d %d", p_receiver.getClass(), p_type, p_subtype);
-            // #endif /* LOGGER >= TRACE */
+
             m_receiversLock.unlock();
         }
     }

@@ -89,9 +89,7 @@ public class LoopbackPipeIn extends AbstractPipeIn {
         directBufferWrapper = m_bufferPool.getBuffer();
         buffer = directBufferWrapper.getBuffer();
 
-        // #ifdef STATISTICS
         SOP_COPY.start();
-        // #endif /* STATISTICS */
 
         if (buffer.remaining() >= p_buffer.remaining()) {
             ret = p_buffer.remaining();
@@ -106,26 +104,20 @@ public class LoopbackPipeIn extends AbstractPipeIn {
         }
         buffer.flip();
 
-        // #ifdef STATISTICS
         SOP_COPY.stop();
-        // #endif /* STATISTICS */
 
         if (!m_incomingBufferQueue.pushBuffer(m_parentConnection, directBufferWrapper, 0,
                 directBufferWrapper.getAddress(), ret)) {
-            // #ifdef STATISTICS
             SOP_IBQ_WAIT_PUSH.start();
-            // #endif /* STATISTICS */
 
             do {
                 m_queueFullCounter++;
 
                 // avoid flooding the log
                 if (m_queueFullCounter % 100000 == 0) {
-                    // #if LOGGER == WARN
                     LOGGER.warn("IBQ is full count: %d. If this message appears often (with a high counter) you " +
                             "should consider increasing the number message handlers to avoid performance " +
                             "penalties", m_queueFullCounter);
-                    // #endif /* LOGGER == WARN */
                 }
 
                 LockSupport.parkNanos(100);
@@ -133,9 +125,7 @@ public class LoopbackPipeIn extends AbstractPipeIn {
             } while (!m_incomingBufferQueue.pushBuffer(m_parentConnection, directBufferWrapper, 0,
                     directBufferWrapper.getAddress(), ret));
 
-            // #ifdef STATISTICS
             SOP_IBQ_WAIT_PUSH.stop();
-            // #endif /* STATISTICS */
         }
 
         return ret;

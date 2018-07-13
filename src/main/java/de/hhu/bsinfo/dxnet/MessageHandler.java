@@ -105,9 +105,7 @@ class MessageHandler extends Thread {
             m_specialReceiveType = p_type;
             m_specialReceiveSubtype = p_subtype;
         } else {
-            // #if LOGGER >= ERROR
             LOGGER.error("Special receive type already registered: %d, %d!", p_type, p_subtype);
-            // #endif /* LOGGER >= ERROR */
         }
     }
 
@@ -157,20 +155,14 @@ class MessageHandler extends Thread {
                     messageReceiver = m_messageReceivers.getReceiver(type, subtype);
 
                     if (messageReceiver != null) {
-                        // #ifdef STATISTICS
                         SOP_EXECUTE.start();
-                        // #endif /* STATISTICS */
 
                         ((SpecialMessageReceiver) messageReceiver).onIncomingHeader(header);
                         header.finishHeader(m_messageHeaderPool);
 
-                        // #ifdef STATISTICS
                         SOP_EXECUTE.stop();
-                        // #endif /* STATISTICS */
                     } else {
-                        // #if LOGGER >= WARN
                         LOGGER.warn("No message receiver was registered for %d, %d!", type, subtype);
-                        // #endif /* LOGGER >= WARN */
                     }
                     continue;
                 } else {
@@ -187,27 +179,19 @@ class MessageHandler extends Thread {
                 continue;
             }
 
-            // #ifdef STATISTICS
             SOP_CREATE.stop();
-            // #endif /* STATISTICS */
 
             if (message != null) {
                 messageReceiver = m_messageReceivers.getReceiver(type, subtype);
 
                 if (messageReceiver != null) {
-                    // #ifdef STATISTICS
                     SOP_EXECUTE.start();
-                    // #endif /* STATISTICS */
 
                     messageReceiver.onIncomingMessage(message);
 
-                    // #ifdef STATISTICS
                     SOP_EXECUTE.stop();
-                    // #endif /* STATISTICS */
                 } else {
-                    // #if LOGGER >= WARN
                     LOGGER.warn("No message receiver was registered for %d, %d!", type, subtype);
-                    // #endif /* LOGGER >= WARN */
                 }
             }
         }

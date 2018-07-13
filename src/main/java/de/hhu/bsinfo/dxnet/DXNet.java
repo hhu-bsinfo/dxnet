@@ -130,11 +130,10 @@ public final class DXNet {
                         1 /*MessageCreationCoordinator*/;
         if (m_availableCores <= 0) {
             m_overprovisioning = true;
-            // #if LOGGER >= INFO
+
             LOGGER.info("Overprovisioning detected (%d network threads on %d cores). Activating parking strategy " +
                             "for network threads.",
                     m_coreConfig.getNumMessageHandlerThreads() + 2, Runtime.getRuntime().availableProcessors());
-            // #endif /* LOGGER >= INFO */
         }
 
         MessageHeaderPool globalHeaderPool = new MessageHeaderPool(MESSAGE_HEADER_POOL_SIZE);
@@ -154,9 +153,7 @@ public final class DXNet {
         m_messageDirectory.register(Messages.DEFAULT_MESSAGES_TYPE, Messages.SUBTYPE_DEFAULT_MESSAGE,
                 DefaultMessage.class);
 
-        // #if LOGGER >= INFO
         LOGGER.info("Network: MessageCreationCoordinator");
-        // #endif /* LOGGER >= INFO */
 
         if ("Ethernet".equals(m_coreConfig.getDevice())) {
             m_messageCreationCoordinator = new MessageCreationCoordinator(2 * 2 * 1024,
@@ -248,14 +245,12 @@ public final class DXNet {
 
         ret = m_messageDirectory.register(p_type, p_subtype, p_class);
 
-        // #if LOGGER >= WARN
         if (!ret) {
             LOGGER.warn(
                     "Registering network message %s for type %s and subtype %s failed, type and subtype already used",
                     p_class.getSimpleName(), p_type,
                     p_subtype);
         }
-        // #endif /* LOGGER >= WARN */
     }
 
     /**
@@ -319,9 +314,7 @@ public final class DXNet {
      *         If connecting to the node failed
      */
     public void connectNode(final short p_nodeID) throws NetworkException {
-        // #if LOGGER == TRACE
         LOGGER.trace("Entering connectNode with: p_nodeID=0x%X", p_nodeID);
-        // #endif /* LOGGER == TRACE */
 
         try {
             if (m_connectionManager.getConnection(p_nodeID) == null) {
@@ -329,15 +322,11 @@ public final class DXNet {
                         "Connection to " + NodeID.toHexString(p_nodeID) + " could not be established");
             }
         } catch (final NetworkException e) {
-            // #if LOGGER >= DEBUG
             LOGGER.debug("IOException during connection lookup", e);
-            // #endif /* LOGGER >= DEBUG */
             throw new NetworkDestinationUnreachableException(p_nodeID);
         }
 
-        // #if LOGGER == TRACE
         LOGGER.trace("Exiting connectNode");
-        // #endif /* LOGGER == TRACE */
     }
 
     /**
@@ -351,9 +340,7 @@ public final class DXNet {
     public void sendMessage(final Message p_message) throws NetworkException {
         AbstractConnection connection;
 
-        // #if LOGGER == TRACE
         LOGGER.trace("Entering sendMessage with: p_message=%s", p_message);
-        // #endif /* LOGGER == TRACE */
 
         // #ifdef STATISTICS
         SOP_SEND.start();
@@ -365,25 +352,19 @@ public final class DXNet {
             m_messageCreationCoordinator.activateParking();
             m_messageHandlers.activateParking();
 
-            // #if LOGGER >= INFO
             LOGGER.info("Overprovisioning detected (%d network threads and >= %d application threads on %d cores)." +
                             "Activating parking strategy for network threads.",
                     m_coreConfig.getNumMessageHandlerThreads() + 2, m_sendThreads.get(),
                     Runtime.getRuntime().availableProcessors());
-            // #endif /* LOGGER >= INFO */
         }
 
         if (p_message.getDestination() == m_coreConfig.getOwnNodeId() && !m_loopbackDeviceActive) {
-            // #if LOGGER >= ERROR
             LOGGER.error("Invalid destination 0x%X. No loopback allowed.", p_message.getDestination());
-            // #endif /* LOGGER >= ERROR */
         } else {
             try {
                 connection = m_connectionManager.getConnection(p_message.getDestination());
             } catch (final NetworkException e) {
-                // #if LOGGER >= DEBUG
                 LOGGER.debug("Connection to 0x%X could not be established!", p_message.getDestination());
-                // #endif /* LOGGER >= DEBUG */
                 throw new NetworkDestinationUnreachableException(p_message.getDestination());
             }
 
@@ -396,18 +377,14 @@ public final class DXNet {
                     if (timestamp == 0 || timestamp + 1000 < System.currentTimeMillis()) {
                         m_lastFailures.set(p_message.getDestination() & 0xFFFF, System.currentTimeMillis());
 
-                        // #if LOGGER >= DEBUG
                         LOGGER.debug(
                                 "Connection invalid. Ignoring connection excepts regarding 0x%X during the next second!",
                                 p_message.getDestination());
-                        // #endif /* LOGGER >= DEBUG */
                         throw new NetworkDestinationUnreachableException(p_message.getDestination());
                     }
                 }
             } catch (final NetworkException e) {
-                // #if LOGGER >= DEBUG
                 LOGGER.debug("Sending data failed: %s", e.getMessage());
-                // #endif /* LOGGER >= DEBUG */
                 throw new NetworkException("Sending data failed ", e);
             }
         }
@@ -416,13 +393,9 @@ public final class DXNet {
             m_sendThreads.decrementAndGet();
         }
 
-        // #ifdef STATISTICS
         SOP_SEND.stop();
-        // #endif /* STATISTICS */
 
-        // #if LOGGER == TRACE
         LOGGER.trace("Exiting sendMessage");
-        // #endif /* LOGGER == TRACE */
     }
 
     /**
@@ -439,13 +412,9 @@ public final class DXNet {
      */
     public void sendSync(final Request p_request, final int p_timeout, final boolean p_waitForResponses)
             throws NetworkException {
-        // #if LOGGER == TRACE
         LOGGER.trace("Sending request (sync): %s", p_request);
-        // #endif /* LOGGER == TRACE */
 
-        // #ifdef STATISTICS
         SOP_SEND_SYNC.start();
-        // #endif /* STATISTICS */
 
         try {
             m_requestMap.put(p_request);
@@ -455,59 +424,39 @@ public final class DXNet {
             throw e;
         }
 
-        // #if LOGGER == TRACE
         LOGGER.trace("Waiting for response to request: %s", p_request);
-        // #endif /* LOGGER == TRACE */
 
         int timeout = p_timeout != -1 ? p_timeout : m_timeOut;
 
         try {
             if (p_waitForResponses) {
-                // #ifdef STATISTICS
                 SOP_WAIT_RESPONSE.start();
-                // #endif /* STATISTICS */
 
                 p_request.waitForResponse(timeout);
 
-                // #ifdef STATISTICS
                 SOP_WAIT_RESPONSE.stop();
-                // #endif /* STATISTICS */
             }
         } catch (final NetworkResponseDelayedException e) {
-            // #ifdef STATISTICS
             SOP_WAIT_RESPONSE.stop();
-            // #endif /* STATISTICS */
 
-            // #ifdef STATISTICS
             SOP_SEND_SYNC.stop();
-            // #endif /* STATISTICS */
 
-            // #if LOGGER >= WARN
             LOGGER.warn("Sending sync, waiting for responses to %s failed, timeout: %d ms", p_request, timeout);
-            // #endif /* LOGGER >= WARN */
 
             m_requestMap.remove(p_request.getRequestID());
 
             throw e;
         } catch (final NetworkResponseCancelledException e) {
-            // #ifdef STATISTICS
             SOP_WAIT_RESPONSE.stop();
-            // #endif /* STATISTICS */
 
-            // #ifdef STATISTICS
             SOP_SEND_SYNC.stop();
-            // #endif /* STATISTICS */
 
-            // #if LOGGER >= WARN
             LOGGER.warn("Sending sync, waiting for responses to %s failed, cancelled: %d ms", p_request, timeout);
-            // #endif /* LOGGER >= WARN */
 
             throw e;
         }
 
-        // #ifdef STATISTICS
         SOP_SEND_SYNC.stop();
-        // #endif /* STATISTICS */
     }
 
     /**

@@ -68,9 +68,7 @@ public abstract class AbstractFlowControl {
             m_flowControlWindowSize = 0;
             m_flowControlWindowThreshold = 0.0f;
 
-            // #if LOGGER >= WARN
             LOGGER.warn("Flow control disabled");
-            // #endif /* LOGGER >= WARN */
         } else {
             m_flowControlWindowSize = p_flowControlWindowSize;
             m_flowControlWindowThreshold = p_flowControlWindowThreshold;
@@ -87,11 +85,9 @@ public abstract class AbstractFlowControl {
         StatisticsManager.get().registerOperation(AbstractFlowControl.class, m_sopWait);
         StatisticsManager.get().registerOperation(AbstractFlowControl.class, m_stateStats);
 
-        // #if LOGGER >= DEBUG
         LOGGER.debug("Flow control settings for node 0x%X: window size %d, threshold %f", p_destinationNodeID,
                 p_flowControlWindowSize,
                 p_flowControlWindowThreshold);
-        // #endif /* LOGGER >= DEBUG */
     }
 
     @Override
@@ -133,14 +129,10 @@ public abstract class AbstractFlowControl {
      *         Number of bytes that were written to the destination
      */
     void dataToSend(final int p_writtenBytes) {
-        // #if LOGGER >= TRACE
         LOGGER.trace("flowControlDataToSend (%X): %d", m_destinationNodeID, p_writtenBytes);
-        // #endif /* LOGGER >= TRACE */
 
         if (m_flowControlWindowSize != 0 && m_unconfirmedBytes.get() > m_flowControlWindowSize) {
-            // #ifdef STATISTICS
             m_sopWait.start();
-            // #endif /* STATISTICS */
 
             long start = System.nanoTime();
             long counter = 0;
@@ -150,18 +142,14 @@ public abstract class AbstractFlowControl {
 
                 if (cur - start > 2000 * 1000 * 1000L) {
                     counter++;
-                    // #if LOGGER >= WARN
                     LOGGER.warn("Waiting for flow control for %d seconds", counter * 2);
-                    // #endif /* LOGGER >= WARN */
                     start = cur;
                 }
 
                 LockSupport.parkNanos(100);
             }
 
-            // #ifdef STATISTICS
             m_sopWait.stop();
-            // #endif /* STATISTICS */
         }
 
         m_unconfirmedBytes.addAndGet(p_writtenBytes);
@@ -182,9 +170,7 @@ public abstract class AbstractFlowControl {
             try {
                 flowControlWrite();
             } catch (final NetworkException e) {
-                // #if LOGGER >= ERROR
                 LOGGER.error("Could not send flow control message", e);
-                // #endif /* LOGGER >= ERROR */
             }
         }
     }
@@ -196,10 +182,8 @@ public abstract class AbstractFlowControl {
      *         Number of windows confirmed by the remote
      */
     public void handleFlowControlData(final int p_confirmedWindows) {
-        // #if LOGGER >= TRACE
         LOGGER.trace("handleFlowControlData (%X): %d", m_destinationNodeID,
                 p_confirmedWindows * m_flowControlWindowSizeThreshold);
-        // #endif /* LOGGER >= TRACE */
 
         long curState = m_unconfirmedBytes.addAndGet(-(p_confirmedWindows * m_flowControlWindowSizeThreshold));
 

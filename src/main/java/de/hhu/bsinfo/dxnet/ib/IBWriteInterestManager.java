@@ -64,9 +64,7 @@ class IBWriteInterestManager {
      *         Node id of connection with data available to send
      */
     void pushBackDataInterest(final short p_nodeId) {
-        // #if LOGGER == TRACE
         LOGGER.trace("pushBackDataInterest: 0x%X", p_nodeId);
-        // #endif /* LOGGER == TRACE */
 
         if (m_writeInterests[p_nodeId & 0xFFFF].addDataInterest()) {
             m_interestQueue.pushBack(p_nodeId);
@@ -80,9 +78,7 @@ class IBWriteInterestManager {
      *         Node id of connection with FC data available to send
      */
     void pushBackFcInterest(final short p_nodeId) {
-        // #if LOGGER == TRACE
         LOGGER.trace("pushBackFCInterest: 0x%X", p_nodeId);
-        // #endif /* LOGGER == TRACE */
 
         if (m_writeInterests[p_nodeId & 0xFFFF].addFcInterest()) {
             m_interestQueue.pushBack(p_nodeId);

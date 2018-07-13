@@ -166,28 +166,22 @@ class NIOPipeIn extends AbstractPipeIn {
                 // There is nothing more to read at the moment
                 buffer.flip();
 
-                // #if LOGGER >= TRACE
                 LOGGER.trace("Posting receive buffer (limit %d) to connection 0x%X", buffer.limit(),
                         getDestinationNodeID());
-                // #endif /* LOGGER >= TRACE */
 
                 if (!m_incomingBufferQueue
                         .pushBuffer(m_parentConnection, directBufferWrapper, 0, directBufferWrapper.getAddress(),
                                 buffer.remaining())) {
-                    // #ifdef STATISTICS
                     SOP_IBQ_WAIT_PUSH.start();
-                    // #endif /* STATISTICS */
 
                     do {
                         m_queueFullCounter++;
 
                         // avoid flooding the log
                         if (m_queueFullCounter % 100000 == 0) {
-                            // #if LOGGER == WARN
                             LOGGER.warn("IBQ is full count: %d. If this message appears often (with a high counter) " +
                                     "you should consider increasing the number message handlers to avoid " +
-                                    "performance penalties", m_queueFullCounter);
-                            // #endif /* LOGGER == WARN */
+                                    "performance penalties", m_queueFullCounter);/
                         }
 
                         LockSupport.parkNanos(100);
@@ -196,17 +190,14 @@ class NIOPipeIn extends AbstractPipeIn {
                             .pushBuffer(m_parentConnection, directBufferWrapper, 0, directBufferWrapper.getAddress(),
                                     buffer.remaining()));
 
-                    // #ifdef STATISTICS
                     SOP_IBQ_WAIT_PUSH.stop();
-                    // #endif /* STATISTICS */
                 }
 
                 break;
             }
         }
-        // #ifdef STATISTICS
+
         SOP_READ.stop();
-        // #endif /* STATISTICS */
 
         return ret;
     }
@@ -217,9 +208,7 @@ class NIOPipeIn extends AbstractPipeIn {
     void writeFlowControlBytes() throws IOException {
         int bytes = 0;
 
-        // #ifdef STATISTICS
         SOP_WRITE_FLOW_CONTROL.start();
-        // #endif /* STATISTICS */
 
         m_flowControlByte.rewind();
         byte windows = getFlowControl().getAndResetFlowControlData();
@@ -234,8 +223,6 @@ class NIOPipeIn extends AbstractPipeIn {
             bytes += m_incomingChannel.write(m_flowControlByte);
         }
 
-        // #ifdef STATISTICS
         SOP_WRITE_FLOW_CONTROL.stop();
-        // #endif /* STATISTICS */
     }
 }

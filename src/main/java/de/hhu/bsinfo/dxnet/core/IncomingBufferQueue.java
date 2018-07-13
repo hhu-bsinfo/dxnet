@@ -163,28 +163,19 @@ public class IncomingBufferQueue {
         int front;
 
         if (p_size == 0) {
-            // #if LOGGER >= WARN
             LOGGER.warn("Buffer size must not be 0. Incoming buffer is discarded.");
-            // #endif /* LOGGER >= WARN */
-
             return true;
         }
 
         // Avoid congestion by not allowing more than a predefined number of buffers to be cached for importing
 
         if (m_currentBytes.get() >= m_maxCapacitySize) {
-            // #ifdef STATISTICS
             SOP_PUSH_FULL_SIZE.inc();
-            // #endif /* STATISTICS */
-
             return false;
         }
 
         if ((m_posBack + m_maxCapacityBufferCount & 0x7FFFFFFF) == m_posFront) {
-            // #ifdef STATISTICS
             SOP_PUSH_FULL_COUNT.inc();
-            // #endif /* STATISTICS */
-
             return false;
         }
 

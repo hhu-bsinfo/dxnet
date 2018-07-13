@@ -108,9 +108,7 @@ public final class MessageHeaderPool {
                 if (print) {
                     print = false;
 
-                    // #if LOGGER >= WARN
                     LOGGER.warn("Insufficient pooled message headers. Waiting for headers to be returned.");
-                    // #endif /* LOGGER >= WARN */
                 }
 
                 LockSupport.parkNanos(100);

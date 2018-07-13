@@ -52,10 +52,8 @@ public final class StaticExporterPool extends AbstractExporterPool {
 
             if (threadID >= m_exporters.length) {
                 if (m_exporters.length >= 10 * SLOT_SIZE) {
-                    // #if LOGGER >= WARN
                     LOGGER.warn("Many threads actively sending messages (>%d). You might consider switching to " +
                             "dynamic exporter pool (configuration).", m_exporters.length);
-                    // #endif /* LOGGER >= WARN */
                 }
                 // Copying without lock might result in lost allocations but this can be ignored
                 MessageExporterCollection[] tmp = new MessageExporterCollection[m_exporters.length + SLOT_SIZE];

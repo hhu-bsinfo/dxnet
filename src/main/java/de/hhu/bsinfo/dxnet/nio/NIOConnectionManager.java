@@ -107,9 +107,7 @@ public class NIOConnectionManager extends AbstractConnectionManager {
         m_messageHeaderPool = p_messageHeaderPool;
         m_messageHandlers = p_messageHandlers;
 
-        // #if LOGGER >= INFO
         LOGGER.info("Starting NIOSelector...");
-        // #endif /* LOGGER >= INFO */
 
         m_bufferPool = new BufferPool((int) m_config.getOugoingRingBufferSize().getBytes());
         if (p_coreConfig.getExporterPoolType()) {
@@ -162,10 +160,8 @@ public class NIOConnectionManager extends AbstractConnectionManager {
 
         if (p_existingConnection == null) {
             if (m_openConnections == m_maxConnections) {
-                // #if LOGGER >= DEBUG
                 LOGGER.debug("Create connection on send: Connection max (%d) reached, dismissing random connection",
                         m_maxConnections);
-                // #endif /* LOGGER >= DEBUG */
 
                 dismissRandomConnection();
             }
@@ -188,18 +184,14 @@ public class NIOConnectionManager extends AbstractConnectionManager {
         while (!ret.getPipeOut().isConnected()) {
             if (ret.isConnectionCreationAborted()) {
                 condLock.unlock();
-                // #if LOGGER >= DEBUG
                 LOGGER.debug("Connection creation aborted");
-                // #endif /* LOGGER >= DEBUG */
 
                 return null;
             }
 
             if (System.currentTimeMillis() > deadline) {
-                // #if LOGGER >= DEBUG
                 LOGGER.debug("Connection creation time-out. Interval %s ms might be to small",
                         m_config.getConnectionTimeOut());
-                // #endif /* LOGGER >= DEBUG */
 
                 condLock.unlock();
 
@@ -242,9 +234,7 @@ public class NIOConnectionManager extends AbstractConnectionManager {
             try {
                 connection.getPipeOut().getChannel().close();
             } catch (final IOException e) {
-                // #if LOGGER >= ERROR
                 LOGGER.error("Could not close connection to %s!", p_connection.getDestinationNodeID());
-                // #endif /* LOGGER >= ERROR */
             }
         }
 
@@ -258,9 +248,7 @@ public class NIOConnectionManager extends AbstractConnectionManager {
             try {
                 connection.getPipeIn().getChannel().close();
             } catch (final IOException e) {
-                // #if LOGGER >= ERROR
                 LOGGER.error("Could not close connection to %s!", p_connection.getDestinationNodeID());
-                // #endif /* LOGGER >= ERROR */
             }
         }
 
@@ -291,18 +279,14 @@ public class NIOConnectionManager extends AbstractConnectionManager {
             p_channel.register(m_nioSelector.getSelector(), 0);
 
             if (remoteNodeID != NodeID.INVALID_ID) {
-                // #if LOGGER >= DEBUG
                 LOGGER.debug("Passive create new connection to 0x%X", remoteNodeID);
-                // #endif /* LOGGER >= DEBUG */
 
                 m_connectionCreatorHelperThread.pushJob(new CreationJob(remoteNodeID, p_channel));
             } else {
                 throw new IOException("Invalid NodeID");
             }
         } catch (final IOException e) {
-            // #if LOGGER >= ERROR
             LOGGER.error("Could not create connection!");
-            // #endif /* LOGGER >= ERROR */
             throw e;
         }
     }
@@ -485,10 +469,8 @@ public class NIOConnectionManager extends AbstractConnectionManager {
 
                     if (connection == null) {
                         if (m_openConnections == m_config.getMaxConnections()) {
-                            // #if LOGGER >= DEBUG
                             LOGGER.debug("Create connection on recv: Connection max (%d) reached, dismissing random " +
                                     "connection", m_maxConnections);
-                            // #endif /* LOGGER >= DEBUG */
 
                             dismissRandomConnection();
                         }

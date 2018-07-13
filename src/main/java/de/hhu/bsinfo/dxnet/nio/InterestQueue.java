@@ -178,9 +178,7 @@ class InterestQueue {
                     try {
                         connection.getPipeOut().getChannel().register(p_selector, SelectionKey.OP_CONNECT, connection);
                     } catch (final ClosedChannelException e) {
-                        // #if LOGGER >= DEBUG
                         LOGGER.debug("Could not change operations!");
-                        // #endif /* LOGGER >= DEBUG */
                     }
                 }
                 if ((interest & READ_FLOW_CONTROL) == READ_FLOW_CONTROL) {
@@ -233,9 +231,7 @@ class InterestQueue {
                         if (key == null) {
                             // Key might be null if connection was closed during shutdown or due to closing a duplicate
                             // connection
-                            // #if LOGGER >= ERROR
                             LOGGER.error("Cannot register WRITE operation as key is null for %s", connection);
-                            // #endif /* LOGGER >= ERROR */
                         } else if (key.interestOps() != (SelectionKey.OP_READ | SelectionKey.OP_WRITE)) {
                             // If key interest is READ | WRITE the interest must not be overwritten with WRITE as both
                             // incoming buffers might be filled causing a deadlock
@@ -250,13 +246,11 @@ class InterestQueue {
                     // CLOSE -> close connection
                     // Close connection after at least two connection timeouts since request
                     if (System.currentTimeMillis() - connection.getClosingTimestamp() > 2 * p_connectionTimeout) {
-                        // #if LOGGER >= DEBUG
                         try {
                             LOGGER.debug("Closing connection to 0x%X;%s", connection.getDestinationNodeID(),
                                     connection.getPipeOut().getChannel().getRemoteAddress());
                         } catch (final IOException ignored) {
                         }
-                        // #endif /* LOGGER >= DEBUG */
                         // Close connection
                         p_connectionManager.closeConnection(connection, false);
                     } else {
