@@ -60,7 +60,7 @@ public class DXNetNodeMap implements NodeMap {
     }
 
     @Override
-    public InetSocketAddress getAddress(short p_nodeID) {
+    public InetSocketAddress getAddress(final short p_nodeID) {
         return m_nodeMap[p_nodeID & 0xFFFF];
     }
 }

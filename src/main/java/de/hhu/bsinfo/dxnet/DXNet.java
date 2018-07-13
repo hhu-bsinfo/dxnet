@@ -46,9 +46,10 @@ import de.hhu.bsinfo.dxutils.stats.StatisticsManager;
 import de.hhu.bsinfo.dxutils.stats.TimePool;
 
 /**
- * DXNet main class. The network subsystem supports different types of transport. Ethernet using Java NIO and InfiniBand using libibverbs through an
- * additional JNI library (libJNIIbdxnet). The network allows you to easily send messages, requests or responses to requests to another destination, receive
- * incoming messages or requests and process them in your application.
+ * DXNet main class. The network subsystem supports different types of transport. Ethernet using Java NIO and
+ * InfiniBand using libibverbs through an additional JNI library (libJNIIbdxnet). The network allows you to easily
+ * send messages, requests or responses to requests to another destination, receive incoming messages or requests and
+ * process them in your application.
  *
  * @author Florian Klein, florian.klein@hhu.de, 18.03.2012
  * @author Marc Ewert, marc.ewert@hhu.de, 14.08.2014
@@ -106,8 +107,7 @@ public final class DXNet {
      *         NodeMap implementation to lookup node ids
      */
     public DXNet(final CoreConfig p_coreConfig, final NIOConfig p_nioConfig, final IBConfig p_ibConfig,
-            final LoopbackConfig p_loopbackConfig,
-            final NodeMap p_nodeMap) {
+            final LoopbackConfig p_loopbackConfig, final NodeMap p_nodeMap) {
         m_coreConfig = p_coreConfig;
         m_nioConfig = p_nioConfig;
         m_ibConfig = p_ibConfig;
@@ -131,8 +131,8 @@ public final class DXNet {
         if (m_availableCores <= 0) {
             m_overprovisioning = true;
             // #if LOGGER >= INFO
-            LOGGER.info(
-                    "Overprovisioning detected (%d network threads on %d cores). Activating parking strategy for network threads.",
+            LOGGER.info("Overprovisioning detected (%d network threads on %d cores). Activating parking strategy " +
+                            "for network threads.",
                     m_coreConfig.getNumMessageHandlerThreads() + 2, Runtime.getRuntime().availableProcessors());
             // #endif /* LOGGER >= INFO */
         }
@@ -310,8 +310,8 @@ public final class DXNet {
     }
 
     /**
-     * Try to force connect to a specific node. When sending messages, the system tries to connect to the destination first, if it is not connected,
-     * automatically. This call is mainly used to detect node failures.
+     * Try to force connect to a specific node. When sending messages, the system tries to connect to the destination
+     * first, if it is not connected, automatically. This call is mainly used to detect node failures.
      *
      * @param p_nodeID
      *         Node to connect to
@@ -367,8 +367,8 @@ public final class DXNet {
 
             // #if LOGGER >= INFO
             LOGGER.info("Overprovisioning detected (%d network threads and >= %d application threads on %d cores)." +
-                            "Activating parking strategy for network threads.", m_coreConfig.getNumMessageHandlerThreads() + 2,
-                    m_sendThreads.get(),
+                            "Activating parking strategy for network threads.",
+                    m_coreConfig.getNumMessageHandlerThreads() + 2, m_sendThreads.get(),
                     Runtime.getRuntime().availableProcessors());
             // #endif /* LOGGER >= INFO */
         }
@@ -392,6 +392,7 @@ public final class DXNet {
                     connection.postMessage(p_message);
                 } else {
                     long timestamp = m_lastFailures.get(p_message.getDestination() & 0xFFFF);
+
                     if (timestamp == 0 || timestamp + 1000 < System.currentTimeMillis()) {
                         m_lastFailures.set(p_message.getDestination() & 0xFFFF, System.currentTimeMillis());
 
@@ -459,6 +460,7 @@ public final class DXNet {
         // #endif /* LOGGER == TRACE */
 
         int timeout = p_timeout != -1 ? p_timeout : m_timeOut;
+
         try {
             if (p_waitForResponses) {
                 // #ifdef STATISTICS

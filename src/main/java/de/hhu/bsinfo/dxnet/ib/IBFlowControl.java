@@ -16,9 +16,6 @@
 
 package de.hhu.bsinfo.dxnet.ib;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import de.hhu.bsinfo.dxnet.core.AbstractFlowControl;
 
 /**
@@ -27,8 +24,6 @@ import de.hhu.bsinfo.dxnet.core.AbstractFlowControl;
  * @author Stefan Nothaas, stefan.nothaas@hhu.de, 13.06.2017
  */
 class IBFlowControl extends AbstractFlowControl {
-    private static final Logger LOGGER = LogManager.getFormatterLogger(IBFlowControl.class.getSimpleName());
-
     private final IBWriteInterestManager m_writeInterestManager;
 
     /**

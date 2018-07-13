@@ -78,7 +78,8 @@ public class LoopbackPipeIn extends AbstractPipeIn {
         int ret;
 
         if (m_incomingBufferQueue.isFull()) {
-            // Abort to avoid deadlock when sending requests/responses as responses cannot be sent if send thread locks down below
+            // Abort to avoid deadlock when sending requests/responses as responses cannot be sent if send thread
+            // locks down below
             return 0;
         }
 

@@ -209,6 +209,7 @@ public class NIOConnectionManager extends AbstractConnectionManager {
                 cond.await(1, TimeUnit.MILLISECONDS);
             } catch (final InterruptedException e) { /* ignore */ }
         }
+
         condLock.unlock();
 
         if (p_existingConnection == null) {
@@ -233,6 +234,7 @@ public class NIOConnectionManager extends AbstractConnectionManager {
 
         if (connection.getPipeOut().getChannel() != null) {
             key = connection.getPipeOut().getChannel().keyFor(m_nioSelector.getSelector());
+
             if (key != null) {
                 key.cancel();
             }
@@ -248,6 +250,7 @@ public class NIOConnectionManager extends AbstractConnectionManager {
 
         if (connection.getPipeIn().getChannel() != null) {
             key = connection.getPipeIn().getChannel().keyFor(m_nioSelector.getSelector());
+
             if (key != null) {
                 key.cancel();
             }
@@ -324,13 +327,16 @@ public class NIOConnectionManager extends AbstractConnectionManager {
 
         while (counter < buffer.capacity()) {
             bytes = p_channel.read(buffer);
+
             if (bytes == -1) {
                 p_channel.keyFor(p_nioSelector.getSelector()).cancel();
                 p_channel.close();
                 return -1;
             }
+
             counter += bytes;
         }
+
         buffer.flip();
         ret = buffer.getShort();
 

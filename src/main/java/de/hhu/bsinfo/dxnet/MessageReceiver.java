@@ -30,5 +30,5 @@ public interface MessageReceiver {
      * @param p_message
      *         the Message
      */
-    void onIncomingMessage(Message p_message);
+    void onIncomingMessage(final Message p_message);
 }

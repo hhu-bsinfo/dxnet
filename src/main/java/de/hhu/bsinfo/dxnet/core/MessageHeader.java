@@ -111,7 +111,8 @@ public class MessageHeader implements Importable {
     }
 
     /**
-     * Was the deserialization started by the MessageCreationCoordinator because the message is split to more than one buffer?
+     * Was the deserialization started by the MessageCreationCoordinator because the message is split to more than
+     * one buffer?
      *
      * @return whether this message is split or not
      */

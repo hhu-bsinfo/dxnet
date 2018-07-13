@@ -80,7 +80,8 @@ public class CoreConfig {
     }
 
     /**
-     * The exporter pool type. True if static, false if dynamic. Static is recommended for less than 1000 actively message sending threads.
+     * The exporter pool type. True if static, false if dynamic. Static is recommended for less than 1000
+     * actively message sending threads.
      */
     public boolean getExporterPoolType() {
         return m_useStaticExporterPool;
@@ -105,20 +106,20 @@ public class CoreConfig {
      * Check if the device name is set to ethernet
      */
     public boolean isDeviceEthernet() {
-        return m_device.toLowerCase().equals("ethernet");
+        return "ethernet".equals(m_device.toLowerCase());
     }
 
     /**
      * Check if the device name is set to infiniband
      */
     public boolean isDeviceInfiniband() {
-        return m_device.toLowerCase().equals("infiniband");
+        return "infiniband".equals(m_device.toLowerCase());
     }
 
     /**
      * Check if the device name is set to loopback
      */
     public boolean isDeviceLoopback() {
-        return m_device.toLowerCase().equals("loopback");
+        return "loopback".equals(m_device.toLowerCase());
     }
 }

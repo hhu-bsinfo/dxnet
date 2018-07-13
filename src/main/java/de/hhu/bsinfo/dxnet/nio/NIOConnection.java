@@ -34,7 +34,6 @@ import de.hhu.bsinfo.dxnet.core.BufferPool;
 import de.hhu.bsinfo.dxnet.core.IncomingBufferQueue;
 import de.hhu.bsinfo.dxnet.core.LocalMessageHeaderPool;
 import de.hhu.bsinfo.dxnet.core.MessageDirectory;
-import de.hhu.bsinfo.dxnet.core.NetworkException;
 import de.hhu.bsinfo.dxnet.core.RequestMap;
 
 /**
@@ -184,7 +183,7 @@ public class NIOConnection extends AbstractConnection<NIOPipeIn, NIOPipeOut> {
      * @param p_key
      *         the selection key
      */
-    public void connect(final SelectionKey p_key) throws NetworkException {
+    public void connect(final SelectionKey p_key) {
         if (getPipeOut().getChannel().isConnectionPending()) {
             try {
                 if (getPipeOut().getChannel().finishConnect()) {

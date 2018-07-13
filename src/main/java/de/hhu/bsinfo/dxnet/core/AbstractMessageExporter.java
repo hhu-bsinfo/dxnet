@@ -46,7 +46,7 @@ public abstract class AbstractMessageExporter implements Exporter {
      * @param p_size
      *         the size
      */
-    abstract void setBuffer(long p_addr, int p_size);
+    abstract void setBuffer(final long p_addr, final int p_size);
 
     /**
      * Set buffer offset
@@ -54,5 +54,5 @@ public abstract class AbstractMessageExporter implements Exporter {
      * @param p_position
      *         the offset
      */
-    abstract void setPosition(int p_position);
+    abstract void setPosition(final int p_position);
 }

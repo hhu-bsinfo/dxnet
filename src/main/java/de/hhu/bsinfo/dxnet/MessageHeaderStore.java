@@ -98,11 +98,13 @@ public class MessageHeaderStore {
 
         if ((posBack + m_size & 0x7FFFFFFF) >= (posFront + p_messages & 0x7FFFFFFF) ||
                 /* 31-bit overflow in posBack but not posFront */
-                (posBack + m_size & 0x7FFFFFFF) < (posBack & 0x7FFFFFFF) && (posFront + p_messages & 0x7FFFFFFF) > (posBack & 0x7FFFFFFF)) {
+                (posBack + m_size & 0x7FFFFFFF) < (posBack & 0x7FFFFFFF) &&
+                        (posFront + p_messages & 0x7FFFFFFF) > (posBack & 0x7FFFFFFF)) {
 
             for (int i = 0; i < p_messages; i++) {
                 m_buffer[(posFront + i & 0x7FFFFFFF) % m_size] = p_headers[i];
             }
+
             m_posFront += p_messages;
 
             return true;
@@ -121,9 +123,11 @@ public class MessageHeaderStore {
         MessageHeader ret;
 
         while (true) {
-            // Get back before front, otherwise back can overtake front when scheduler interrupts thread between get calls
+            // Get back before front, otherwise back can overtake front when scheduler interrupts thread
+            // between get calls
             int posBackSigned = m_posBack.get();
             int posBack = posBackSigned & 0x7FFFFFFF;
+
             if (posBack == (m_posFront & 0x7FFFFFFF)) {
                 // Ring-buffer is empty.
                 ret = null;

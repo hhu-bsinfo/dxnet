@@ -69,8 +69,7 @@ class MessageHandler extends Thread {
      *         the message queue
      */
     MessageHandler(final MessageReceiverStore p_messageReceivers, final MessageHeaderStore p_queue,
-            final MessageHeaderPool p_messageHeaderPool,
-            final boolean p_overprovisioning) {
+            final MessageHeaderPool p_messageHeaderPool, final boolean p_overprovisioning) {
         m_messageReceivers = p_messageReceivers;
         m_messages = p_queue;
         m_importers = new MessageImporterCollection();
@@ -149,11 +148,14 @@ class MessageHandler extends Thread {
 
             type = header.getType();
             subtype = header.getSubtype();
+
             if (type == m_specialReceiveType && subtype == m_specialReceiveSubtype) {
+
                 // This is a special case for DXRAM's logging to deserialize the message's chunks directly into the write buffer.
                 // Do not use this method without considering all other possibilities!
                 if (!header.isIncomplete()) {
                     messageReceiver = m_messageReceivers.getReceiver(type, subtype);
+
                     if (messageReceiver != null) {
                         // #ifdef STATISTICS
                         SOP_EXECUTE.start();
@@ -191,6 +193,7 @@ class MessageHandler extends Thread {
 
             if (message != null) {
                 messageReceiver = m_messageReceivers.getReceiver(type, subtype);
+
                 if (messageReceiver != null) {
                     // #ifdef STATISTICS
                     SOP_EXECUTE.start();

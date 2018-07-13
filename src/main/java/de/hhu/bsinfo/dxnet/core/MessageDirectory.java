@@ -58,11 +58,13 @@ public final class MessageDirectory {
         Constructor<?> constructor;
 
         m_lock.lock();
+
         try {
             constructor = p_class.getDeclaredConstructor();
         } catch (final NoSuchMethodException e) {
             m_lock.unlock();
-            throw new IllegalArgumentException("Class " + p_class.getCanonicalName() + " has no default constructor", e);
+            throw new IllegalArgumentException("Class " + p_class.getCanonicalName() + " has no default constructor",
+                    e);
         }
 
         if (contains(p_type, p_subtype)) {
@@ -118,7 +120,8 @@ public final class MessageDirectory {
 
         constructor = getConstructor(p_type, p_subtype);
 
-        // Try again in a loop, if constructor was not registered. Stop if request timeout is reached as answering later has no effect
+        // Try again in a loop, if constructor was not registered. Stop if request timeout is reached as answering
+        // later has no effect
         if (constructor == null) {
             time = System.currentTimeMillis();
             while (constructor == null && System.currentTimeMillis() < time + m_timeOut) {
@@ -129,7 +132,9 @@ public final class MessageDirectory {
         }
 
         if (constructor == null) {
-            throw new NetworkRuntimeException("Could not create message instance: Message type (" + p_type + ':' + p_subtype + ") not registered");
+            throw new NetworkRuntimeException(
+                    "Could not create message instance: Message type (" + p_type + ':' + p_subtype +
+                            ") not registered");
         }
 
         try {
@@ -158,7 +163,8 @@ public final class MessageDirectory {
             return false;
         }
 
-        result = constructors.length > p_type && !(constructors[p_type] == null || constructors[p_type].length <= p_subtype) &&
+        result = constructors.length > p_type &&
+                !(constructors[p_type] == null || constructors[p_type].length <= p_subtype) &&
                 constructors[p_type][p_subtype] != null;
 
         return result;

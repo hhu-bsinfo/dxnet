@@ -19,9 +19,6 @@ package de.hhu.bsinfo.dxnet.loopback;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import de.hhu.bsinfo.dxutils.UnsafeHandler;
 
 /**
@@ -30,11 +27,6 @@ import de.hhu.bsinfo.dxutils.UnsafeHandler;
  * @author Florian Klein, florian.klein@hhu.de, 18.03.2012
  */
 class LoopbackSendThread extends Thread {
-
-    // Constants
-    private static final Logger LOGGER = LogManager.getFormatterLogger(LoopbackSendThread.class.getSimpleName());
-
-    // Attributes
     private final AtomicBoolean m_send1;
     private final AtomicBoolean m_send2;
     private LoopbackConnection m_connection1;
@@ -54,8 +46,7 @@ class LoopbackSendThread extends Thread {
      *         the size of incoming and outgoing buffers
      */
     LoopbackSendThread(final LoopbackConnectionManager p_connectionManager, final int p_connectionTimeout,
-            final int p_osBufferSize,
-            final boolean p_overprovisioning) {
+            final int p_osBufferSize, final boolean p_overprovisioning) {
         m_send1 = new AtomicBoolean(false);
         m_send2 = new AtomicBoolean(false);
 

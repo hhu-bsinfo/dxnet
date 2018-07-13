@@ -70,11 +70,13 @@ public final class MessageHeaderPool {
         int posBack = m_posBackConsumer.get();
 
         if ((posBack + m_size & 0x7FFFFFFF) >= (posFront + p_messageHeaders.length & 0x7FFFFFFF) ||
-                        /* 31-bit overflow in posBack but not posFront */
-                (posBack + m_size & 0x7FFFFFFF) < (posBack & 0x7FFFFFFF) && (posFront + p_messageHeaders.length & 0x7FFFFFFF) > (posBack & 0x7FFFFFFF)) {
+                /* 31-bit overflow in posBack but not posFront */
+                (posBack + m_size & 0x7FFFFFFF) < (posBack & 0x7FFFFFFF) &&
+                        (posFront + p_messageHeaders.length & 0x7FFFFFFF) > (posBack & 0x7FFFFFFF)) {
             for (int i = 0; i < p_messageHeaders.length; i++) {
                 p_messageHeaders[i] = m_buffer[(posFront + i & 0x7FFFFFFF) % m_size];
             }
+
             m_posFront += p_messageHeaders.length;
 
             return true;
@@ -110,6 +112,7 @@ public final class MessageHeaderPool {
                     LOGGER.warn("Insufficient pooled message headers. Waiting for headers to be returned.");
                     // #endif /* LOGGER >= WARN */
                 }
+
                 LockSupport.parkNanos(100);
             }
         }
@@ -127,6 +130,7 @@ public final class MessageHeaderPool {
             int posFront = m_posFront & 0x7FFFFFFF;
             int posBackSigned = m_posBackProducer.get();
             int posBack = posBackSigned & 0x7FFFFFFF;
+
             if ((posBack + p_messageHeaders.length & 0x7FFFFFFF) > posFront) {
                 // Cannot return all message headers at once -> try returning single message headers until pool is full
                 for (int i = 0; i < p_messageHeaders.length; i++) {
@@ -141,12 +145,14 @@ public final class MessageHeaderPool {
                     m_buffer[(posBack + i & 0x7FFFFFFF) % m_size] = p_messageHeaders[i];
                 }
 
-                // First atomic is necessary to synchronize producers, second to inform consumer after message header has been added
+                // First atomic is necessary to synchronize producers, second to inform consumer after message
+                // header has been added
                 while (!m_posBackConsumer.compareAndSet(posBackSigned, posBackSigned + p_messageHeaders.length)) {
                     // Producer needs to wait for all other submissions prior to this one
                     // (this thread overtook at least one other producer since updating posBackProducer)
                     Thread.yield();
                 }
+
                 break;
             }
         }
@@ -164,6 +170,7 @@ public final class MessageHeaderPool {
             int posFront = m_posFront & 0x7FFFFFFF;
             int posBackSigned = m_posBackProducer.get();
             int posBack = posBackSigned & 0x7FFFFFFF;
+
             if (posBack == posFront) {
                 // Looks like we missed an posFront update because this queue cannot be full at this point
                 continue;
@@ -172,12 +179,14 @@ public final class MessageHeaderPool {
             if (m_posBackProducer.compareAndSet(posBackSigned, posBackSigned + 1)) {
                 m_buffer[posBack % m_size] = p_messageHeader;
 
-                // First atomic is necessary to synchronize producers, second to inform consumer after message header has been added
+                // First atomic is necessary to synchronize producers, second to inform consumer after message header
+                // has been added
                 while (!m_posBackConsumer.compareAndSet(posBackSigned, posBackSigned + 1)) {
                     // Producer needs to wait for all other submissions prior to this one
                     // (this thread overtook at least one other producer since updating posBackProducer)
                     Thread.yield();
                 }
+
                 break;
             }
         }

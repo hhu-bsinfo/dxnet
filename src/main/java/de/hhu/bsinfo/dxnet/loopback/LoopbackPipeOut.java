@@ -16,11 +16,7 @@
 
 package de.hhu.bsinfo.dxnet.loopback;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import de.hhu.bsinfo.dxnet.NodeMap;
 import de.hhu.bsinfo.dxnet.core.AbstractFlowControl;
@@ -31,13 +27,12 @@ import de.hhu.bsinfo.dxnet.core.OutgoingRingBuffer;
  * Created by nothaas on 6/9/17.
  */
 public class LoopbackPipeOut extends AbstractPipeOut {
-    private static final Logger LOGGER = LogManager.getFormatterLogger(LoopbackPipeOut.class.getSimpleName());
-
     private final LoopbackSendThread m_loopbackSendThread;
     private LoopbackConnection m_connection;
 
-    LoopbackPipeOut(final short p_ownNodeId, final short p_destinationNodeId, final int p_bufferSize, final AbstractFlowControl p_flowControl,
-            final OutgoingRingBuffer p_outgoingBuffer, final LoopbackSendThread p_loopbackSendThread, final NodeMap p_nodeMap,
+    LoopbackPipeOut(final short p_ownNodeId, final short p_destinationNodeId, final int p_bufferSize,
+            final AbstractFlowControl p_flowControl, final OutgoingRingBuffer p_outgoingBuffer,
+            final LoopbackSendThread p_loopbackSendThread, final NodeMap p_nodeMap,
             final LoopbackConnection p_parentConnection) {
         super(p_ownNodeId, p_destinationNodeId, p_flowControl, p_outgoingBuffer);
 

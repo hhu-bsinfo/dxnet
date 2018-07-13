@@ -71,13 +71,6 @@ import de.hhu.bsinfo.dxutils.unit.TimeUnit;
  * DXNet benchmark test application. Use this to run various types of
  * benchmarks like end-to-end, all-to-all, one-to-all, all-to-one
  * using the DXNet subsystem
- * Simple end-to-end example with two nodes:
- * java -Dlog4j.configurationFile=config/log4j.xml -cp
- * lib/gson-2.7.jar:lib/log4j-api-2.7.jar:lib/log4j-core-2.7.jar:dxnet.jar
- * de.hhu.bsinfo.dxnet.DXNetMain config/dxnet.json 0 100000 1000000 1024 1 0 1
- * java -Dlog4j.configurationFile=config/log4j.xml -cp
- * lib/gson-2.7.jar:lib/log4j-api-2.7.jar:lib/log4j-core-2.7.jar:dxnet.jar
- * de.hhu.bsinfo.dxnet.DXNetMain config/dxnet.json 0 100000 1000000 1024 1 1 0
  *
  * @author Kevin Beineke, kevin.beineke@hhu.de, 20.12.2017
  * @author Stefan Nothaas, stefan.nothaas@hhu.de, 20.12.2017
@@ -142,6 +135,7 @@ public final class DXNetMain implements MessageReceiver {
         Supplier[] workloads = new Supplier[] {WorkloadA::new, WorkloadB::new, WorkloadC::new, WorkloadD::new};
 
         Workload[] threadArray = new Workload[ms_threads];
+
         for (int i = 0; i < ms_threads; i++) {
             threadArray[i] = (Workload) workloads[ms_workload].get();
             threadArray[i].setName(String.valueOf(i));
@@ -157,6 +151,7 @@ public final class DXNetMain implements MessageReceiver {
         // and latency and not getting any good throughput/latency at all
 
         System.out.printf("Waiting %d before starting workload...", ms_ownNodeId);
+
         try {
             Thread.sleep(100 * RandomUtils.getRandomValue(0, 100));
         } catch (InterruptedException ignored) {
@@ -301,6 +296,7 @@ public final class DXNetMain implements MessageReceiver {
 
             if (p_message.getSubtype() == Messages.SUBTYPE_BENCHMARK_REQUEST) {
                 BenchmarkResponse response;
+
                 if (ms_objectPooling) {
                     response = ms_responses[Integer.parseInt(Thread.currentThread().getName().substring(24)) - 1];
                     response.reuse((BenchmarkRequest) p_message, Messages.SUBTYPE_BENCHMARK_RESPONSE);
@@ -399,11 +395,10 @@ public final class DXNetMain implements MessageReceiver {
             targets.append(' ');
         }
 
-        System.out
-                .printf("Parameters: print interval ms %d, workload %d, send count %d (per target), recv count %d (all), " +
-                                "size %d (payload size %d), threads %d, own node id 0x%X, targets %s\n", ms_printIntervalMs,
-                        ms_workload, ms_sendCount, ms_recvCount, ms_size, ms_messagePayloadSize, ms_threads,
-                        ms_ownNodeId, targets.toString());
+        System.out.printf("Parameters: print interval ms %d, workload %d, send count %d (per target), recv count %d " +
+                        "(all), size %d (payload size %d), threads %d, own node id 0x%X, targets %s\n",
+                ms_printIntervalMs, ms_workload, ms_sendCount, ms_recvCount, ms_size, ms_messagePayloadSize, ms_threads,
+                ms_ownNodeId, targets.toString());
     }
 
     private static void loadConfiguration(final String p_configPath) {
@@ -439,6 +434,7 @@ public final class DXNetMain implements MessageReceiver {
         }
 
         JsonElement element = null;
+
         try {
             element = gson.fromJson(new String(Files.readAllBytes(Paths.get(p_configPath))), JsonElement.class);
         } catch (final Exception e) {
@@ -492,6 +488,7 @@ public final class DXNetMain implements MessageReceiver {
 
         // search for own node id mapping
         boolean found = false;
+
         for (DXNetConfig.NodeEntry entry : ms_context.getNodeList()) {
             if (entry.getNodeId() == ms_ownNodeId) {
                 found = true;
@@ -552,14 +549,19 @@ public final class DXNetMain implements MessageReceiver {
         boolean found = false;
         InetSocketAddress socketAddress = ms_nodeMap.getAddress(ms_ownNodeId);
         InetAddress myAddress = socketAddress.getAddress();
+
         try {
             Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
+
             outerloop:
+
             while (networkInterfaces.hasMoreElements()) {
                 NetworkInterface currentNetworkInterface = networkInterfaces.nextElement();
                 Enumeration<InetAddress> addresses = currentNetworkInterface.getInetAddresses();
+
                 while (addresses.hasMoreElements()) {
                     InetAddress currentAddress = addresses.nextElement();
+
                     if (myAddress.equals(currentAddress)) {
                         System.out.printf("%s is bound to %s\n", myAddress.getHostAddress(),
                                 currentNetworkInterface.getDisplayName());
@@ -690,20 +692,20 @@ public final class DXNetMain implements MessageReceiver {
                 (double) p_recvTotalMessages * ms_messagePayloadSize / 1024 / 1024 / timeRecvSec : 0;
         double recvTpMMsg = p_recvTotalMessages != 0 ? (double) p_recvTotalMessages / 1000.0 / 1000.0 / timeRecvSec : 0;
 
-        System.out
-                .printf("=========================================================================================\n" +
-                                "[RESULTS]\n" +
-                                "[RESULTS PARAMS: Workload=%d, MsgSize=%d, MsgPayloadSize=%d, Threads=%d, MsgHandlers=%d]\n" +
-                                "[RESULTS SEND: Runtime=%.3f sec, Msgs=%d, X=%.3f mb/s, XP=%.3f mb/s, XM=%.6f milmsg/s]\n" +
-                                "[RESULTS RECV: Runtime=%.3f sec, Msgs=%d, X=%.3f mb/s, XP=%.3f mb/s, XM=%.6f milmsg/s]\n" +
-                                "[RESULTS LATENCY: Msgs=%d, Avg=%.3f us, Min=%.3f us, Max=%.3f us, 95th=%.3f us, " +
-                                "99th=%.3f us, 99.9th=%.3f us]\n" + "[RESULTS ERRORS: ReqRespTimeouts=%d]\n" +
-                                "=========================================================================================\n",
-                        ms_workload, ms_size, ms_messagePayloadSize, ms_threads,
-                        ms_context.getCoreConfig().getNumMessageHandlerThreads(), timeSendSec, p_sendTotalMessages,
-                        sendTp, sendTpPayload, sendTpMMsg, timeRecvSec, p_recvTotalMessages, recvTp, recvTpPayload,
-                        recvTpMMsg, rttCount, rttAvgUs, rttMinUs, rttMaxUs, rtt95Us, rtt99Us, rtt999Us,
-                        ms_reqRespTimeouts.get());
+        System.out.printf(
+                "=========================================================================================\n" +
+                        "[RESULTS]\n" +
+                        "[RESULTS PARAMS: Workload=%d, MsgSize=%d, MsgPayloadSize=%d, Threads=%d, MsgHandlers=%d]\n" +
+                        "[RESULTS SEND: Runtime=%.3f sec, Msgs=%d, X=%.3f mb/s, XP=%.3f mb/s, XM=%.6f milmsg/s]\n" +
+                        "[RESULTS RECV: Runtime=%.3f sec, Msgs=%d, X=%.3f mb/s, XP=%.3f mb/s, XM=%.6f milmsg/s]\n" +
+                        "[RESULTS LATENCY: Msgs=%d, Avg=%.3f us, Min=%.3f us, Max=%.3f us, 95th=%.3f us, " +
+                        "99th=%.3f us, 99.9th=%.3f us]\n" + "[RESULTS ERRORS: ReqRespTimeouts=%d]\n" +
+                        "=========================================================================================\n",
+                ms_workload, ms_size, ms_messagePayloadSize, ms_threads,
+                ms_context.getCoreConfig().getNumMessageHandlerThreads(), timeSendSec, p_sendTotalMessages,
+                sendTp, sendTpPayload, sendTpMMsg, timeRecvSec, p_recvTotalMessages, recvTp, recvTpPayload,
+                recvTpMMsg, rttCount, rttAvgUs, rttMinUs, rttMaxUs, rtt95Us, rtt99Us, rtt999Us,
+                ms_reqRespTimeouts.get());
     }
 
     private static class Workload extends Thread {
@@ -752,11 +754,13 @@ public final class DXNetMain implements MessageReceiver {
             Collections.shuffle(destinationList);
 
             long messageCount = ms_sendCount / ms_threads;
+
             if (Integer.parseInt(Thread.currentThread().getName()) == ms_threads - 1) {
                 messageCount += ms_sendCount % ms_threads;
             }
 
             BenchmarkMessage[] messages = new BenchmarkMessage[destinationList.size()];
+
             for (int i = 0; i < destinationList.size(); i++) {
                 messages[i] = new BenchmarkMessage(destinationList.get(i), ms_messagePayloadSize);
             }
@@ -790,6 +794,7 @@ public final class DXNetMain implements MessageReceiver {
             Collections.shuffle(destinationList);
 
             long messageCount = ms_sendCount / ms_threads;
+
             if (Integer.parseInt(Thread.currentThread().getName()) == ms_threads - 1) {
                 messageCount += ms_sendCount % ms_threads;
             }
@@ -818,6 +823,7 @@ public final class DXNetMain implements MessageReceiver {
 
             int numberOfMessageHandler = ms_context.getCoreConfig().getNumMessageHandlerThreads();
             ms_responses = new BenchmarkResponse[numberOfMessageHandler];
+
             for (int i = 0; i < numberOfMessageHandler; i++) {
                 ms_responses[i] = new BenchmarkResponse();
             }
@@ -830,11 +836,13 @@ public final class DXNetMain implements MessageReceiver {
             Collections.shuffle(destinationList);
 
             long messageCount = ms_sendCount / ms_threads;
+
             if (Integer.parseInt(Thread.currentThread().getName()) == ms_threads - 1) {
                 messageCount += ms_sendCount % ms_threads;
             }
 
             BenchmarkRequest[] requests = new BenchmarkRequest[destinationList.size()];
+
             for (int i = 0; i < requests.length; i++) {
                 requests[i] = new BenchmarkRequest(destinationList.get(i), ms_messagePayloadSize);
             }
@@ -871,6 +879,7 @@ public final class DXNetMain implements MessageReceiver {
             Collections.shuffle(destinationList);
 
             long messageCount = ms_sendCount / ms_threads;
+
             if (Integer.parseInt(Thread.currentThread().getName()) == ms_threads - 1) {
                 messageCount += ms_sendCount % ms_threads;
             }

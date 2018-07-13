@@ -87,11 +87,13 @@ public abstract class AbstractConnectionManager {
         StringBuilder ret = new StringBuilder();
 
         m_connectionCreationLock.lock();
+
         for (int i = 0; i < 65536; i++) {
             if (m_connections[i] != null) {
                 ret.append(m_connections[i]);
             }
         }
+
         m_connectionCreationLock.unlock();
 
         return ret.toString();
@@ -113,6 +115,7 @@ public abstract class AbstractConnectionManager {
         assert p_destination != NodeID.INVALID_ID;
 
         ret = m_connections[p_destination & 0xFFFF];
+
         if (ret == null || !ret.getPipeOut().isConnected()) {
             connectionLock = getConnectionLock(p_destination);
             connectionLock.lock();
@@ -143,6 +146,7 @@ public abstract class AbstractConnectionManager {
                     // #endif /* LOGGER >= ERROR */
                 }
             }
+
             connectionLock.unlock();
         }
 
@@ -172,10 +176,12 @@ public abstract class AbstractConnectionManager {
 
         m_connectionCreationLock.lock();
         connectionLock = m_connectionLocks[p_destination & 0xFFFF];
+
         if (connectionLock == null) {
             connectionLock = new ReentrantLock(false);
             m_connectionLocks[p_destination & 0xFFFF] = connectionLock;
         }
+
         m_connectionCreationLock.unlock();
 
         return connectionLock;
@@ -192,7 +198,8 @@ public abstract class AbstractConnectionManager {
      * @throws NetworkException
      *         If the connection could not be created
      */
-    protected abstract AbstractConnection createConnection(final short p_destination, final AbstractConnection p_existingConnection) throws NetworkException;
+    protected abstract AbstractConnection createConnection(final short p_destination,
+            final AbstractConnection p_existingConnection) throws NetworkException;
 
     /**
      * Close an active connection
@@ -200,7 +207,8 @@ public abstract class AbstractConnectionManager {
      * @param p_connection
      *         Connection to close
      * @param p_removeConnection
-     *         True to remove the connection resources currently allocated as well or false to keep them to allow re-opening the connection quickly
+     *         True to remove the connection resources currently allocated as well or false to keep them to allow
+     *         re-opening the connection quickly
      */
     protected abstract void closeConnection(final AbstractConnection p_connection, final boolean p_removeConnection);
 
@@ -211,6 +219,7 @@ public abstract class AbstractConnectionManager {
         AbstractConnection connection;
 
         m_connectionCreationLock.lock();
+
         for (int i = 0; i < 65536; i++) {
             if (m_connections[i] != null) {
                 connection = m_connections[i & 0xFFFF];
@@ -219,6 +228,7 @@ public abstract class AbstractConnectionManager {
                 closeConnection(connection, false);
             }
         }
+
         m_openConnections = 0;
         m_connectionCreationLock.unlock();
     }
@@ -232,10 +242,12 @@ public abstract class AbstractConnectionManager {
         Random rand;
 
         rand = new Random();
+
         while (dismiss == null) {
             random = rand.nextInt(m_connections.length);
             dismiss = m_connections[random & 0xFFFF];
         }
+
         // #if LOGGER >= WARN
         LOGGER.warn("Removing randomly selected connection 0x%X", (short) random);
         // #endif /* LOGGER >= WARN */

@@ -121,9 +121,11 @@ public abstract class AbstractPipeIn {
         for (int i = 0; i < BUFFER_SLOTS; i++) {
             m_slotMessageCounters[i] = new AtomicInteger(0);
         }
+
         for (int i = 0; i <= BUFFER_SLOTS; i++) {
             m_slotUnfinishedOperations[i] = new UnfinishedImExporterOperation();
         }
+
         m_unfinishedOperation = m_slotUnfinishedOperations[m_slotPosition];
         m_dummyOperation = new UnfinishedImExporterOperation();
 
@@ -264,6 +266,7 @@ public abstract class AbstractPipeIn {
             // Check type and subtype (must not be both 0)
             byte type = messageHeader.getType();
             byte subtype = messageHeader.getSubtype();
+
             if (!m_messageDirectory.contains(type, subtype)) {
                 StringBuilder builder = new StringBuilder();
                 int len = bytesAvailable;

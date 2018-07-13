@@ -44,5 +44,4 @@ public class NetworkException extends Exception {
     public NetworkException(final String p_message, final Throwable p_cause) {
         super(p_message, p_cause);
     }
-
 }

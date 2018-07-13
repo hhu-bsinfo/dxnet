@@ -66,6 +66,7 @@ class MessageReceiverStore {
             LOGGER.warn("Message receiver null for %d, %d! Waiting...", p_type, p_subtype);
             // #endif /* LOGGER >= WARN */
             deadline = System.currentTimeMillis() + m_requestTimeOut;
+
             while (messageReceiver == null && System.currentTimeMillis() < deadline) {
                 m_receiversLock.lock();
                 messageReceiver = m_receivers[p_type][p_subtype];
@@ -89,6 +90,7 @@ class MessageReceiverStore {
     void register(final byte p_type, final byte p_subtype, final MessageReceiver p_receiver) {
         if (p_receiver != null) {
             m_receiversLock.lock();
+
             // enlarge array
             if (m_receivers.length <= p_type) {
                 final MessageReceiver[][] newArray = new MessageReceiver[p_type + 1][];

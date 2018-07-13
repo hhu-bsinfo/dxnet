@@ -22,7 +22,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import de.hhu.bsinfo.dxnet.core.AbstractFlowControl;
-import de.hhu.bsinfo.dxnet.core.NetworkException;
 import de.hhu.bsinfo.dxnet.nio.NIOFlowControl;
 
 /**
@@ -48,7 +47,7 @@ public class LoopbackFlowControl extends AbstractFlowControl {
     }
 
     @Override
-    public void flowControlWrite() throws NetworkException {
+    public void flowControlWrite() {
         m_flowControlByte.rewind();
         m_flowControlByte.put(getAndResetFlowControlData());
         m_flowControlByte.rewind();

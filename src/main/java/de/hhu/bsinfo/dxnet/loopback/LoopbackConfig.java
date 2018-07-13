@@ -72,7 +72,8 @@ public class LoopbackConfig {
     }
 
     /**
-     * Get the threshold determining when a flow control message is sent (receivedBytes > m_flowControlWindow * m_flowControlWindowThreshold)
+     * Get the threshold determining when a flow control message is sent
+     * (receivedBytes > m_flowControlWindow * m_flowControlWindowThreshold)
      */
     public float getFlowControlWindowThreshold() {
         return m_flowControlWindowThreshold;
@@ -85,6 +86,11 @@ public class LoopbackConfig {
         return m_outgoingRingBufferSize;
     }
 
+    /**
+     * Verify the configuration values
+     *
+     * @return True if all configuration values are ok, false on invalid value, range or any other error
+     */
     public boolean verify() {
         // TODO
         return true;

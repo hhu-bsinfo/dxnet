@@ -66,6 +66,7 @@ final class DefaultMessageHandlerPool {
 
         MessageHandler t;
         m_threads = new MessageHandler[p_numMessageHandlerThreads];
+
         for (int i = 0; i < m_threads.length; i++) {
             t = new MessageHandler(p_messageReceivers, m_defaultMessageHeaders, p_messageHeaderPool,
                     p_overprovisioning);
@@ -80,6 +81,7 @@ final class DefaultMessageHandlerPool {
      */
     void shutdown() {
         MessageHandler t;
+
         for (int i = 0; i < m_threads.length; i++) {
             t = m_threads[i];
             t.shutdown();

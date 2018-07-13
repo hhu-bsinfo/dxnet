@@ -281,10 +281,11 @@ public class Message {
 
     /**
      * Reads the message payload
-     * This method might be interrupted on every operation as payload can be scattered over several packets (this is always
-     * the case for messages larger than network buffer size). As a consequence, this method might be called several times
-     * for one single message. Thus, every operation in overwritten methods must be idempotent (same result for repeated
-     * execution). All available import methods from importer guarantee idempotence and work atomically (read all or nothing).
+     * This method might be interrupted on every operation as payload can be scattered over several packets
+     * (this is always the case for messages larger than network buffer size). As a consequence, this method might be
+     * called several times for one single message. Thus, every operation in overwritten methods must be idempotent
+     * (same result for repeated execution). All available import methods from importer guarantee idempotence and work
+     * atomically (read all or nothing).
      * Spare other I/O accesses and prints.
      * Example implementation for data structures (importable, exportable objects):
      * if (m_obj == null) {
@@ -406,6 +407,7 @@ public class Message {
             for (int i = 0; i < Message.MESSAGE_ID_LENGTH; i++) {
                 p_exporter.writeByte((byte) (m_messageID >> (Message.MESSAGE_ID_LENGTH - 1 - i) * 8 & 0xFF));
             }
+
             p_exporter.writeByte(m_type);
             p_exporter.writeByte(m_subtype);
             p_exporter.writeByte((byte) ((m_messageType << 4) + (m_exclusivity ? 1 : 0)));
@@ -420,6 +422,7 @@ public class Message {
 
         int numberOfWrittenBytes = p_exporter.getNumberOfWrittenBytes();
         int messageSize = p_payloadSize + HEADER_SIZE;
+
         if (numberOfWrittenBytes < messageSize) {
             throw new NetworkException("Did not create message " + this +
                     ", because message contents are smaller than expected payload size: " + numberOfWrittenBytes +

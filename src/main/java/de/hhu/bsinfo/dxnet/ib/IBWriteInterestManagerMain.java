@@ -14,10 +14,19 @@ public final class IBWriteInterestManagerMain {
     private static AtomicLong ms_dataInterests = new AtomicLong(0);
     private static AtomicLong ms_fcInterests = new AtomicLong(0);
 
+    /**
+     * Constructor
+     */
     private IBWriteInterestManagerMain() {
 
     }
 
+    /**
+     * Main entry point
+     *
+     * @param p_args
+     *         Cmd args
+     */
     public static void main(final String[] p_args) {
         final int numProducers = 12;
         final int timeMs = 60000;
@@ -25,6 +34,7 @@ public final class IBWriteInterestManagerMain {
         IBWriteInterestManager writeInterestManager = new IBWriteInterestManager();
 
         ProducerThread[] producerThreads = new ProducerThread[numProducers];
+
         for (int i = 0; i < producerThreads.length; i++) {
             producerThreads[i] = new ProducerThread(i, writeInterestManager);
         }
@@ -34,6 +44,7 @@ public final class IBWriteInterestManagerMain {
         System.out.println("Start, runtime " + timeMs + "ms ...");
 
         consumerThread.start();
+
         for (ProducerThread thread : producerThreads) {
             thread.start();
         }
@@ -62,13 +73,23 @@ public final class IBWriteInterestManagerMain {
         System.out.println(writeInterestManager.toString().substring(0, 100));
     }
 
+    /**
+     * Producer thread creating entries
+     */
     private static class ProducerThread extends Thread {
-
         private int m_id;
         private IBWriteInterestManager m_writeInterestManager;
 
         private volatile boolean m_run;
 
+        /**
+         * Constructor
+         *
+         * @param p_id
+         *         If of the thread
+         * @param p_writeInterestManager
+         *         Reference to WIM instance
+         */
         ProducerThread(final int p_id, final IBWriteInterestManager p_writeInterestManager) {
             m_id = p_id;
             m_writeInterestManager = p_writeInterestManager;
@@ -78,6 +99,9 @@ public final class IBWriteInterestManagerMain {
             setName("Producer-" + p_id);
         }
 
+        /**
+         * Shut down the thread
+         */
         void shutdown() {
             m_run = false;
 
@@ -102,13 +126,23 @@ public final class IBWriteInterestManagerMain {
         }
     }
 
+    /**
+     * Consumer thread consuming entries
+     */
     private static class ConsumerThread extends Thread {
-
         private int m_id;
         private IBWriteInterestManager m_writeInterestManager;
 
         private volatile boolean m_run;
 
+        /**
+         * Constructor
+         *
+         * @param p_id
+         *         Id of the consumer thread
+         * @param p_writeInterestManager
+         *         Reference to WIM
+         */
         ConsumerThread(final int p_id, final IBWriteInterestManager p_writeInterestManager) {
             m_id = p_id;
             m_writeInterestManager = p_writeInterestManager;
@@ -118,6 +152,9 @@ public final class IBWriteInterestManagerMain {
             setName("Consumer-" + p_id);
         }
 
+        /**
+         * Shut down the thread
+         */
         void shutdown() {
             m_run = false;
 

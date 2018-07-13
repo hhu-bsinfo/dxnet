@@ -34,7 +34,8 @@ import org.apache.logging.log4j.Logger;
 import de.hhu.bsinfo.dxutils.NodeID;
 
 /**
- * Manages the whole communication over socket channels like selecting channels, reading and writing data to/from channels, creating/connecting channels, ...
+ * Manages the whole communication over socket channels like selecting channels, reading and writing data to/from
+ * channels, creating/connecting channels, ...
  *
  * @author Kevin Beineke, kevin.beineke@hhu.de, 18.03.2017
  */
@@ -257,7 +258,8 @@ class NIOSelector extends Thread {
 
     /**
      * Create a connection.
-     * The channel was created by a remote node and already accepted. Now the NodeID must be read and the connection object attached.
+     * The channel was created by a remote node and already accepted. Now the NodeID must be read and the connection
+     * object attached.
      *
      * @param p_key
      *         the selected key

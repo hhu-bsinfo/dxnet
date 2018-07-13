@@ -133,7 +133,7 @@ public class Request extends Message {
      * @return the Response
      */
     public final <T extends Response> T getResponse(final Class<T> p_class) {
-        T ret = null;
+        T ret;
 
         assert p_class != null;
 
@@ -141,7 +141,8 @@ public class Request extends Message {
             ret = p_class.cast(m_response);
             m_response.setCorrespondingRequest(this);
         } else {
-            throw new NetworkRuntimeException("Can't get response to request " + this + ", not available (maybe due to sending failed request or timeout when receiving resposne?)");
+            throw new NetworkRuntimeException("Can't get response to request " + this +
+                    ", not available (maybe due to sending failed request or timeout when receiving resposne?)");
         }
 
         return ret;
@@ -155,7 +156,7 @@ public class Request extends Message {
      */
     public final void waitForResponse(final int p_timeoutMs) throws NetworkException {
         long cur = System.nanoTime();
-        long deadline = cur + ((long) p_timeoutMs) * 1000 * 1000;
+        long deadline = cur + (long) p_timeoutMs * 1000 * 1000;
 
         ms_threadsWaiting.incrementAndGet();
         int counter = 0;
@@ -166,7 +167,8 @@ public class Request extends Message {
                 ms_threadsWaiting.decrementAndGet();
 
                 // #if LOGGER >= DEBUG
-                LOGGER.debug("Response for request %s , aborted, latency %f ms", toString(), (System.nanoTime() - cur) / 1000.0 / 1000.0);
+                LOGGER.debug("Response for request %s , aborted, latency %f ms", toString(),
+                        (System.nanoTime() - cur) / 1000.0 / 1000.0);
                 // #endif /* LOGGER >= DEBUG */
 
                 throw new NetworkResponseCancelledException(getDestination());
@@ -177,7 +179,8 @@ public class Request extends Message {
                     ms_threadsWaiting.decrementAndGet();
 
                     // #if LOGGER >= DEBUG
-                    LOGGER.debug("Response for request %s , delayed, latency %f ms", toString(), (System.nanoTime() - cur) / 1000.0 / 1000.0);
+                    LOGGER.debug("Response for request %s , delayed, latency %f ms", toString(),
+                            (System.nanoTime() - cur) / 1000.0 / 1000.0);
                     // #endif /* LOGGER >= DEBUG */
 
                     throw new NetworkResponseDelayedException(getDestination());
@@ -198,7 +201,8 @@ public class Request extends Message {
         ms_threadsWaiting.decrementAndGet();
 
         // #if LOGGER >= TRACE
-        LOGGER.trace("Request %s fulfilled, response %s, latency %f ms", toString(), m_response, (System.nanoTime() - cur) / 1000.0 / 1000.0);
+        LOGGER.trace("Request %s fulfilled, response %s, latency %f ms", toString(), m_response,
+                (System.nanoTime() - cur) / 1000.0 / 1000.0);
         // #endif /* LOGGER >= TRACE */
     }
 

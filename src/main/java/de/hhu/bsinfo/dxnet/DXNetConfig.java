@@ -149,7 +149,9 @@ public class DXNetConfig {
     }
 
     /**
-     * @return
+     * Verify the configuration values
+     *
+     * @return True if all configuration values are ok, false on invalid value, range or any other error
      */
     protected boolean verify() {
         if (!new File(m_jniPath).exists()) {

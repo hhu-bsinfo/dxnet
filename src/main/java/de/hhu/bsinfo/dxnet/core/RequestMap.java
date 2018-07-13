@@ -88,7 +88,8 @@ public final class RequestMap {
         // id of 0 and the other thread with the first overflowed message id
         if (m_pendingRequests[index] != null) {
             // #if LOGGER >= ERROR
-            LOGGER.error("Request %s for idx=%d still registered! Request Map might be too small", m_pendingRequests[index], index);
+            LOGGER.error("Request %s for idx=%d still registered! Request Map might be too small",
+                    m_pendingRequests[index], index);
             // #endif /* LOGGER >= ERROR */
         }
 
@@ -133,6 +134,7 @@ public final class RequestMap {
             UnsafeHandler.getInstance().getUnsafe().loadFence();
 
             request = m_pendingRequests[i];
+
             if (request != null && request.getDestination() == p_nodeID) {
                 request.abort();
                 m_pendingRequests[i] = null;

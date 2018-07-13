@@ -285,6 +285,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         p_connection.setPipeOutConnected(false);
 
         AbstractConnection tmp = m_connections[p_connection.getDestinationNodeID() & 0xFFFF];
+
         if (p_connection.equals(tmp)) {
             p_connection.close(p_removeConnection);
             m_connections[p_connection.getDestinationNodeID() & 0xFFFF] = null;
@@ -323,7 +324,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
 
         closeConnection(m_connections[p_nodeId & 0xFFFF], true);
     }
-    
+
     @Override
     public int received(final long p_incomingRingBuffer) {
         int processed = 0;
@@ -810,7 +811,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         /**
          * Get the node id the last package was sent to
          */
-        public short getNodeId() {
+        short getNodeId() {
             return m_unsafe.getShort(m_baseAddress + IDX_NODE_ID);
         }
 
@@ -939,7 +940,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
          * @param p_idx
          *         Index of the work completion list
          */
-        public short getNodeId(final int p_idx) {
+        short getNodeId(final int p_idx) {
             if (p_idx >= m_numNodes) {
                 throw new IllegalStateException("Node id index out of bounds: " + p_idx + " > " + m_numNodes);
             }

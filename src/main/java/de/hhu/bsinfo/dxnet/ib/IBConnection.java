@@ -96,6 +96,7 @@ class IBConnection extends AbstractConnection<IBPipeIn, IBPipeOut> {
                 LOGGER.debug("Waiting for all scheduled messages to be sent over to be closed connection!");
                 // #endif /* LOGGER >= DEBUG */
                 long start = System.currentTimeMillis();
+
                 while (!getPipeOut().isOutgoingQueueEmpty()) {
                     Thread.yield();
 

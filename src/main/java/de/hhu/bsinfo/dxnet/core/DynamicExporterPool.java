@@ -53,7 +53,9 @@ public final class DynamicExporterPool extends AbstractExporterPool {
         if (ret == null) {
             if (m_exporters.size() > THRESHOLD) {
                 // #if LOGGER >= DEBUG
-                LOGGER.debug("Many threads actively sending messages (>%d). Clearing hash map to reduce memory overhead.", m_exporters.size());
+                LOGGER.debug(
+                        "Many threads actively sending messages (>%d). Clearing hash map to reduce memory overhead.",
+                        m_exporters.size());
                 // #endif /* LOGGER >= DEBUG */
             }
 

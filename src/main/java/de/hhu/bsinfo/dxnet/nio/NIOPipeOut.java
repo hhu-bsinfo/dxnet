@@ -32,8 +32,9 @@ import de.hhu.bsinfo.dxutils.stats.StatisticsManager;
 import de.hhu.bsinfo.dxutils.stats.Time;
 
 /**
- * Enables communication with a remote node over a socket channel. The socket channel's write stream is used to send data and the read stream is for
- * receiving flow control updates (NOT for reading data!). The outgoing channel is independent from the incoming channel stored in the NIOPipeIn.
+ * Enables communication with a remote node over a socket channel. The socket channel's write stream is used to send
+ * data and the read stream is for receiving flow control updates (NOT for reading data!). The outgoing channel is
+ * independent from the incoming channel stored in the NIOPipeIn.
  *
  * @author Kevin Beineke, kevin.beineke@hhu.de, 18.03.2017
  */

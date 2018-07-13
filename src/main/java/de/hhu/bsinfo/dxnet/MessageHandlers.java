@@ -16,9 +16,6 @@
 
 package de.hhu.bsinfo.dxnet;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import de.hhu.bsinfo.dxnet.core.MessageHeader;
 import de.hhu.bsinfo.dxnet.core.MessageHeaderPool;
 
@@ -28,8 +25,6 @@ import de.hhu.bsinfo.dxnet.core.MessageHeaderPool;
  * @author Stefan Nothaas, stefan.nothaas@hhu.de, 12.06.2017
  */
 public final class MessageHandlers {
-    private static final Logger LOGGER = LogManager.getFormatterLogger(MessageHandlers.class.getSimpleName());
-
     private static final int POOL_SIZE = 25;
 
     private final DefaultMessageHandlerPool m_defaultMessageHandlerPool;
@@ -48,13 +43,15 @@ public final class MessageHandlers {
      * @param p_messageReceivers
      *         Provides all registered message receivers
      */
-    MessageHandlers(final int p_numMessageHandlerThreads, final boolean p_overprovisioning, final MessageReceiverStore p_messageReceivers,
-            final MessageHeaderPool p_messageHeaderPool) {
+    MessageHandlers(final int p_numMessageHandlerThreads, final boolean p_overprovisioning,
+            final MessageReceiverStore p_messageReceivers, final MessageHeaderPool p_messageHeaderPool) {
         // default message handlers
-        m_defaultMessageHandlerPool = new DefaultMessageHandlerPool(p_messageReceivers, p_messageHeaderPool, p_numMessageHandlerThreads, p_overprovisioning);
+        m_defaultMessageHandlerPool = new DefaultMessageHandlerPool(p_messageReceivers, p_messageHeaderPool,
+                p_numMessageHandlerThreads, p_overprovisioning);
 
         // and one exclusive
-        m_exclusiveMessageHandler = new ExclusiveMessageHandler(p_messageReceivers, p_messageHeaderPool, p_overprovisioning);
+        m_exclusiveMessageHandler = new ExclusiveMessageHandler(p_messageReceivers, p_messageHeaderPool,
+                p_overprovisioning);
 
         m_defaultMessageHeaders = new MessageHeader[POOL_SIZE];
         m_exclusiveMessageHeaders = new MessageHeader[POOL_SIZE];
@@ -101,6 +98,7 @@ public final class MessageHandlers {
 
         if (!p_header.isExclusive()) {
             m_defaultMessageHeaders[m_numberOfDefaultMessageHeaders] = p_header;
+
             if (++m_numberOfDefaultMessageHeaders == m_defaultMessageHeaders.length) {
                 m_defaultMessageHandlerPool.newHeaders(m_defaultMessageHeaders, m_defaultMessageHeaders.length);
                 m_numberOfDefaultMessageHeaders = 0;
@@ -108,6 +106,7 @@ public final class MessageHandlers {
             }
         } else {
             m_exclusiveMessageHeaders[m_numberOfExclusiveMessageHeaders] = p_header;
+
             if (++m_numberOfExclusiveMessageHeaders == m_exclusiveMessageHeaders.length) {
                 m_exclusiveMessageHandler.newHeaders(m_exclusiveMessageHeaders, m_exclusiveMessageHeaders.length);
                 m_numberOfExclusiveMessageHeaders = 0;

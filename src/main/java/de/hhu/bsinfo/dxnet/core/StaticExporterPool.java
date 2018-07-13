@@ -49,11 +49,12 @@ public final class StaticExporterPool extends AbstractExporterPool {
 
         if (threadID >= m_exporters.length) {
             m_lock.lock();
+
             if (threadID >= m_exporters.length) {
                 if (m_exporters.length >= 10 * SLOT_SIZE) {
                     // #if LOGGER >= WARN
-                    LOGGER.warn("Many threads actively sending messages (>%d). You might consider switching to dynamic exporter pool (configuration).",
-                            m_exporters.length);
+                    LOGGER.warn("Many threads actively sending messages (>%d). You might consider switching to " +
+                            "dynamic exporter pool (configuration).", m_exporters.length);
                     // #endif /* LOGGER >= WARN */
                 }
                 // Copying without lock might result in lost allocations but this can be ignored
@@ -61,10 +62,12 @@ public final class StaticExporterPool extends AbstractExporterPool {
                 System.arraycopy(m_exporters, 0, tmp, 0, m_exporters.length);
                 m_exporters = tmp;
             }
+
             m_lock.unlock();
         }
 
         ret = m_exporters[(int) threadID];
+
         if (ret == null) {
             ret = new MessageExporterCollection();
 

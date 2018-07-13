@@ -52,8 +52,8 @@ public abstract class AbstractPipeOut {
      * @param p_outgoingBuffer
      *         OutgoingRingBuffer instance of the connection
      */
-    protected AbstractPipeOut(final short p_ownNodeId, final short p_destinationNodeId, final AbstractFlowControl p_flowControl,
-            final OutgoingRingBuffer p_outgoingBuffer) {
+    protected AbstractPipeOut(final short p_ownNodeId, final short p_destinationNodeId,
+            final AbstractFlowControl p_flowControl, final OutgoingRingBuffer p_outgoingBuffer) {
         m_ownNodeID = p_ownNodeId;
         m_destinationNodeID = p_destinationNodeId;
 
@@ -83,8 +83,8 @@ public abstract class AbstractPipeOut {
      */
     public void setConnected(final boolean p_connected) {
         m_isConnected = p_connected;
-        UnsafeHandler.getInstance().getUnsafe()
-                .storeFence(); // m_isConnected is not volatile as it is read often without changing value -> use store fence here
+        // m_isConnected is not volatile as it is read often without changing value -> use store fence here
+        UnsafeHandler.getInstance().getUnsafe().storeFence();
     }
 
     /**
@@ -137,8 +137,9 @@ public abstract class AbstractPipeOut {
 
         if (messageTotalSize > 1024 * 1024 * 128) {
             // #if LOGGER >= WARN
-            LOGGER.warn("Performance warning: Sending very large (%d bytes) message. Consider splitting your data to send if possible to benefit from " +
-                    "parallelism when messages are received and processed", messageTotalSize);
+            LOGGER.warn("Performance warning: Sending very large (%d bytes) message. Consider splitting your data to " +
+                            "send if possible to benefit from parallelism when messages are received and processed",
+                    messageTotalSize);
             // #endif /* LOGGER >= WARN */
         }
         m_flowControl.dataToSend(messageTotalSize);

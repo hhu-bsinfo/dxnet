@@ -30,7 +30,7 @@ public class NetworkResponseCancelledException extends NetworkException {
      * Network Response Timeout Exception
      *
      * @param p_nodeId
-     *     the NodeID
+     *         the NodeID
      */
     public NetworkResponseCancelledException(final short p_nodeId) {
         super("Waiting for response from node " + NodeID.toHexString(p_nodeId) + " failed, cancelled");

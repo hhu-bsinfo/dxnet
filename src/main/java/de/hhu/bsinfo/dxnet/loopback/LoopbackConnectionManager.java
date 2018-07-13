@@ -30,7 +30,6 @@ import de.hhu.bsinfo.dxnet.core.DynamicExporterPool;
 import de.hhu.bsinfo.dxnet.core.IncomingBufferQueue;
 import de.hhu.bsinfo.dxnet.core.LocalMessageHeaderPool;
 import de.hhu.bsinfo.dxnet.core.MessageDirectory;
-import de.hhu.bsinfo.dxnet.core.NetworkException;
 import de.hhu.bsinfo.dxnet.core.RequestMap;
 import de.hhu.bsinfo.dxnet.core.StaticExporterPool;
 
@@ -105,7 +104,7 @@ public class LoopbackConnectionManager extends AbstractConnectionManager {
 
     @Override
     public AbstractConnection createConnection(final short p_destination,
-            final AbstractConnection p_existingConnection) throws NetworkException {
+            final AbstractConnection p_existingConnection) {
         LoopbackConnection ret;
 
         ret = new LoopbackConnection(m_coreConfig.getOwnNodeId(), p_destination,

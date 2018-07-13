@@ -46,7 +46,8 @@ class UnfinishedImExporterOperation {
 
     @Override
     public String toString() {
-        return "m_startIndex " + m_startIndex + ", m_primitive " + m_primitive + ", m_object " + m_object + ", " + m_bytesCopied;
+        return "m_startIndex " + m_startIndex + ", m_primitive " + m_primitive + ", m_object " + m_object + ", " +
+                m_bytesCopied;
     }
 
     /**

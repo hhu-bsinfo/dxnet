@@ -28,5 +28,5 @@ public interface SpecialMessageReceiver extends MessageReceiver {
      * @param p_messageHeader
      *         the MessageHeader
      */
-    void onIncomingHeader(MessageHeader p_messageHeader);
+    void onIncomingHeader(final MessageHeader p_messageHeader);
 }

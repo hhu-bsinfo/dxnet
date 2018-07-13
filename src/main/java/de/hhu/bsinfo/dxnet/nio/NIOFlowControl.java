@@ -20,7 +20,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import de.hhu.bsinfo.dxnet.core.AbstractFlowControl;
-import de.hhu.bsinfo.dxnet.core.NetworkException;
 
 /**
  * Extends the flow control for write signalling.
@@ -57,7 +56,7 @@ public class NIOFlowControl extends AbstractFlowControl {
     }
 
     @Override
-    public void flowControlWrite() throws NetworkException {
+    public void flowControlWrite() {
         m_nioSelector.changeOperationInterestAsync(InterestQueue.WRITE_FLOW_CONTROL, m_connection);
     }
 
