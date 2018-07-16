@@ -12,14 +12,14 @@ buildscript {
     }
 
     dependencies {
-        classpath "de.hhu.bsinfo:dxgradle:1.0.8"
+        classpath "de.hhu.bsinfo:dxgradle:1.0.10"
     }
 }
 
 plugins {
     id 'java'
     id 'maven-publish'
-    id 'com.jfrog.bintray' version '1.8.0'
+    id 'com.jfrog.bintray' version '1.8.4'
 }
 
 apply plugin: 'dxgradle'
@@ -45,7 +45,7 @@ tasks.withType(JavaCompile) {
 }
 
 task wrapper(type: Wrapper) {
-    gradleVersion = "4.7"
+    gradleVersion = "4.9"
 }
 
 task sourcesJar(type: Jar, dependsOn: classes) {
@@ -62,7 +62,7 @@ task javadocJar(type: Jar, dependsOn: javadoc) {
 
 dependencies {
     implementation fileTree(dir: 'lib', include: ['*.jar'])
-    implementation 'de.hhu.bsinfo:dxutils:1.0.0'
+    nativeImplementation 'de.hhu.bsinfo:dxutils:1.0.0'
     implementation 'com.google.code.gson:gson:2.7'
     implementation 'log4j:log4j:1.2.16'
     implementation 'org.apache.logging.log4j:log4j-core:2.7'

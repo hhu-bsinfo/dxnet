@@ -1,1 +1,19 @@
 rootProject.name = 'dxnet'
+
+// Development mode switch
+boolean isDevelop = true
+
+// Do not include other builds if this build is included
+if (isDevelop && gradle.parent != null) {
+    return
+}
+
+if (isDevelop && new File('../dxgradle').exists()) {
+    includeBuild('../dxgradle')
+}
+
+if (isDevelop && new File('../dxutils').exists()) {
+    includeBuild '../dxutils'
+}
+
+

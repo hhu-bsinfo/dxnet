@@ -17,6 +17,7 @@
 package de.hhu.bsinfo.dxnet.nio;
 
 import java.io.IOException;
+import java.net.SocketAddress;
 import java.nio.channels.CancelledKeyException;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
@@ -246,10 +247,13 @@ class InterestQueue {
                     // CLOSE -> close connection
                     // Close connection after at least two connection timeouts since request
                     if (System.currentTimeMillis() - connection.getClosingTimestamp() > 2 * p_connectionTimeout) {
+                        SocketAddress socketAddress = null;
                         try {
-                            LOGGER.debug("Closing connection to 0x%X;%s", connection.getDestinationNodeID(),
-                                    connection.getPipeOut().getChannel().getRemoteAddress());
+                            socketAddress = connection.getPipeOut().getChannel().getRemoteAddress();
                         } catch (final IOException ignored) {
+                        }
+                        if(socketAddress != null) {
+                            LOGGER.debug("Closing connection to 0x%X;%s", connection.getDestinationNodeID(), socketAddress);
                         }
                         // Close connection
                         p_connectionManager.closeConnection(connection, false);
