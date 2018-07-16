@@ -144,7 +144,7 @@ class NIOSelector extends Thread {
             LOGGER.error("Unable to shutdown selector!");
         }
 
-        LOGGER.info("Shutdown of Selector successful");/
+        LOGGER.info("Shutdown of Selector successful");
     }
 
     /**
@@ -314,7 +314,7 @@ class NIOSelector extends Thread {
             try {
                 complete = p_connection.getPipeOut().write();
             } catch (final IOException ignored) {
-                LOGGER.debug("Could not write to channel (0x%X)!", p_connection.getDestinationNodeID());/
+                LOGGER.debug("Could not write to channel (0x%X)!", p_connection.getDestinationNodeID());
 
                 m_connectionManager.closeConnection(p_connection, true);
                 return;

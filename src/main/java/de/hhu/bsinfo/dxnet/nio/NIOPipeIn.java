@@ -181,7 +181,7 @@ class NIOPipeIn extends AbstractPipeIn {
                         if (m_queueFullCounter % 100000 == 0) {
                             LOGGER.warn("IBQ is full count: %d. If this message appears often (with a high counter) " +
                                     "you should consider increasing the number message handlers to avoid " +
-                                    "performance penalties", m_queueFullCounter);/
+                                    "performance penalties", m_queueFullCounter);
                         }
 
                         LockSupport.parkNanos(100);
