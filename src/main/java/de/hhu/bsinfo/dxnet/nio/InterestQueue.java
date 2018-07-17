@@ -87,9 +87,7 @@ class InterestQueue {
         byte oldInterest;
         short nodeID = p_connection.getDestinationNodeID();
 
-        // #ifdef STATISTICS
-        SOP_ADD.start();
-        // #endif /* STATISTICS */
+        SOP_ADD.startDebug();
 
         // Shortcut: if interest was already set (e.g. WRITE), we return immediately without locking (happens very
         // often; once per message).
@@ -119,9 +117,7 @@ class InterestQueue {
         m_changeRequests[nodeID & 0xFFFF] = (byte) (oldInterest | p_interest);
         m_changeLock.unlock();
 
-        // #ifdef STATISTICS
-        SOP_ADD.stop();
-        // #endif /* STATISTICS */
+        SOP_ADD.stopDebug();
 
         return ret;
     }
@@ -143,9 +139,7 @@ class InterestQueue {
         SelectionKey key;
         NIOConnection connection;
 
-        // #ifdef STATISTICS
-        SOP_PROCESS.start();
-        // #endif /* STATISTICS */
+        SOP_PROCESS.startDebug();
 
         m_changeLock.lock();
         entries = m_activeConnections.size();
@@ -252,8 +246,9 @@ class InterestQueue {
                             socketAddress = connection.getPipeOut().getChannel().getRemoteAddress();
                         } catch (final IOException ignored) {
                         }
-                        if(socketAddress != null) {
-                            LOGGER.debug("Closing connection to 0x%X;%s", connection.getDestinationNodeID(), socketAddress);
+                        if (socketAddress != null) {
+                            LOGGER.debug("Closing connection to 0x%X;%s", connection.getDestinationNodeID(),
+                                    socketAddress);
                         }
                         // Close connection
                         p_connectionManager.closeConnection(connection, false);
@@ -274,8 +269,6 @@ class InterestQueue {
         }
         m_changeLock.unlock();
 
-        // #ifdef STATISTICS
-        SOP_PROCESS.stop();
-        // #endif /* STATISTICS */
+        SOP_PROCESS.stopDebug();
     }
 }

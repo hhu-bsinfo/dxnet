@@ -52,6 +52,7 @@ class NIOPipeIn extends AbstractPipeIn {
     static {
         StatisticsManager.get().registerOperation(NIOPipeIn.class, SOP_READ);
         StatisticsManager.get().registerOperation(NIOPipeIn.class, SOP_WRITE_FLOW_CONTROL);
+        StatisticsManager.get().registerOperation(NIOPipeIn.class, SOP_IBQ_WAIT_PUSH);
     }
 
     private SocketChannel m_incomingChannel;
@@ -152,9 +153,7 @@ class NIOPipeIn extends AbstractPipeIn {
         directBufferWrapper = m_bufferPool.getBuffer();
         buffer = directBufferWrapper.getBuffer();
 
-        // #ifdef STATISTICS
-        SOP_READ.start();
-        // #endif /* STATISTICS */
+        SOP_READ.startDebug();
 
         while (true) {
             readBytes = m_incomingChannel.read(buffer);
@@ -197,7 +196,7 @@ class NIOPipeIn extends AbstractPipeIn {
             }
         }
 
-        SOP_READ.stop();
+        SOP_READ.stopDebug();
 
         return ret;
     }
@@ -208,7 +207,7 @@ class NIOPipeIn extends AbstractPipeIn {
     void writeFlowControlBytes() throws IOException {
         int bytes = 0;
 
-        SOP_WRITE_FLOW_CONTROL.start();
+        SOP_WRITE_FLOW_CONTROL.startDebug();
 
         m_flowControlByte.rewind();
         byte windows = getFlowControl().getAndResetFlowControlData();
@@ -223,6 +222,6 @@ class NIOPipeIn extends AbstractPipeIn {
             bytes += m_incomingChannel.write(m_flowControlByte);
         }
 
-        SOP_WRITE_FLOW_CONTROL.stop();
+        SOP_WRITE_FLOW_CONTROL.stopDebug();
     }
 }

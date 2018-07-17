@@ -111,30 +111,22 @@ final class ExclusiveMessageHandler {
      *         the number of used entries in array
      */
     void newHeaders(final MessageHeader[] p_headers, final int p_messages) {
-        // #ifdef STATISTICS
-        SOP_PUSH.start();
-        // #endif /* STATISTICS */
+        SOP_PUSH.startDebug();
 
         if (!m_exclusiveMessageHeaders.pushMessageHeaders(p_headers, p_messages)) {
             for (int i = 0; i < p_messages; i++) {
                 if (!m_exclusiveMessageHeaders.pushMessageHeader(p_headers[i])) {
-                    // #ifdef STATISTICS
                     SOP_WAIT.start();
-                    // #endif /* STATISTICS */
 
                     while (!m_exclusiveMessageHeaders.pushMessageHeader(p_headers[i])) {
                         LockSupport.parkNanos(100);
                     }
 
-                    // #ifdef STATISTICS
                     SOP_WAIT.stop();
-                    // #endif /* STATISTICS */
                 }
             }
         }
 
-        // #ifdef STATISTICS
-        SOP_PUSH.stop();
-        // #endif /* STATISTICS */
+        SOP_PUSH.stopDebug();
     }
 }

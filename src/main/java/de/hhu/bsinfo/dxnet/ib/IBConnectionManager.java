@@ -300,8 +300,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         int processed = 0;
 
         try {
-            SOP_RECV.stop();
-            SOP_RECV.start();
+            SOP_RECV.stopDebug();
+            SOP_RECV.startDebug();
 
             // wrap on the first callback, native address is always the same
             if (m_incomingRingBuffer == null) {
@@ -388,7 +388,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                 }
             }
 
-            SOP_RECV.nextSection();
+            SOP_RECV.nextSectionDebug();
         } catch (Exception e) {
             // print error because we disabled exception handling when executing jni calls
 
@@ -401,20 +401,20 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
     @Override
     public void getNextDataToSend(final long p_nextWorkPackage, final long p_prevResults, final long p_completionList) {
         try {
-            SOP_SEND_NEXT_DATA.stop();
-            SOP_SEND_NEXT_DATA.start();
+            SOP_SEND_NEXT_DATA.stopDebug();
+            SOP_SEND_NEXT_DATA.startDebug();
 
             processPrevResults(p_prevResults);
 
-            SOP_SEND_NEXT_DATA.nextSection();
+            SOP_SEND_NEXT_DATA.nextSectionDebug();
 
             processSendCompletions(p_completionList);
 
-            SOP_SEND_NEXT_DATA.nextSection();
+            SOP_SEND_NEXT_DATA.nextSectionDebug();
 
             prepareNextDataToSend(p_nextWorkPackage);
 
-            SOP_SEND_NEXT_DATA.nextSection();
+            SOP_SEND_NEXT_DATA.nextSectionDebug();
         } catch (Exception e) {
             // print error because we disabled exception handling when executing jni calls
             LOGGER.error("getNextDataToSend unhandled exception", e);
@@ -560,7 +560,6 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                 // relative position of data end in buffer
                 m_nextWorkPackage.setPosFrontRel(relPosFrontRel);
 
-                // #ifdef STATISTICS
                 int dataAvail;
 
                 if (relPosBackRel <= relPosFrontRel) {
@@ -570,7 +569,6 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                 }
 
                 SOP_SEND_DATA_AVAIL.add(dataAvail);
-                // #endif /* STATISTICS */
 
                 nothingToSend = false;
             } else {
@@ -594,9 +592,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         }
 
         if (nothingToSend) {
-            // #ifdef STATISTICS
             SOP_NEXT_DATA_NONE.inc();
-            // #endif /* STATISTICS */
 
             m_nextWorkPackage.reset();
         }

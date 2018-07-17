@@ -122,11 +122,7 @@ public class IncomingBufferQueue {
      */
     IncomingBuffer popBuffer() {
         if (m_posBack == m_posFront) {
-            // #ifdef STATISTICS
             SOP_POP_EMPTY.inc();
-            // #endif /* STATISTICS */
-
-            // Empty
             return null;
         }
 

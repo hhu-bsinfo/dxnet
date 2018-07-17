@@ -140,9 +140,7 @@ class MessageHandler extends Thread {
             lastSuccessfulPop = System.currentTimeMillis();
             counter = 0;
 
-            // #ifdef STATISTICS
-            SOP_CREATE.start();
-            // #endif /* STATISTICS */
+            SOP_CREATE.startDebug();
 
             type = header.getType();
             subtype = header.getSubtype();
@@ -155,12 +153,12 @@ class MessageHandler extends Thread {
                     messageReceiver = m_messageReceivers.getReceiver(type, subtype);
 
                     if (messageReceiver != null) {
-                        SOP_EXECUTE.start();
+                        SOP_EXECUTE.startDebug();
 
                         ((SpecialMessageReceiver) messageReceiver).onIncomingHeader(header);
                         header.finishHeader(m_messageHeaderPool);
 
-                        SOP_EXECUTE.stop();
+                        SOP_EXECUTE.stopDebug();
                     } else {
                         LOGGER.warn("No message receiver was registered for %d, %d!", type, subtype);
                     }
@@ -179,17 +177,17 @@ class MessageHandler extends Thread {
                 continue;
             }
 
-            SOP_CREATE.stop();
+            SOP_CREATE.stopDebug();
 
             if (message != null) {
                 messageReceiver = m_messageReceivers.getReceiver(type, subtype);
 
                 if (messageReceiver != null) {
-                    SOP_EXECUTE.start();
+                    SOP_EXECUTE.startDebug();
 
                     messageReceiver.onIncomingMessage(message);
 
-                    SOP_EXECUTE.stop();
+                    SOP_EXECUTE.stopDebug();
                 } else {
                     LOGGER.warn("No message receiver was registered for %d, %d!", type, subtype);
                 }

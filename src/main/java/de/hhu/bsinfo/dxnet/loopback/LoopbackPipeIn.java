@@ -89,7 +89,7 @@ public class LoopbackPipeIn extends AbstractPipeIn {
         directBufferWrapper = m_bufferPool.getBuffer();
         buffer = directBufferWrapper.getBuffer();
 
-        SOP_COPY.start();
+        SOP_COPY.startDebug();
 
         if (buffer.remaining() >= p_buffer.remaining()) {
             ret = p_buffer.remaining();
@@ -104,7 +104,7 @@ public class LoopbackPipeIn extends AbstractPipeIn {
         }
         buffer.flip();
 
-        SOP_COPY.stop();
+        SOP_COPY.stopDebug();
 
         if (!m_incomingBufferQueue.pushBuffer(m_parentConnection, directBufferWrapper, 0,
                 directBufferWrapper.getAddress(), ret)) {

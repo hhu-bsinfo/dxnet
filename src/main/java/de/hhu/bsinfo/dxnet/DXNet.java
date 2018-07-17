@@ -342,9 +342,7 @@ public final class DXNet {
 
         LOGGER.trace("Entering sendMessage with: p_message=%s", p_message);
 
-        // #ifdef STATISTICS
-        SOP_SEND.start();
-        // #endif /* STATISTICS */
+        SOP_SEND.startDebug();
 
         if (!m_overprovisioning && m_sendThreads.incrementAndGet() > m_availableCores) {
             m_overprovisioning = true;
@@ -363,7 +361,7 @@ public final class DXNet {
         } else {
             try {
                 connection = m_connectionManager.getConnection(p_message.getDestination());
-            } catch (final NetworkException e) {
+            } catch (final NetworkException ignored) {
                 LOGGER.debug("Connection to 0x%X could not be established!", p_message.getDestination());
                 throw new NetworkDestinationUnreachableException(p_message.getDestination());
             }
@@ -393,7 +391,7 @@ public final class DXNet {
             m_sendThreads.decrementAndGet();
         }
 
-        SOP_SEND.stop();
+        SOP_SEND.stopDebug();
 
         LOGGER.trace("Exiting sendMessage");
     }
@@ -414,7 +412,7 @@ public final class DXNet {
             throws NetworkException {
         LOGGER.trace("Sending request (sync): %s", p_request);
 
-        SOP_SEND_SYNC.start();
+        SOP_SEND_SYNC.startDebug();
 
         try {
             m_requestMap.put(p_request);
@@ -439,7 +437,7 @@ public final class DXNet {
         } catch (final NetworkResponseDelayedException e) {
             SOP_WAIT_RESPONSE.stop();
 
-            SOP_SEND_SYNC.stop();
+            SOP_SEND_SYNC.stopDebug();
 
             LOGGER.warn("Sending sync, waiting for responses to %s failed, timeout: %d ms", p_request, timeout);
 
@@ -449,14 +447,14 @@ public final class DXNet {
         } catch (final NetworkResponseCancelledException e) {
             SOP_WAIT_RESPONSE.stop();
 
-            SOP_SEND_SYNC.stop();
+            SOP_SEND_SYNC.stopDebug();
 
             LOGGER.warn("Sending sync, waiting for responses to %s failed, cancelled: %d ms", p_request, timeout);
 
             throw e;
         }
 
-        SOP_SEND_SYNC.stop();
+        SOP_SEND_SYNC.stopDebug();
     }
 
     /**

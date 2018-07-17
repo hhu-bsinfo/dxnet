@@ -204,9 +204,7 @@ public abstract class AbstractPipeIn {
         MessageHeader messageHeader = m_unfinishedOperation.isEmpty() ? m_messageHeaderPool.getHeader() :
                 m_unfinishedOperation.getMessageHeader();
 
-        // #ifdef STATISTICS
-        SOP_PROCESS.start();
-        // #endif /* STATISTICS */
+        SOP_PROCESS.startDebug();
 
         m_flowControl.dataReceived(bytesAvailable);
 
@@ -363,9 +361,7 @@ public abstract class AbstractPipeIn {
 
         leaveBufferSlot(messageCounter, p_incomingBuffer);
 
-        // #ifdef STATISTICS
-        SOP_PROCESS.stop();
-        // #endif /* STATISTICS */
+        SOP_PROCESS.stopDebug();
     }
 
     /**
@@ -479,7 +475,6 @@ public abstract class AbstractPipeIn {
             request = m_requestMap.remove(response.getRequestID());
 
             if (request != null) {
-                // Not surrounded by statistics strings as this should always be registered
                 // Must be executed prior to fulfill()!
                 if (m_benchmarkMode) {
                     SOP_REQ_RESP_RTT.record(timeReceiveResponse - request.getSendReceiveTimestamp());
@@ -487,9 +482,7 @@ public abstract class AbstractPipeIn {
                     SOP_REQ_RESP_RTT_VAL.add(timeReceiveResponse - request.getSendReceiveTimestamp());
                 }
 
-                // #ifdef STATISTICS
-                SOP_FULFILL.inc();
-                // #endif /* STATISTICS */
+                SOP_FULFILL.incDebug();
 
                 request.fulfill(response);
             }
@@ -526,19 +519,15 @@ public abstract class AbstractPipeIn {
      * @return the message counter used for this slot
      */
     private AtomicInteger enterBufferSlot(IncomingBufferQueue.IncomingBuffer p_incomingBuffer, final int p_slot) {
+        if (m_slotMessageCounters[p_slot].get() > 0) {
+            SOP_WAIT_SLOT.start();
 
-        // #ifdef STATISTICS
-        SOP_WAIT_SLOT.start();
-        // #endif /* STATISTICS */
+            do {
+                Thread.yield();//LockSupport.parkNanos(1);
+            } while (m_slotMessageCounters[p_slot].get() > 0);
 
-        // Wait if current slot is processed
-        while (m_slotMessageCounters[p_slot].get() > 0) {
-            Thread.yield();//LockSupport.parkNanos(1);
+            SOP_WAIT_SLOT.stop();
         }
-
-        // #ifdef STATISTICS
-        SOP_WAIT_SLOT.stop();
-        // #endif /* STATISTICS */
 
         // Get slot message counter
         AtomicInteger messageCounter = m_slotMessageCounters[p_slot];

@@ -154,9 +154,7 @@ public class OutgoingRingBuffer {
      *         the number of written bytes
      */
     public void shiftBack(final int p_writtenBytes) {
-        // #ifdef STATISTICS
         m_sopDataSent.add(p_writtenBytes);
-        // #endif /* STATISTICS */
 
         m_posBack = m_posBack + p_writtenBytes & 0x7FFFFFFF;
     }
@@ -177,13 +175,9 @@ public class OutgoingRingBuffer {
             throws NetworkException {
         long posFrontProducer;
 
-        // #ifdef STATISTICS
-        m_sopPush.start();
-        // #endif /* STATISTICS */
+        m_sopPush.startDebug();
 
-        // #ifdef STATISTICS
         boolean waited = false;
-        // #endif /* STATISTICS */
 
         // Allocate space in ring buffer by incrementing position back
         while (true) {
@@ -199,11 +193,9 @@ public class OutgoingRingBuffer {
                         (posBack + m_bufferSize & 0x7FFFFFFF) < posBack &&
                                 (posFrontProducer + p_messageSize & 0x7FFFFFFF) > posBack) {
 
-                    // #ifdef STATISTICS
                     if (waited) {
                         m_sopWaitFull.stop();
                     }
-                    // #endif /* STATISTICS */
 
                     /* Enter serialization area */
                     long newPosFrontProducer = enterSerializationArea(posFrontProducer, p_messageSize);
@@ -220,12 +212,10 @@ public class OutgoingRingBuffer {
 
                     break;
                 } else {
-                    // #ifdef STATISTICS
                     if (!waited) {
                         m_sopWaitFull.start();
                         waited = true;
                     }
-                    // #endif /* STATISTICS */
 
                     // Buffer is full -> wait
                     LockSupport.parkNanos(100);
@@ -254,13 +244,8 @@ public class OutgoingRingBuffer {
             }
         }
 
-        // #ifdef STATISTICS
-        m_sopPush.stop();
-        // #endif /* STATISTICS */
-
-        // #ifdef STATISTICS
+        m_sopPush.stopDebug();
         m_sopDataPosted.add(p_messageSize);
-        // #endif /* STATISTICS */
     }
 
     /**
@@ -488,9 +473,7 @@ public class OutgoingRingBuffer {
             // Reserve space for next write
             m_posFrontConsumer.set(posFrontConsumer);
 
-            // #ifdef STATISTICS
             m_sopDataPosted.add(allWrittenBytes - previouslyWrittenBytes);
-            // #endif /* STATISTICS */
 
             p_pipeOut.bufferPosted(allWrittenBytes - previouslyWrittenBytes);
 
@@ -502,6 +485,7 @@ public class OutgoingRingBuffer {
             while (m_posBack == posBack) {
                 LockSupport.parkNanos(100);
             }
+
             posBack = m_posBack;
         }
     }

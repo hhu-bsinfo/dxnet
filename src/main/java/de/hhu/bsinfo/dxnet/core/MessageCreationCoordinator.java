@@ -94,18 +94,15 @@ public class MessageCreationCoordinator extends Thread {
                 if (++counter >= THRESHOLD_TIME_CHECK) {
                     // No message header for over a second -> sleep
                     if (System.currentTimeMillis() - lastSuccessfulPop > 1000) {
-                        // #ifdef STATISTICS
                         SOP_PARKING.inc();
-                        // #endif /* STATISTICS */
 
                         LockSupport.parkNanos(1);
                     }
                 }
 
                 if (m_overprovisioning) {
-                    // #ifdef STATISTICS
                     SOP_YIELDING.inc();
-                    // #endif /* STATISTICS */
+
                     Thread.yield();
                 }
 

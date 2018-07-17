@@ -166,9 +166,7 @@ public class NIOPipeOut extends AbstractPipeOut {
         int bytes;
         ByteBuffer buffer;
 
-        // #ifdef STATISTICS
-        SOP_WRITE.start();
-        // #endif /* STATISTICS */
+        SOP_WRITE.startDebug();
 
         buffer = ((NIOOutgoingRingBuffer) getOutgoingQueue()).pop();
         if (buffer != null) {
@@ -185,9 +183,7 @@ public class NIOPipeOut extends AbstractPipeOut {
             getOutgoingQueue().shiftBack(writtenBytes);
         }
 
-        // #ifdef STATISTICS
-        SOP_WRITE.stop();
-        // #endif /* STATISTICS */
+        SOP_WRITE.stopDebug();
 
         return ret;
     }
@@ -198,9 +194,7 @@ public class NIOPipeOut extends AbstractPipeOut {
     void readFlowControlBytes() throws IOException {
         int readBytes;
 
-        // #ifdef STATISTICS
-        SOP_READ_FLOW_CONTROL.start();
-        // #endif /* STATISTICS */
+        SOP_READ_FLOW_CONTROL.startDebug();
 
         // This is a flow control byte
         m_flowControlByte.rewind();
@@ -213,19 +207,13 @@ public class NIOPipeOut extends AbstractPipeOut {
 
             if (readBytes == -1) {
                 // Channel was closed
-
-                // #ifdef STATISTICS
-                SOP_READ_FLOW_CONTROL.stop();
-                // #endif /* STATISTICS */
-
+                SOP_READ_FLOW_CONTROL.stopDebug();
                 return;
             }
         }
 
         getFlowControl().handleFlowControlData(m_flowControlByte.get(0));
 
-        // #ifdef STATISTICS
-        SOP_READ_FLOW_CONTROL.stop();
-        // #endif /* STATISTICS */
+        SOP_READ_FLOW_CONTROL.stopDebug();
     }
 }
