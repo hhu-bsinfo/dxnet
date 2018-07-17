@@ -46,6 +46,7 @@ import com.google.gson.JsonElement;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import de.hhu.bsinfo.dxmonitor.info.InstanceInfo;
 import de.hhu.bsinfo.dxmonitor.progress.CpuProgress;
 import de.hhu.bsinfo.dxmonitor.state.MemState;
 import de.hhu.bsinfo.dxmonitor.state.StateUpdateException;
@@ -120,6 +121,7 @@ public final class DXNetMain implements MessageReceiver {
         printJVMArgs();
         printCmdArgs(p_arguments);
         printBuildInfo();
+        printInstanceInfo();
 
         processArgs(p_arguments);
         commonSetup();
@@ -373,6 +375,10 @@ public final class DXNetMain implements MessageReceiver {
         builder.append('\n');
 
         System.out.println(builder);
+    }
+
+    private static void printInstanceInfo() {
+        System.out.println(">>> Instance <<<\n" + InstanceInfo.compile() + '\n');
     }
 
     private static void processArgs(final String[] p_args) {
