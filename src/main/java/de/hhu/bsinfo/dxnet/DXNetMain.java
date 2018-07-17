@@ -982,40 +982,74 @@ public final class DXNetMain implements MessageReceiver {
                 long timeDiffSend = ms_timeStartSend != 0 ? time - ms_timeStartSend : 1;
                 long timeDiffRecv = ms_timeStartRecv != 0 ? time - ms_timeStartRecv : 1;
 
-                System.out.printf("[PROGRESS] %d sec [TOTAL: TXM %d%% (%d), RXM %d%% (%d), TXM-RXM-DELTA %d]" +
-                                "[AVG: TX=%f, RX=%f, TXP=%f, RXP=%f, TXM=%f, RXM=%f]" +
-                                "[CUR: TX=%f, RX=%f, TXP=%f, RXP=%f, TXM=%f, RXM=%f][ReqRespTimeouts=%d]" +
-                                "[CPU: Cur=%f][MEM: Used=%f, UsedMB=%f, FreeMB=%f]\n",
-                        timeDiffSend / 1000 / 1000 / 1000, ms_sendCount != 0 ?
-                                (int) ((float) totalMessagesSent / ms_sendCount / ms_targetNodeIds.size() * 100) : 0,
-                        totalMessagesSent,
-                        ms_recvCount != 0 ? (int) ((float) totalMessagesRecv / ms_recvCount * 100) : 0,
-                        totalMessagesRecv, totalMessagesSent - totalMessagesRecv,
-                        (double) totalMessagesSent * ms_size / 1024 / 1024 /
-                                ((double) timeDiffSend / 1000 / 1000 / 1000),
-                        (double) totalMessagesRecv * ms_size / 1024 / 1024 /
-                                ((double) timeDiffRecv / 1000 / 1000 / 1000),
-                        (double) totalMessagesSent * ms_messagePayloadSize / 1024 / 1024 /
-                                ((double) timeDiffSend / 1000 / 1000 / 1000),
-                        (double) totalMessagesRecv * ms_messagePayloadSize / 1024 / 1024 /
-                                ((double) timeDiffRecv / 1000 / 1000 / 1000),
-                        (double) totalMessagesSent / ((double) timeDiffSend / 1000 / 1000 / 1000) / 1000 / 1000,
-                        (double) totalMessagesRecv / ((double) timeDiffRecv / 1000 / 1000 / 1000) / 1000 / 1000,
-                        (double) messagesSentDelta * ms_size / 1024 / 1024 /
-                                ((double) timeDiffSendDelta / 1000 / 1000 / 1000),
-                        (double) messagesRecvDelta * ms_size / 1024 / 1024 /
-                                ((double) timeDiffRecvDelta / 1000 / 1000 / 1000),
-                        (double) messagesSentDelta * ms_messagePayloadSize / 1024 / 1024 /
-                                ((double) timeDiffSendDelta / 1000 / 1000 / 1000),
-                        (double) messagesRecvDelta * ms_messagePayloadSize / 1024 / 1024 /
-                                ((double) timeDiffRecvDelta / 1000 / 1000 / 1000),
-                        (double) messagesSentDelta / ((double) timeDiffSendDelta / 1000 / 1000 / 1000) / 1000 / 1000,
-                        (double) messagesRecvDelta / ((double) timeDiffRecvDelta / 1000 / 1000 / 1000) / 1000 / 1000,
-                        ms_reqRespTimeouts.get(),
-                        m_cpuProgress.getCpuUsagePercent(),
-                        m_memoryState.getUsedPercent(),
-                        m_memoryState.getUsed().getMBDouble(),
-                        m_memoryState.getFree().getMBDouble());
+                StringBuilder builder = new StringBuilder();
+
+                builder.append(
+                        String.format("[PROGRESS] %d sec [TOTAL: TXM %d%% (%d), RXM %d%% (%d), TXM-RXM-DELTA %d]",
+                                timeDiffSend / 1000 / 1000 / 1000, ms_sendCount != 0 ?
+                                        (int) ((float) totalMessagesSent / ms_sendCount / ms_targetNodeIds.size() *
+                                                100) : 0,
+                                totalMessagesSent,
+                                ms_recvCount != 0 ? (int) ((float) totalMessagesRecv / ms_recvCount * 100) : 0,
+                                totalMessagesRecv, totalMessagesSent - totalMessagesRecv));
+
+                builder.append(
+                        String.format("[AVG: TX=%f, RX=%f, TXP=%f, RXP=%f, TXM=%f, RXM=%f]",
+                                (double) totalMessagesSent * ms_size / 1024 / 1024 /
+                                        ((double) timeDiffSend / 1000 / 1000 / 1000),
+                                (double) totalMessagesRecv * ms_size / 1024 / 1024 /
+                                        ((double) timeDiffRecv / 1000 / 1000 / 1000),
+                                (double) totalMessagesSent * ms_messagePayloadSize / 1024 / 1024 /
+                                        ((double) timeDiffSend / 1000 / 1000 / 1000),
+                                (double) totalMessagesRecv * ms_messagePayloadSize / 1024 / 1024 /
+                                        ((double) timeDiffRecv / 1000 / 1000 / 1000),
+                                (double) totalMessagesSent / ((double) timeDiffSend / 1000 / 1000 / 1000) / 1000 / 1000,
+                                (double) totalMessagesRecv / ((double) timeDiffRecv / 1000 / 1000 / 1000) / 1000 /
+                                        1000));
+
+                builder.append(
+                        String.format("[CUR: TX=%f, RX=%f, TXP=%f, RXP=%f, TXM=%f, RXM=%f][ReqRespTimeouts=%d]",
+                                (double) messagesSentDelta * ms_size / 1024 / 1024 /
+                                        ((double) timeDiffSendDelta / 1000 / 1000 / 1000),
+                                (double) messagesRecvDelta * ms_size / 1024 / 1024 /
+                                        ((double) timeDiffRecvDelta / 1000 / 1000 / 1000),
+                                (double) messagesSentDelta * ms_messagePayloadSize / 1024 / 1024 /
+                                        ((double) timeDiffSendDelta / 1000 / 1000 / 1000),
+                                (double) messagesRecvDelta * ms_messagePayloadSize / 1024 / 1024 /
+                                        ((double) timeDiffRecvDelta / 1000 / 1000 / 1000),
+                                (double) messagesSentDelta / ((double) timeDiffSendDelta / 1000 / 1000 / 1000) / 1000 /
+                                        1000,
+                                (double) messagesRecvDelta / ((double) timeDiffRecvDelta / 1000 / 1000 / 1000) / 1000 /
+                                        1000,
+                                ms_reqRespTimeouts.get()));
+
+                // we sent requests, print with rtt values and percentiles if available
+                if (AbstractPipeIn.SOP_REQ_RESP_RTT.getAvg() != 0 ||
+                        AbstractPipeIn.SOP_REQ_RESP_RTT_VAL.getAvgValue() != 0) {
+                    // "benchmark mode" enabled which records percentiles
+                    if (AbstractPipeIn.SOP_REQ_RESP_RTT.getAvg() != 0) {
+                        builder.append(
+                                String.format("[LAT: Avg=%f, Min=%f, Max=%f]",
+                                        AbstractPipeIn.SOP_REQ_RESP_RTT.getAvg(Time.Prefix.MICRO),
+                                        AbstractPipeIn.SOP_REQ_RESP_RTT.getMin(Time.Prefix.MICRO),
+                                        AbstractPipeIn.SOP_REQ_RESP_RTT.getMax(Time.Prefix.MICRO)));
+                    } else {
+                        builder.append(
+                                String.format("[LAT: Avg=%f, Min=%f, Max=%f]",
+                                        AbstractPipeIn.SOP_REQ_RESP_RTT_VAL.getAvgValue(Value.Prefix.KILO),
+                                        AbstractPipeIn.SOP_REQ_RESP_RTT_VAL.getMinValue(Value.Prefix.KILO),
+                                        AbstractPipeIn.SOP_REQ_RESP_RTT_VAL.getMaxValue(Value.Prefix.KILO)));
+                    }
+                }
+
+                builder.append(
+                        String.format("[CPU: Cur=%f][MEM: Used=%f, UsedMB=%f, FreeMB=%f]",
+                                m_cpuProgress.getCpuUsagePercent(),
+                                m_memoryState.getUsedPercent(),
+                                m_memoryState.getUsed().getMBDouble(),
+                                m_memoryState.getFree().getMBDouble()));
+
+                System.out.println(builder);
 
                 // for delta/current values
                 m_prevSent = totalMessagesSent;
