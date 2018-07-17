@@ -150,7 +150,7 @@ public final class DXNetMain implements MessageReceiver {
         System.out.printf("Waiting %d before starting workload...", ms_ownNodeId);
 
         try {
-            Thread.sleep(100 * RandomUtils.getRandomValue(0, 100));
+            Thread.sleep(100 * RandomUtils.getRandomValue(0, 20));
         } catch (InterruptedException ignored) {
 
         }
