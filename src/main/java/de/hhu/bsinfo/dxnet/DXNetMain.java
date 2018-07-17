@@ -49,6 +49,7 @@ import org.apache.logging.log4j.Logger;
 import de.hhu.bsinfo.dxnet.core.AbstractPipeIn;
 import de.hhu.bsinfo.dxnet.core.Message;
 import de.hhu.bsinfo.dxnet.core.NetworkException;
+import de.hhu.bsinfo.dxnet.generated.BuildConfig;
 import de.hhu.bsinfo.dxnet.main.messages.BenchmarkMessage;
 import de.hhu.bsinfo.dxnet.main.messages.BenchmarkRequest;
 import de.hhu.bsinfo.dxnet.main.messages.BenchmarkResponse;
@@ -56,7 +57,6 @@ import de.hhu.bsinfo.dxnet.main.messages.LoginRequest;
 import de.hhu.bsinfo.dxnet.main.messages.LoginResponse;
 import de.hhu.bsinfo.dxnet.main.messages.Messages;
 import de.hhu.bsinfo.dxnet.main.messages.StartMessage;
-import de.hhu.bsinfo.dxutils.ManifestHelper;
 import de.hhu.bsinfo.dxutils.RandomUtils;
 import de.hhu.bsinfo.dxutils.StorageUnitGsonSerializer;
 import de.hhu.bsinfo.dxutils.TimeUnitGsonSerializer;
@@ -76,9 +76,6 @@ import de.hhu.bsinfo.dxutils.unit.TimeUnit;
  * @author Stefan Nothaas, stefan.nothaas@hhu.de, 20.12.2017
  */
 public final class DXNetMain implements MessageReceiver {
-    private static final String GIT_COMMIT = "Not Available"; //@GITCOMMIT@
-    private static final String BUILD_TYPE = "Not Available"; //@BUILDTYPE@
-
     private static final Logger LOGGER = LogManager.getFormatterLogger(DXNetMain.class.getSimpleName());
 
     private static DXNet ms_dxnet;
@@ -119,12 +116,7 @@ public final class DXNetMain implements MessageReceiver {
         Locale.setDefault(new Locale("en", "US"));
         printJVMArgs();
         printCmdArgs(p_arguments);
-
-        System.out.println("Build type: " + BUILD_TYPE);
-        System.out.println("Git commit: " + GIT_COMMIT);
-        System.out.println("Build date: " + ManifestHelper.getProperty(DXNetMain.class, "BuildDate"));
-        System.out.println("Build user: " + ManifestHelper.getProperty(DXNetMain.class, "BuildUser"));
-        System.out.println("Cwd: " + System.getProperty("user.dir"));
+        printBuildInfo();
 
         processArgs(p_arguments);
         commonSetup();
@@ -335,6 +327,7 @@ public final class DXNetMain implements MessageReceiver {
         }
 
         System.out.println(builder);
+        System.out.println();
     }
 
     /**
@@ -351,6 +344,30 @@ public final class DXNetMain implements MessageReceiver {
             builder.append(arg);
             builder.append(' ');
         }
+
+        System.out.println(builder);
+        System.out.println();
+    }
+
+    /**
+     * Print information about the current build
+     */
+    private static void printBuildInfo() {
+        StringBuilder builder = new StringBuilder();
+
+        builder.append(">>> DXNet build <<<\n");
+        builder.append("Build type: ");
+        builder.append(BuildConfig.BUILD_TYPE);
+        builder.append('\n');
+        builder.append("Git commit: ");
+        builder.append(BuildConfig.GIT_COMMIT);
+        builder.append('\n');
+        builder.append("BuildDate: ");
+        builder.append(BuildConfig.BUILD_DATE);
+        builder.append('\n');
+        builder.append("BuildUser: ");
+        builder.append(BuildConfig.BUILD_USER);
+        builder.append('\n');
 
         System.out.println(builder);
     }
