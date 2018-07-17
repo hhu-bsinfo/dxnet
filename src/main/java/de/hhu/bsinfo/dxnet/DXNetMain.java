@@ -46,6 +46,9 @@ import com.google.gson.JsonElement;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import de.hhu.bsinfo.dxmonitor.progress.CpuProgress;
+import de.hhu.bsinfo.dxmonitor.state.MemState;
+import de.hhu.bsinfo.dxmonitor.state.StateUpdateException;
 import de.hhu.bsinfo.dxnet.core.AbstractPipeIn;
 import de.hhu.bsinfo.dxnet.core.Message;
 import de.hhu.bsinfo.dxnet.core.NetworkException;
@@ -921,8 +924,14 @@ public final class DXNetMain implements MessageReceiver {
         private volatile boolean m_run = true;
         private int m_intervalMs;
 
+        private CpuProgress m_cpuProgress;
+        private MemState m_memoryState;
+
         ProgressThread(final int p_intervalMs) {
             m_intervalMs = p_intervalMs;
+
+            m_cpuProgress = new CpuProgress();
+            m_memoryState = new MemState();
         }
 
         public void shutdown() {
@@ -948,6 +957,18 @@ public final class DXNetMain implements MessageReceiver {
 
                 }
 
+                try {
+                    m_cpuProgress.update();
+                } catch (StateUpdateException e) {
+                    System.out.println("Updating cpu progress failed: " + e);
+                }
+
+                try {
+                    m_memoryState.update();
+                } catch (StateUpdateException e) {
+                    System.out.println("Updating memory state failed: " + e);
+                }
+
                 long totalMessagesSent = ms_messagesSent.get();
                 long totalMessagesRecv = ms_messagesReceived.get();
                 long time = System.nanoTime();
@@ -963,7 +984,8 @@ public final class DXNetMain implements MessageReceiver {
 
                 System.out.printf("[PROGRESS] %d sec [TOTAL: TXM %d%% (%d), RXM %d%% (%d), TXM-RXM-DELTA %d]" +
                                 "[AVG: TX=%f, RX=%f, TXP=%f, RXP=%f, TXM=%f, RXM=%f]" +
-                                "[CUR: TX=%f, RX=%f, TXP=%f, RXP=%f, TXM=%f, RXM=%f][ReqRespTimeouts=%d]\n",
+                                "[CUR: TX=%f, RX=%f, TXP=%f, RXP=%f, TXM=%f, RXM=%f][ReqRespTimeouts=%d]" +
+                                "[CPU: Cur=%f][MEM: Used=%f, UsedMB=%f, FreeMB=%f]\n",
                         timeDiffSend / 1000 / 1000 / 1000, ms_sendCount != 0 ?
                                 (int) ((float) totalMessagesSent / ms_sendCount / ms_targetNodeIds.size() * 100) : 0,
                         totalMessagesSent,
@@ -989,7 +1011,11 @@ public final class DXNetMain implements MessageReceiver {
                                 ((double) timeDiffRecvDelta / 1000 / 1000 / 1000),
                         (double) messagesSentDelta / ((double) timeDiffSendDelta / 1000 / 1000 / 1000) / 1000 / 1000,
                         (double) messagesRecvDelta / ((double) timeDiffRecvDelta / 1000 / 1000 / 1000) / 1000 / 1000,
-                        ms_reqRespTimeouts.get());
+                        ms_reqRespTimeouts.get(),
+                        m_cpuProgress.getCpuUsagePercent(),
+                        m_memoryState.getUsedPercent(),
+                        m_memoryState.getUsed().getMBDouble(),
+                        m_memoryState.getFree().getMBDouble());
 
                 // for delta/current values
                 m_prevSent = totalMessagesSent;
