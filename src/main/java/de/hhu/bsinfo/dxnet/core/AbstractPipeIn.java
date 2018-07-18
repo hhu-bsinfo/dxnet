@@ -476,10 +476,12 @@ public abstract class AbstractPipeIn {
 
             if (request != null) {
                 // Must be executed prior to fulfill()!
+                // never remove these statistics (even on performance build type). required to determine
+                // RTT on benchmarks
                 if (m_benchmarkMode) {
-                    SOP_REQ_RESP_RTT.record(timeReceiveResponse - request.getSendReceiveTimestamp());
+                    SOP_REQ_RESP_RTT.recordPerf(timeReceiveResponse - request.getSendReceiveTimestamp());
                 } else {
-                    SOP_REQ_RESP_RTT_VAL.add(timeReceiveResponse - request.getSendReceiveTimestamp());
+                    SOP_REQ_RESP_RTT_VAL.addPerf(timeReceiveResponse - request.getSendReceiveTimestamp());
                 }
 
                 SOP_FULFILL.incDebug();
