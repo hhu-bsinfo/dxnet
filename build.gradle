@@ -30,6 +30,16 @@ targetCompatibility = '1.8'
 
 mainClassName = 'de.hhu.bsinfo.dxnet.DXNetMain'
 
+// There doesn't seem to be a way get the APP_HOME variable to the path of config files relative
+// to the application dir. Source:
+// https://stackoverflow.com/questions/25227198/how-to-pass-a-reference-to-distribution-home-directory-using-gradle-application
+project.startScripts.with {
+    doLast {
+        unixScript.text = unixScript.text.replaceFirst('(?<=DEFAULT_JVM_OPTS=)((\'|\")(.*)(\'|"))(?=\n)',
+                '\'$3 "-Dlog4j.configurationFile=file:\\$APP_HOME/config/log4j2.xml"\'')
+    }
+}
+
 repositories {
     mavenCentral()
 
@@ -60,7 +70,6 @@ dependencies {
 
     implementation 'de.hhu.bsinfo:dxmon:1.0.0'
     implementation 'de.hhu.bsinfo:dxutils:1.0.0'
-    nativeImplementation 'de.hhu.bsinfo:dxutils:1.0.0'
 
     testCompile group: 'junit', name: 'junit', version: '4.12'
 }
