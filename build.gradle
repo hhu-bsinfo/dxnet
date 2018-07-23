@@ -47,6 +47,10 @@ repositories {
     maven {
         url "https://dl.bintray.com/hhu-bsinfo/dxram"
     }
+
+    maven {
+        url 'https://oss.jfrog.org/artifactory/oss-snapshot-local'
+    }
 }
 
 tasks.withType(JavaCompile) {
@@ -69,8 +73,8 @@ task javadocJar(type: Jar, dependsOn: javadoc) {
 dependencies {
     implementation fileTree(dir: 'lib', include: ['*.jar'])
 
-    implementation 'de.hhu.bsinfo:dxmon:1.0.0'
-    implementation 'de.hhu.bsinfo:dxutils:1.0.0'
+    implementation 'de.hhu.bsinfo:dxmon:0.3.1-SNAPSHOT'
+    implementation 'de.hhu.bsinfo:dxutils:0.3.1-SNAPSHOT'
 
     testCompile group: 'junit', name: 'junit', version: '4.12'
 }
