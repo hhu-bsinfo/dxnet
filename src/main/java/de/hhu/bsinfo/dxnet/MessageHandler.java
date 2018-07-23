@@ -28,7 +28,7 @@ import de.hhu.bsinfo.dxnet.core.MessageHeaderPool;
 import de.hhu.bsinfo.dxnet.core.MessageImporterCollection;
 import de.hhu.bsinfo.dxnet.core.NetworkException;
 import de.hhu.bsinfo.dxutils.stats.StatisticsManager;
-import de.hhu.bsinfo.dxutils.stats.Time;
+import de.hhu.bsinfo.dxutils.stats.TimePool;
 
 /**
  * Executes incoming default messages
@@ -38,8 +38,8 @@ import de.hhu.bsinfo.dxutils.stats.Time;
 class MessageHandler extends Thread {
     private static final Logger LOGGER = LogManager.getFormatterLogger(MessageHandler.class.getSimpleName());
 
-    private static final Time SOP_CREATE = new Time(MessageHandler.class, "CreateAndImport");
-    private static final Time SOP_EXECUTE = new Time(MessageHandler.class, "Execute");
+    private static final TimePool SOP_CREATE = new TimePool(MessageHandler.class, "CreateAndImport");
+    private static final TimePool SOP_EXECUTE = new TimePool(MessageHandler.class, "Execute");
 
     static {
         StatisticsManager.get().registerOperation(MessageHandler.class, SOP_CREATE);
