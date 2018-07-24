@@ -113,7 +113,7 @@ class MessageReceiverStore {
             }
             m_receivers[p_type][p_subtype] = p_receiver;
 
-            LOGGER.trace("Added new MessageReceiver %s for %d %d", p_receiver.getClass(), p_type, p_subtype);
+            LOGGER.debug("Added new MessageReceiver %s for %d %d", p_receiver.getClass(), p_type, p_subtype);
 
             m_receiversLock.unlock();
         }
