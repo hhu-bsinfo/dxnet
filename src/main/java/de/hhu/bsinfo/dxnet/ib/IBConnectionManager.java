@@ -38,10 +38,12 @@ import de.hhu.bsinfo.dxnet.core.RequestMap;
 import de.hhu.bsinfo.dxnet.core.StaticExporterPool;
 import de.hhu.bsinfo.dxutils.NodeID;
 import de.hhu.bsinfo.dxutils.UnsafeHandler;
+import de.hhu.bsinfo.dxutils.stats.AbstractOperation;
 import de.hhu.bsinfo.dxutils.stats.StatisticsManager;
 import de.hhu.bsinfo.dxutils.stats.TimePool;
 import de.hhu.bsinfo.dxutils.stats.Timeline;
 import de.hhu.bsinfo.dxutils.stats.Value;
+import de.hhu.bsinfo.dxutils.unit.StorageUnit;
 
 /**
  * Connection manager for infiniband (note: this is the main class for the IB subsystem in the java space)
@@ -60,6 +62,10 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
     private static final Value SOP_SEND_DATA_POSTED = new Value(IBConnectionManager.class, "SendDataPosted");
     private static final Value SOP_SEND_DATA_POSTED_NONE = new Value(IBConnectionManager.class, "SendDataPostedNone");
     private static final Value SOP_SEND_DATA_AVAIL = new Value(IBConnectionManager.class, "SendDataAvail");
+    private static final SendRecvTargetStats SOP_SEND_TARGET = new SendRecvTargetStats(IBConnectionManager.class,
+            "SendTarget");
+    private static final SendRecvTargetStats SOP_RECV_TARGET = new SendRecvTargetStats(IBConnectionManager.class,
+            "RecvTarget");
 
     static {
         StatisticsManager.get().registerOperation(IBConnectionManager.class, SOP_CREATE_CON);
@@ -69,6 +75,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         StatisticsManager.get().registerOperation(IBConnectionManager.class, SOP_SEND_DATA_POSTED);
         StatisticsManager.get().registerOperation(IBConnectionManager.class, SOP_SEND_DATA_POSTED_NONE);
         StatisticsManager.get().registerOperation(IBConnectionManager.class, SOP_SEND_DATA_AVAIL);
+        StatisticsManager.get().registerOperation(IBConnectionManager.class, SOP_SEND_TARGET);
+        StatisticsManager.get().registerOperation(IBConnectionManager.class, SOP_RECV_TARGET);
     }
 
     private final CoreConfig m_coreConfig;
@@ -178,6 +186,12 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                         ((long) bytes[2] & 0xFF) << 8 | bytes[3] & 0xFF);
                 MsgrcJNIBinding.addNode(val);
             }
+        }
+
+        // wait a little to allow brief initial node discovery
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException ignored) {
         }
     }
 
@@ -341,15 +355,23 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                     continue;
                 }
 
+                // FIXME excludeInvocations in types.gradle does NOT remove this for some reason
+                // SOP_RECV_TARGET.sendRecvCallDebug(sourceNodeId);
+
                 if (dataLength > 0) {
                     if (!m_incomingBufferQueue.pushBuffer(connection, null, ptrDataHandle, ptrData, dataLength)) {
                         break;
                     }
+
+                    // FIXME excludeInvocations in types.gradle does NOT remove this for some reason
+                    // SOP_RECV_TARGET.dataSentRecvDebug(sourceNodeId, dataLength);
                 }
 
                 if (fcData > 0) {
                     // process FC AFTER data to avoid processing FC data multiple times (see further below IBQ full)
                     connection.getPipeIn().handleFlowControlData(fcData);
+                    // FIXME excludeInvocations in types.gradle does NOT remove this for some reason
+                    // SOP_RECV_TARGET.dataFCSentRecvDebug(sourceNodeId, fcData);
                 }
 
                 processed++;
@@ -381,6 +403,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                         }
 
                         connection.getPipeIn().handleFlowControlData(fcData);
+                        // FIXME excludeInvocations in types.gradle does NOT remove this for some reason
+                        // SOP_RECV_TARGET.dataFCSentRecvDebug(sourceNodeId, fcData);
 
                         // clear data to avoid duplicate processing
                         m_incomingRingBuffer.clearFcData(offset);
@@ -491,6 +515,11 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             for (int i = 0; i < numItems; i++) {
                 short nodeId = m_completedWorkList.getNodeId(i);
                 int processedBytes = m_completedWorkList.getNumBytesWritten(nodeId & 0xFFFF);
+                int processedFC = m_completedWorkList.getFcDataWritten(nodeId & 0xFFFF);
+
+                // FIXME excludeInvocations in types.gradle does NOT remove this for some reason
+                // SOP_SEND_TARGET.dataSentRecvDebug(nodeId, processedBytes);
+                // SOP_SEND_TARGET.dataFCSentRecvDebug(nodeId, processedFC);
 
                 try {
                     IBConnection prevConnection = (IBConnection) getConnection(nodeId);
@@ -540,6 +569,9 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         if (interests == 0) {
             throw new IllegalStateException("No interests available but interest manager has write interest set");
         }
+
+        // FIXME excludeInvocations in types.gradle does NOT remove this for some reason
+        // SOP_SEND_TARGET.sendRecvCallDebug(nodeId);
 
         // sets the current work request valid
         m_nextWorkPackage.setNodeId(nodeId);
@@ -1061,6 +1093,122 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         long getDataRaw(final int p_idx) {
             return m_unsafe.getLong(
                     m_baseAddress + IDX_OFFSET_ENTRIES + p_idx * SIZE_ENTRY_STRUCT + IDX_ENTRY_PTR_DATA_RAW);
+        }
+    }
+
+    /**
+     * Keep track of send interests consumed by nodeId. Useful to monitor traffic distribution
+     */
+    private static class SendRecvTargetStats extends AbstractOperation {
+        private long[] m_counter = new long[NodeID.MAX_ID];
+        private long[] m_lastTime = new long[NodeID.MAX_ID];
+        private long[] m_totalTime = new long[NodeID.MAX_ID];
+        private long[] m_totalDataBytes = new long[NodeID.MAX_ID];
+        private long[] m_totalFC = new long[NodeID.MAX_ID];
+
+        /**
+         * Constructor
+         *
+         * @param p_class
+         *         Class that contains the operation
+         * @param p_name
+         *         Name for the operation
+         */
+        SendRecvTargetStats(final Class<?> p_class, final String p_name) {
+            super(p_class, p_name);
+        }
+
+        /**
+         * Record a consumed interest or if data is received
+         *
+         * @param p_nodeId NodeId of consumed interest or incoming data
+         */
+        void sendRecvCallDebug(final short p_nodeId) {
+            long curTime = System.nanoTime();
+
+            if (m_counter[p_nodeId & 0xFFFF] > 0) {
+                m_totalTime[p_nodeId & 0xFFFF] += curTime - m_lastTime[p_nodeId & 0xFFFF];
+            }
+
+            m_counter[p_nodeId & 0xFFFF]++;
+            m_lastTime[p_nodeId & 0xFFFF] = curTime;
+        }
+
+        void dataSentRecvDebug(final short p_nodeId, final int p_dataBytes) {
+            m_totalDataBytes[p_nodeId & 0xFFFF] += p_dataBytes;
+        }
+
+        void dataFCSentRecvDebug(final short p_nodeId, final int p_fcData) {
+            m_totalFC[p_nodeId & 0xFFFF] += p_fcData;
+        }
+
+        @Override
+        public String dataToString(final String p_indent, final boolean p_extended) {
+            StringBuilder builder = new StringBuilder();
+
+            boolean addNewLine = false;
+
+            for (int i = 0; i < m_counter.length; i++) {
+                if (m_counter[i] > 0) {
+                    if (!addNewLine) {
+                        addNewLine = true;
+                    } else {
+                        builder.append('\n');
+                    }
+
+                    builder.append(p_indent);
+                    builder.append(NodeID.toHexString((short) i));
+                    builder.append(": counter ");
+                    builder.append(m_counter[i]);
+                    builder.append(";totalTimeMs ");
+                    builder.append((double) m_totalTime[i] / 1000 / 1000);
+                    builder.append(";avgTimeUs ");
+                    builder.append((double) m_totalTime[i] / m_counter[i] / 1000);
+                    builder.append(";totalData ");
+                    builder.append((new StorageUnit(m_totalDataBytes[i], StorageUnit.BYTE)).getMBDouble());
+                    builder.append(";totalFC ");
+                    builder.append(m_totalFC[i]);
+                }
+            }
+
+            return builder.toString();
+        }
+
+        @Override
+        public String generateCSVHeader(final char p_delim) {
+            return "nodeId" + p_delim + "counter" + p_delim + "totalTimeMs" + p_delim + "avgTimeUs" + p_delim +
+                    "totalDataMB" + p_delim + "totalFC";
+        }
+
+        @Override
+        public String toCSV(final char p_delim) {
+            StringBuilder builder = new StringBuilder();
+
+            boolean addNewLine = false;
+
+            for (int i = 0; i < m_counter.length; i++) {
+                if (m_counter[i] > 0) {
+                    if (!addNewLine) {
+                        addNewLine = true;
+                    } else {
+                        builder.append('\n');
+                    }
+
+                    builder.append(NodeID.toHexString((short) i));
+                    builder.append(p_delim);
+                    builder.append(m_counter[i]);
+                    builder.append(p_delim);
+                    builder.append((double) m_totalTime[i] / 1000 / 1000);
+                    builder.append(p_delim);
+                    builder.append((double) m_totalTime[i] / m_counter[i] / 1000);
+                    builder.append(p_delim);
+                    builder.append((new StorageUnit(m_totalDataBytes[i], StorageUnit.BYTE)).getMBDouble());
+                    builder.append(p_delim);
+                    builder.append(m_totalFC[i]);
+                }
+            }
+
+            return builder.toString();
         }
     }
 }

@@ -21,6 +21,10 @@ buildTypes {
         excludeLogger 'RELEASE'
         excludeStatistics 'RELEASE'
 
+        excludeInvocations 'de.hhu.bsinfo.dxnet.ib.IBConnectionManager.SendRecvTargetStats#sendRecvCallDebug'
+        excludeInvocations 'de.hhu.bsinfo.dxnet.ib.IBConnectionManager.SendRecvTargetStats#dataSentRecvDebug'
+        excludeInvocations 'de.hhu.bsinfo.dxnet.ib.IBConnectionManager.SendRecvTargetStats#dataFCSentRecvDebug'
+
         buildConfig {
 
             inheritsFrom 'debug'
@@ -33,6 +37,8 @@ buildTypes {
         
         excludeLogger 'PERFORMANCE'
         excludeStatistics 'PERFORMANCE'
+
+        excludeInvocations 'de.hhu.bsinfo.dxnet.ib.IBConnectionManager.SendRecvTargetStats#sendRecvCallDebug'
 
         buildConfig {
 
