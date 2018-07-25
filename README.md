@@ -76,15 +76,22 @@ to each node added with their ip addresses and ports. Example for two nodes:
 
 The nodeIds chosen here have to match the ones you select when starting the DXNet benchmark (see further below).
 
-The benchmark supports the following workloads:
-* 0: Messages with pooling message objects, i.e. re-use message objects
-* 1: Messages without pooling, i.e. create a new message objects for every message to send
-* 2: Request-Response with pooling message objects, i.e. re-use request objects
-* 3: Request-Response without pooling, i.e. create a new request objects for every request to send
-
 Usage information:
 ```
 Args: <config_file> <print interval ms> <workload> <send count> <recv count> <size payload> <send/app threads> <node id> [send target node ids ...]
+  config_file: Path to the config file to use (e.g. ./config/dxnet.json). Creates new config with default value if file does not exist
+  print interval ms: Interval to print status/progress output during the benchmark (e.g. 1000 for every second)
+  workload: Workload to execute
+     0: Messages with pooling message objects, i.e. re-use message objects
+     1: Messages without pooling, i.e. create a new message objects for every message to send
+     2: Request-Response with pooling message objects, i.e. re-use request objects
+     3: Request-Response without pooling, i.e. create a new request objects for every request to send
+  send count: Total number of messages to send (equally distributed to all target nodes)
+  recv count: Total number of messages to receive from all nodes that target messages to the current one
+  size payload: Size of a single message (payload size)
+  send/app threads: Number of thread to spawn that send messages concurrently
+  node id: Node id to set for the current instance
+  send target node ids...: A list of node IDs of target nodes to send to. Receive only is also possible (e.g. for uni-direcitonal benchmarks)
 ```
 
 For example, to run workload 0, send 1000 messages, receive 1000 messages, 32 byte size with one application thread and
