@@ -393,8 +393,8 @@ public final class DXNetMain implements MessageReceiver {
 
         if (p_args.length < 8) {
             System.out.println("To execute benchmarks with a valid configuration file:");
-            System.out.println("Args: <config_file> <print interval ms> <workload> <send count> <recv count> <size> " +
-                    "(full message: header + payload)> <send/app threads> <node id> " + "[send target node ids ...]");
+            System.out.println("Args: <config_file> <print interval ms> <workload> <send count> <recv count> " +
+                    "<size payload> <send/app threads> <node id> [send target node ids ...]");
             System.exit(-1);
         }
 
