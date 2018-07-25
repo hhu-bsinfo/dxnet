@@ -116,6 +116,12 @@ public final class DXNetMain implements MessageReceiver {
     private static AtomicLong ms_messagesSent = new AtomicLong(0);
     private static AtomicLong ms_reqRespTimeouts = new AtomicLong(0);
 
+    /**
+     * Application entry point
+     *
+     * @param p_arguments
+     *         Cmd args
+     */
     public static void main(final String[] p_arguments) {
         Locale.setDefault(new Locale("en", "US"));
         printJVMArgs();
@@ -377,10 +383,19 @@ public final class DXNetMain implements MessageReceiver {
         System.out.println(builder);
     }
 
+    /**
+     * Print information (software/hardware) about the current instance
+     */
     private static void printInstanceInfo() {
         System.out.println(">>> Instance <<<\n" + InstanceInfo.compile() + '\n');
     }
 
+    /**
+     * Process the cmd args
+     *
+     * @param p_args
+     *         Cmd args to process
+     */
     private static void processArgs(final String[] p_args) {
         // Parse command line arguments
         if (p_args.length < 1) {
@@ -395,6 +410,26 @@ public final class DXNetMain implements MessageReceiver {
             System.out.println("To execute benchmarks with a valid configuration file:");
             System.out.println("Args: <config_file> <print interval ms> <workload> <send count> <recv count> " +
                     "<size payload> <send/app threads> <node id> [send target node ids ...]");
+            System.out.println("  config_file: Path to the config file to use (e.g. ./config/dxnet.json). Creates " +
+                    "new config with default value if file does not exist");
+            System.out.println("  print interval ms: Interval to print status/progress output during the benchmark " +
+                    "(e.g. 1000 for every second)");
+            System.out.println("  workload: Workload to execute");
+            System.out.println("     0: Messages with pooling message objects, i.e. re-use message objects");
+            System.out.println("     1: Messages without pooling, i.e. create a new message objects for every" +
+                    " message to send");
+            System.out.println("     2: Request-Response with pooling message objects, i.e. re-use request objects");
+            System.out.println("     3: Request-Response without pooling, i.e. create a new request objects for " +
+                    "every request to send");
+            System.out.println("  send count: Total number of messages to send (equally distributed to all target " +
+                    "nodes)");
+            System.out.println("  recv count: Total number of messages to receive from all nodes that target " +
+                    "messages to the current one");
+            System.out.println("  size payload: Size of a single message (payload size)");
+            System.out.println("  send/app threads: Number of thread to spawn that send messages concurrently");
+            System.out.println("  node id: Node id to set for the current instance");
+            System.out.println("  send target node ids...: A list of node IDs of target nodes to send to. Receive " +
+                    "only is also possible (e.g. for uni-direcitonal benchmarks)");
             System.exit(-1);
         }
 
@@ -427,6 +462,12 @@ public final class DXNetMain implements MessageReceiver {
                 ms_ownNodeId, targets.toString());
     }
 
+    /**
+     * Load the configuration file
+     *
+     * @param p_configPath
+     *         Path to configuration file
+     */
     private static void loadConfiguration(final String p_configPath) {
         LOGGER.info("Loading configuration '%s'...", p_configPath);
         ms_context = new DXNetConfig();
@@ -491,6 +532,9 @@ public final class DXNetMain implements MessageReceiver {
         }
     }
 
+    /**
+     * Setup common stuff
+     */
     private static void commonSetup() {
         LOGGER.debug("Loading jni libs: %s", ms_context.getJNIPath());
 
@@ -507,6 +551,9 @@ public final class DXNetMain implements MessageReceiver {
         StatisticsManager.get().setPrintInterval((int) ms_context.getStatisticsManagerPrintInterval().getMs());
     }
 
+    /**
+     * Setup node mappings according to cmd params
+     */
     private static void setupNodeMappings() {
         // Set own node ID and register all participating nodes
         ms_context.getCoreConfig().setOwnNodeId(ms_ownNodeId);
@@ -551,6 +598,9 @@ public final class DXNetMain implements MessageReceiver {
         ms_isLoginCoordinator = ms_nodeMap.getOwnNodeID() == 0;
     }
 
+    /**
+     * Load a selected transport
+     */
     private static void deviceLoadAndCheck() {
         // init by network device
         if ("Ethernet".equals(ms_context.getCoreConfig().getDevice())) {
@@ -568,6 +618,9 @@ public final class DXNetMain implements MessageReceiver {
         }
     }
 
+    /**
+     * Socket bound check for ethernet transport
+     */
     private static void ethernetCheckSocketBound() {
         // Check if given ip address is bound to one of this node's network interfaces
         boolean found = false;
@@ -604,6 +657,9 @@ public final class DXNetMain implements MessageReceiver {
         }
     }
 
+    /**
+     * Setup DXNet for the benchmark
+     */
     private static void setupDXNet() {
         ms_dxnet = new DXNet(ms_context.getCoreConfig(), ms_context.getNIOConfig(), ms_context.getIBConfig(),
                 ms_context.getLoopbackConfig(), ms_nodeMap);
@@ -631,6 +687,9 @@ public final class DXNetMain implements MessageReceiver {
         ms_dxnet.register(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_RESPONSE, new DXNetMain());
     }
 
+    /**
+     * Coordinate startup by waiting for all involved instances
+     */
     private static void coordinateStartupAndWait() {
         // Loopback doesn't need any startup coordination
         if (ms_context.getCoreConfig().isDeviceLoopback()) {
@@ -668,6 +727,18 @@ public final class DXNetMain implements MessageReceiver {
         }
     }
 
+    /**
+     * Print the benchmark results
+     *
+     * @param p_timeSendNs
+     *         Total time sending
+     * @param p_timeRecvNs
+     *         Total time receiving
+     * @param p_sendTotalMessages
+     *         Total number of messages sent
+     * @param p_recvTotalMessages
+     *         Total number of messages received
+     */
     private static void printResults(final double p_timeSendNs, final long p_timeRecvNs, final long p_sendTotalMessages,
             final long p_recvTotalMessages) {
         long rttCount = 0;
@@ -732,6 +803,9 @@ public final class DXNetMain implements MessageReceiver {
                 ms_reqRespTimeouts.get());
     }
 
+    /**
+     * Base class for a workload
+     */
     private static class Workload extends Thread {
         private boolean m_withRequests;
         private boolean m_objectPooling;
@@ -739,6 +813,14 @@ public final class DXNetMain implements MessageReceiver {
         long m_rttMinNs;
         long m_rttMaxNs;
 
+        /**
+         * Constructor
+         *
+         * @param p_withRequests
+         *         True if workload is using requests, false if not
+         * @param p_objectPooling
+         *         True if workload pools message objects
+         */
         Workload(final boolean p_withRequests, final boolean p_objectPooling) {
             m_withRequests = p_withRequests;
             m_objectPooling = p_objectPooling;
@@ -747,26 +829,50 @@ public final class DXNetMain implements MessageReceiver {
             m_rttMaxNs = 0;
         }
 
+        /**
+         * Get the min RTT
+         *
+         * @return Min RTT in ns
+         */
         long getRttMinNs() {
             return m_rttMinNs;
         }
 
+        /**
+         * Get the max RTT
+         *
+         * @return Max RTT in ns
+         */
         long getRttMaxNs() {
             return m_rttMaxNs;
         }
 
+        /**
+         * Check if workload is with requests
+         *
+         * @return True if with requests
+         */
         boolean isWithRequests() {
             return m_withRequests;
         }
 
+        /**
+         * Check if workload uses object pooling
+         *
+         * @return True if using object pooling
+         */
         boolean objectPooling() {
             return m_objectPooling;
         }
     }
 
-    // msg + pooling = a
+    /**
+     * WorkloadA: messages + pooling
+     */
     private static class WorkloadA extends Workload {
-
+        /**
+         * Constructor
+         */
         WorkloadA() {
             super(false, true);
         }
@@ -804,9 +910,13 @@ public final class DXNetMain implements MessageReceiver {
         }
     }
 
-    // msg + no pooling = b
+    /**
+     * WorkloadB: messages + no pooling
+     */
     private static class WorkloadB extends Workload {
-
+        /**
+         * Constructor
+         */
         WorkloadB() {
             super(false, false);
         }
@@ -839,9 +949,13 @@ public final class DXNetMain implements MessageReceiver {
         }
     }
 
-    // req + pooling = c
+    /**
+     * WorkloadC: requests + pooling
+     */
     private static class WorkloadC extends Workload {
-
+        /**
+         * Constructor
+         */
         WorkloadC() {
             super(true, true);
 
@@ -889,9 +1003,13 @@ public final class DXNetMain implements MessageReceiver {
         }
     }
 
-    // req + no pooling = d
+    /**
+     * WorkloadD: requests + no pooling
+     */
     private static class WorkloadD extends Workload {
-
+        /**
+         * Constructor
+         */
         WorkloadD() {
             super(true, false);
         }
@@ -926,6 +1044,9 @@ public final class DXNetMain implements MessageReceiver {
         }
     }
 
+    /**
+     * Progress thread printing the current state/progress during the benchmark
+     */
     private static class ProgressThread extends Thread {
         private volatile boolean m_run = true;
         private int m_intervalMs;
@@ -933,6 +1054,16 @@ public final class DXNetMain implements MessageReceiver {
         private CpuProgress m_cpuProgress;
         private MemState m_memoryState;
 
+        private long m_prevSent;
+        private long m_prevRecv;
+        private long m_prevTime = System.nanoTime();
+
+        /**
+         * Constructor
+         *
+         * @param p_intervalMs
+         *         Print interval in ms
+         */
         ProgressThread(final int p_intervalMs) {
             m_intervalMs = p_intervalMs;
 
@@ -940,6 +1071,9 @@ public final class DXNetMain implements MessageReceiver {
             m_memoryState = new MemState();
         }
 
+        /**
+         * Shutdown the thread
+         */
         public void shutdown() {
             m_run = false;
 
@@ -949,10 +1083,6 @@ public final class DXNetMain implements MessageReceiver {
 
             }
         }
-
-        private long m_prevSent;
-        private long m_prevRecv;
-        private long m_prevTime = System.nanoTime();
 
         @Override
         public void run() {
