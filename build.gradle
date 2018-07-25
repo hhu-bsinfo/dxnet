@@ -41,6 +41,10 @@ project.startScripts.with {
     }
 }
 
+installDist.doLast {
+    project.file("$project.buildDir/dist/$project.name/jni").mkdir()
+}
+
 repositories {
     mavenCentral()
 
