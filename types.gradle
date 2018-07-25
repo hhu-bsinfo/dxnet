@@ -1,23 +1,15 @@
 buildTypes {
-
     debug {
-
         buildConfig {
-
             typedField "DEBUG", Boolean, true
-
             typedField "BUILD_TYPE", String, buildType
-
             typedField "GIT_COMMIT", String, gitCommit
-
             typedField "BUILD_USER", String, System.getProperty("user.name")
-
             typedField "BUILD_DATE", String, currentDate
         }
     }
 
     release {
-
         excludeLogger 'RELEASE'
         excludeStatistics 'RELEASE'
 
@@ -26,22 +18,18 @@ buildTypes {
         excludeInvocations 'de.hhu.bsinfo.dxnet.ib.IBConnectionManager.SendRecvTargetStats#dataFCSentRecvDebug'
 
         buildConfig {
-
             inheritsFrom 'debug'
-
             typedField "DEBUG", Boolean, false
         }
     }
 
     performance {
-        
         excludeLogger 'PERFORMANCE'
         excludeStatistics 'PERFORMANCE'
 
         excludeInvocations 'de.hhu.bsinfo.dxnet.ib.IBConnectionManager.SendRecvTargetStats#sendRecvCallDebug'
 
         buildConfig {
-
             inheritsFrom 'debug'
         }
     }

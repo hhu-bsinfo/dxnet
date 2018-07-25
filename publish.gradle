@@ -33,20 +33,15 @@ def pomConfig = {
 }
 
 publishing {
-
     publications {
-
         mavenPublication(MavenPublication) {
-
             from components.java
 
             artifact sourcesJar {
-
                 classifier 'sources'
             }
 
             artifact javadocJar {
-
                 classifier 'javadoc'
             }
 
