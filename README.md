@@ -48,7 +48,7 @@ transport on a cluster with arbitrary number of nodes.
 
 Deploy the build output to your cluster and run DXNet by executing the script *dxnet* in the *bin* subfolder:
 ```
-./bin/dxnet ./config/dxnet.jsonf
+./bin/dxnet ./config/dxnet.json
 ```
 
 If there is no configuration file, it will create one with default values before starting the benchmark.
@@ -98,30 +98,43 @@ For example, to run workload 0, send 1000 messages, receive 1000 messages, 32 by
 two nodes, run the following commands:
 ```
 On the first node:
-./bin/dxnet ./config/dxnet.json 1000 0 1000 1000 16 1 0 1
+./bin/dxnet ./config/dxnet.json 1000 0 1000 1000 32 1 0 1
 
 On the second node:
-./bin/dxnet ./config/dxnet.json 1000 0 1000 1000 16 1 1 0
+./bin/dxnet ./config/dxnet.json 1000 0 1000 1000 32 1 1 0
 ```
 
 You can run this more than two nodes as well. Make sure to set the right receive counts according to how many nodes
 are set as 'target to send to' nodes (refer to usage information). Example for 4 nodes all-to-all:
 ```
 Node 1:
-./bin/dxnet ./config/dxnet.json 1000 0 3000 3000 16 1 0 1 2 3
+./bin/dxnet ./config/dxnet.json 1000 0 3000 3000 32 1 0 1 2 3
 
 Node 2:
-./bin/dxnet ./config/dxnet.json 1000 0 3000 3000 16 1 1 0 2 3
+./bin/dxnet ./config/dxnet.json 1000 0 3000 3000 32 1 1 0 2 3
 
 Node 3:
-./bin/dxnet ./config/dxnet.json 1000 0 3000 3000 16 1 2 0 1 3
+./bin/dxnet ./config/dxnet.json 1000 0 3000 3000 32 1 2 0 1 3
 
 Node 4:
-./bin/dxnet ./config/dxnet.json 1000 0 3000 3000 16 1 3 0 1 2
+./bin/dxnet ./config/dxnet.json 1000 0 3000 3000 32 1 3 0 1 2
 ```
 
 Each node sends 3000 messages in total but distributes them equally to all other (three) nodes. Hence, every node
 also has to receive 3000 messages from the (three) other nodes.
+
+Example output for benchmark results of a single instance:
+```
+[RESULTS]
+[RESULTS PARAMS: Workload=0, MsgSize=43, MsgPayloadSize=32, Threads=1, MsgHandlers=2]
+[RESULTS SEND: Runtime=0.018 sec, Msgs=1000, X=2.267 mb/s, XP=1.687 mb/s, XM=0.055270 milmsg/s]
+[RESULTS RECV: Runtime=0.046 sec, Msgs=1000, X=0.893 mb/s, XP=0.665 mb/s, XM=0.021782 milmsg/s]
+[RESULTS LATENCY: Msgs=1, Avg=42024.000 us, Min=42024.782 us, Max=42024.782 us, 95th=0.000 us, 99th=0.000 us, 99.9th=0.000 us]
+[RESULTS ERRORS: ReqRespTimeouts=0]
+```
+
+*X* is the throughput including metadata/message overhead and *XP* the payload only throughput. *XM* is the number of
+million messages per second. Latency does apply to request "messages", only, and can be ignored in this example.
 
 For a more convenient setup and execution use our [deploy script](https://github.com/hhu-bsinfo/cdepl).
 
