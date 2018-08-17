@@ -84,6 +84,7 @@ public class MessageCreationCoordinator extends Thread {
         IncomingBufferQueue.IncomingBuffer incomingBuffer;
         int counter = 0;
         long lastSuccessfulPop = 0;
+        boolean pollWait = true;
 
         while (!m_shutdown) {
             // pop an incomingBuffer
@@ -91,23 +92,31 @@ public class MessageCreationCoordinator extends Thread {
 
             if (incomingBuffer == null) {
                 // Ring-buffer is empty.
-                if (++counter >= THRESHOLD_TIME_CHECK) {
-                    // No message header for over a second -> sleep
-                    if (System.currentTimeMillis() - lastSuccessfulPop > 1000) {
-                        SOP_PARKING.inc();
-
-                        LockSupport.parkNanos(1);
-                    }
-                }
-
                 if (m_overprovisioning) {
                     SOP_YIELDING.inc();
 
                     Thread.yield();
+                } else {
+                    if (pollWait) {
+                        if (++counter >= THRESHOLD_TIME_CHECK) {
+                            if (System.currentTimeMillis() - lastSuccessfulPop >
+                                    100) { // No message header for over a second -> sleep
+                                pollWait = false;
+                            }
+                        }
+                    }
+
+                    if (!pollWait) {
+                        SOP_PARKING.inc();
+
+                        LockSupport.parkNanos(1000);
+                    }
                 }
 
                 continue;
             }
+
+            pollWait = true;
 
             lastSuccessfulPop = System.currentTimeMillis();
             counter = 0;

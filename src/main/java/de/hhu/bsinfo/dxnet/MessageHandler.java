@@ -119,24 +119,34 @@ class MessageHandler extends Thread {
         MessageReceiver messageReceiver;
         byte type;
         byte subtype;
+        boolean pollWait = true;
 
         while (!m_shutdown) {
             header = m_messages.popMessageHeader();
 
             if (header == null) {
-                if (++counter >= THRESHOLD_TIME_CHECK) {
-                    if (System.currentTimeMillis() - lastSuccessfulPop >
-                            1000) { // No message header for over a second -> sleep
-                        LockSupport.parkNanos(100);
-                    }
-                }
-
                 if (m_overprovisioning) {
                     LockSupport.parkNanos(1);
+                } else {
+                    if (pollWait) {
+                        if (++counter >= THRESHOLD_TIME_CHECK) {
+                            if (System.currentTimeMillis() - lastSuccessfulPop >
+                                    100) { // No message header for over a second -> sleep
+                                pollWait = false;
+                            }
+                        }
+                    }
+
+                    if (!pollWait) {
+                        LockSupport.parkNanos(1000);
+                    }
                 }
 
                 continue;
             }
+
+            pollWait = true;
+
             lastSuccessfulPop = System.currentTimeMillis();
             counter = 0;
 
