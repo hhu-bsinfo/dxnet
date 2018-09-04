@@ -103,7 +103,7 @@ public class DXNetConfig {
             return false;
         }
 
-        if (m_nodesConfig.size() < 2 && !m_coreConfig.isDeviceLoopback()) {
+        if (m_nodesConfig.size() < 2 && m_coreConfig.getDevice() != NetworkDeviceType.LOOPBACK) {
             LOGGER.error("Less than two nodes found in nodes config. At least two nodes required (non loopback)");
             return false;
         }

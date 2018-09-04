@@ -692,7 +692,7 @@ public final class DXNetMain implements MessageReceiver {
      */
     private static void coordinateStartupAndWait() {
         // Loopback doesn't need any startup coordination
-        if (ms_context.getCoreConfig().isDeviceLoopback()) {
+        if (ms_context.getCoreConfig().getDevice() == NetworkDeviceType.LOOPBACK) {
             return;
         }
 

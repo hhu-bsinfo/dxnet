@@ -24,6 +24,7 @@ import com.google.gson.annotations.Expose;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import de.hhu.bsinfo.dxnet.NetworkDeviceType;
 import de.hhu.bsinfo.dxutils.NodeID;
 
 /**
@@ -72,27 +73,15 @@ public class CoreConfig {
      * The device name (Ethernet, Infiniband or Loopback)
      */
     @Expose
-    private String m_device = "Ethernet";
+    private String m_device = NetworkDeviceType.ETHERNET_STR;
 
     /**
-     * Check if the device name is set to ethernet
+     * Get the network device
+     *
+     * @return Network device
      */
-    public boolean isDeviceEthernet() {
-        return "ethernet".equals(m_device.toLowerCase());
-    }
-
-    /**
-     * Check if the device name is set to infiniband
-     */
-    public boolean isDeviceInfiniband() {
-        return "infiniband".equals(m_device.toLowerCase());
-    }
-
-    /**
-     * Check if the device name is set to loopback
-     */
-    public boolean isDeviceLoopback() {
-        return "loopback".equals(m_device.toLowerCase());
+    public NetworkDeviceType getDevice() {
+        return NetworkDeviceType.toNetworkDeviceType(m_device);
     }
 
     /**
@@ -101,7 +90,10 @@ public class CoreConfig {
      * @return True if all configuration values are ok, false on invalid value, range or any other error
      */
     public boolean verify() {
-        // TODO verify device not unknown
+        if (NetworkDeviceType.toNetworkDeviceType(m_device) == NetworkDeviceType.INVALID) {
+            LOGGER.error("Invalid network device '%s' specified", m_device);
+            return false;
+        }
 
         if (m_requestMapSize <= (int) Math.pow(2, 15)) {
             LOGGER.warn("Request map entry count is rather small. Requests might be discarded!");
