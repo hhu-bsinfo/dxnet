@@ -412,7 +412,7 @@ public final class DXNet {
                     }
                 }
             } catch (final NetworkException e) {
-                LOGGER.debug("Sending data failed: %s", e.getMessage());
+                LOGGER.warn("Sending data failed: %s", e.getMessage());
                 throw new NetworkException("Sending data failed ", e);
             }
         }
