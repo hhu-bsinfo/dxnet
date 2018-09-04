@@ -21,6 +21,9 @@ import lombok.experimental.Accessors;
 
 import com.google.gson.annotations.Expose;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import de.hhu.bsinfo.dxutils.NodeID;
 
 /**
@@ -31,6 +34,8 @@ import de.hhu.bsinfo.dxutils.NodeID;
 @Data
 @Accessors(prefix = "m_")
 public class CoreConfig {
+    private static final Logger LOGGER = LogManager.getFormatterLogger(CoreConfig.class);
+
     /**
      * Get the node id of the current node.
      * Don't expose, not a configurable attribute
@@ -88,5 +93,21 @@ public class CoreConfig {
      */
     public boolean isDeviceLoopback() {
         return "loopback".equals(m_device.toLowerCase());
+    }
+
+    /**
+     * Verify the configuration values
+     *
+     * @return True if all configuration values are ok, false on invalid value, range or any other error
+     */
+    public boolean verify() {
+        // TODO verify device not unknown
+
+        if (m_requestMapSize <= (int) Math.pow(2, 15)) {
+            LOGGER.warn("Request map entry count is rather small. Requests might be discarded!");
+            return true;
+        }
+
+        return true;
     }
 }

@@ -21,6 +21,9 @@ import lombok.experimental.Accessors;
 
 import com.google.gson.annotations.Expose;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import de.hhu.bsinfo.dxutils.unit.StorageUnit;
 import de.hhu.bsinfo.dxutils.unit.TimeUnit;
 
@@ -32,6 +35,8 @@ import de.hhu.bsinfo.dxutils.unit.TimeUnit;
 @Data
 @Accessors(prefix = "m_")
 public class NIOConfig {
+    private static final Logger LOGGER = LogManager.getFormatterLogger(NIOConfig.class);
+
     /**
      * Max number of connections to keep before dismissing existing connections (for new ones)
      */
@@ -68,4 +73,23 @@ public class NIOConfig {
      */
     @Expose
     private StorageUnit m_outgoingRingBufferSize = new StorageUnit(2, StorageUnit.MB);
+
+    /**
+     * Verify the configuration values
+     *
+     * @return True if all configuration values are ok, false on invalid value, range or any other error
+     */
+    public boolean verify() {
+        if (m_flowControlWindow.getBytes() > m_outgoingRingBufferSize.getBytes()) {
+            LOGGER.error("NIO: OS buffer size must be at least twice the size of flow control window size!");
+            return false;
+        }
+
+        if (m_flowControlWindow.getBytes() > Integer.MAX_VALUE) {
+            LOGGER.error("NIO: Flow control window size exceeding 2 GB, not allowed");
+            return false;
+        }
+
+        return true;
+    }
 }

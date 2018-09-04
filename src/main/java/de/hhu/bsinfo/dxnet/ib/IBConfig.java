@@ -21,6 +21,9 @@ import lombok.experimental.Accessors;
 
 import com.google.gson.annotations.Expose;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import de.hhu.bsinfo.dxutils.unit.StorageUnit;
 import de.hhu.bsinfo.dxutils.unit.TimeUnit;
 
@@ -32,6 +35,8 @@ import de.hhu.bsinfo.dxutils.unit.TimeUnit;
 @Data
 @Accessors(prefix = "m_")
 public class IBConfig {
+    private static final Logger LOGGER = LogManager.getFormatterLogger(IBConfig.class);
+
     /**
      * Max number of connections to keep before dismissing existing connections (for new ones)
      */
@@ -143,4 +148,48 @@ public class IBConfig {
      */
     @Expose
     private int m_statisticsThreadPrintIntervalMs = 0;
+
+    /**
+     * Verify the configuration values
+     *
+     * @return True if all configuration values are ok, false on invalid value, range or any other error
+     */
+    public boolean verify() {
+        if (m_incomingBufferSize.getBytes() > m_outgoingRingBufferSize.getBytes()) {
+            LOGGER.error("IB in buffer size must be <= outgoing ring buffer size");
+            return false;
+        }
+
+        if (m_srqSize < m_sqSize * m_maxConnections) {
+            LOGGER.warn("IB m_srqSize < m_sqSize * m_maxConnections: This may result in performance " +
+                    " penalties when too many nodes are active");
+        }
+
+        if (m_sharedSCQSize < m_sqSize * m_maxConnections) {
+            LOGGER.warn("IB m_sharedSCQSize < m_sqSize * m_maxConnections: This may result in performance " +
+                    "penalties when too many nodes are active");
+        }
+
+        if (m_srqSize < m_sharedRCQSize) {
+            LOGGER.warn("IB m_srqSize < m_sharedRCQSize: This may result in performance penalties when too " +
+                    "many nodes are active");
+        }
+
+        if (m_flowControlWindow.getBytes() > Integer.MAX_VALUE) {
+            LOGGER.error("IB: Flow control window size exceeding 2 GB, not allowed");
+            return false;
+        }
+
+        if (m_incomingBufferSize.getGBDouble() > 2.0) {
+            LOGGER.error("IB: Exceeding max incoming buffer size of 2GB");
+            return false;
+        }
+
+        if (m_outgoingRingBufferSize.getGBDouble() > 2.0) {
+            LOGGER.error("IB: Exceeding max outgoing buffer size of 2GB");
+            return false;
+        }
+
+        return true;
+    }
 }
