@@ -155,18 +155,24 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
      * library to be loaded
      */
     public void init() {
-        // can't call this in the constructor because it relies on the implemented interfaces for callbacks
-        if (!MsgrcJNIBinding.init(this, m_config.isPinSendRecvThreads(), m_config.isEnableSignalHandler(),
-                m_config.getStatisticsThreadPrintIntervalMs(), m_coreConfig.getOwnNodeId(),
-                (int) m_config.getConnectionCreationTimeout().getMs(), m_config.getMaxConnections(),
-                m_config.getSqSize(), m_config.getSrqSize(), m_config.getSharedSCQSize(), m_config.getSharedRCQSize(),
-                (int) m_config.getOutgoingRingBufferSize().getBytes(),
-                m_config.getIncomingBufferPoolTotalSize().getBytes(),
-                (int) m_config.getIncomingBufferSize().getBytes(), m_config.getMaxSGEs())) {
+        try {
+            // can't call this in the constructor because it relies on the implemented interfaces for callbacks
+            if (!MsgrcJNIBinding.init(this, m_config.isPinSendRecvThreads(), m_config.isEnableSignalHandler(),
+                    m_config.getStatisticsThreadPrintIntervalMs(), m_coreConfig.getOwnNodeId(),
+                    (int) m_config.getConnectionCreationTimeout().getMs(), m_config.getMaxConnections(),
+                    m_config.getSqSize(), m_config.getSrqSize(), m_config.getSharedSCQSize(),
+                    m_config.getSharedRCQSize(),
+                    (int) m_config.getOutgoingRingBufferSize().getBytes(),
+                    m_config.getIncomingBufferPoolTotalSize().getBytes(),
+                    (int) m_config.getIncomingBufferSize().getBytes(), m_config.getMaxSGEs())) {
 
-            LOGGER.debug("Initializing ibnet failed, check ibnet logs");
+                LOGGER.debug("Initializing ib transport failed, check ibnet logs");
 
-            throw new NetworkRuntimeException("Initializing ibnet failed");
+                throw new NetworkRuntimeException("Initializing ib transport failed");
+            }
+        } catch (UnsatisfiedLinkError ignored) {
+            throw new NetworkRuntimeException("Initializing ib transport failed, could not find init method. It's " +
+                    "likely that the native library couldn't be loaded because it's not available.");
         }
 
         // this is an ugly way of figuring out which nodes are available on startup. the ib subsystem needs that kind
