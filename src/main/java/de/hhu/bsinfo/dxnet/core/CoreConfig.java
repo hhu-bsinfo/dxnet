@@ -16,6 +16,9 @@
 
 package de.hhu.bsinfo.dxnet.core;
 
+import lombok.Data;
+import lombok.experimental.Accessors;
+
 import com.google.gson.annotations.Expose;
 
 import de.hhu.bsinfo.dxutils.NodeID;
@@ -25,82 +28,46 @@ import de.hhu.bsinfo.dxutils.NodeID;
  *
  * @author Stefan Nothaas, stefan.nothaas@hhu.de, 28.07.2017
  */
+@Data
+@Accessors(prefix = "m_")
 public class CoreConfig {
-    // don't expose, not a configurable attribute
+    /**
+     * Get the node id of the current node.
+     * Don't expose, not a configurable attribute
+     */
     private short m_ownNodeId = NodeID.INVALID_ID;
-
-    @Expose
-    private int m_numMessageHandlerThreads = 2;
-
-    @Expose
-    private int m_requestMapSize = 1048576;
-
-    @Expose
-    private boolean m_useStaticExporterPool = true;
-
-    @Expose
-    private boolean m_benchmarkMode = false;
-
-    @Expose
-    private String m_device = "Ethernet";
-
-    /**
-     * Default constructor
-     */
-    public CoreConfig() {
-
-    }
-
-    /**
-     * Get the node id of the current node
-     */
-    public short getOwnNodeId() {
-        return m_ownNodeId;
-    }
-
-    /**
-     * Set the node id of the current node
-     */
-    public void setOwnNodeId(final short p_nodeId) {
-        m_ownNodeId = p_nodeId;
-    }
 
     /**
      * Number of threads to spawn for handling incoming and assembled network messages
      */
-    public int getNumMessageHandlerThreads() {
-        return m_numMessageHandlerThreads;
-    }
+    @Expose
+    private int m_numMessageHandlerThreads = 2;
 
     /**
      * Size of the map that stores outstanding requests and maps them to their incoming responses
      */
-    public int getRequestMapSize() {
-        return m_requestMapSize;
-    }
+    @Expose
+    private int m_requestMapSize = 1048576;
 
     /**
      * The exporter pool type. True if static, false if dynamic. Static is recommended for less than 1000
      * actively message sending threads.
      */
-    public boolean getExporterPoolType() {
-        return m_useStaticExporterPool;
-    }
+    @Expose
+    private boolean m_useStaticExporterPool = true;
 
     /**
      * Set this to true to put DXNet into benchmark mode which enables further statistics like percentile for RTT
      * (note: the application requires more memory in this mode due to recording more data for evaluation purpose)
      */
-    public boolean isBenchmarkMode() {
-        return m_benchmarkMode;
-    }
+    @Expose
+    private boolean m_benchmarkMode = false;
 
     /**
      * The device name (Ethernet, Infiniband or Loopback)
      */
-    public String getDevice() {
-        return m_device;
-    }
+    @Expose
+    private String m_device = "Ethernet";
 
     /**
      * Check if the device name is set to ethernet

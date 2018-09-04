@@ -109,15 +109,16 @@ public class NIOConnectionManager extends AbstractConnectionManager {
 
         LOGGER.info("Starting NIOSelector...");
 
-        m_bufferPool = new BufferPool((int) m_config.getOugoingRingBufferSize().getBytes());
-        if (p_coreConfig.getExporterPoolType()) {
+        m_bufferPool = new BufferPool((int) m_config.getOutgoingRingBufferSize().getBytes());
+        if (p_coreConfig.isUseStaticExporterPool()) {
             m_exporterPool = new StaticExporterPool();
         } else {
             m_exporterPool = new DynamicExporterPool();
         }
 
         m_nioSelector = new NIOSelector(this, p_nodeMap.getAddress(p_nodeMap.getOwnNodeID()).getPort(),
-                (int) p_nioConfig.getConnectionTimeOut().getMs(), (int) m_config.getOugoingRingBufferSize().getBytes());
+                (int) p_nioConfig.getConnectionTimeOut().getMs(),
+                (int) m_config.getOutgoingRingBufferSize().getBytes());
         m_nioSelector.setName("Network-NIOSelector");
         m_nioSelector.start();
 
@@ -167,7 +168,7 @@ public class NIOConnectionManager extends AbstractConnectionManager {
             }
 
             ret = new NIOConnection(m_coreConfig.getOwnNodeId(), p_destination,
-                    (int) m_config.getOugoingRingBufferSize().getBytes(),
+                    (int) m_config.getOutgoingRingBufferSize().getBytes(),
                     (int) m_config.getFlowControlWindow().getBytes(), m_config.getFlowControlWindowThreshold(),
                     m_incomingBufferQueue, m_messageHeaderPool, m_messageDirectory, m_requestMap, m_messageHandlers,
                     m_bufferPool, m_exporterPool, m_nioSelector, m_nodeMap, condLock, cond,
@@ -476,7 +477,7 @@ public class NIOConnectionManager extends AbstractConnectionManager {
                         }
 
                         connection = new NIOConnection(m_coreConfig.getOwnNodeId(), destination,
-                                (int) m_config.getOugoingRingBufferSize().getBytes(),
+                                (int) m_config.getOutgoingRingBufferSize().getBytes(),
                                 (int) m_config.getFlowControlWindow().getBytes(),
                                 m_config.getFlowControlWindowThreshold(), m_incomingBufferQueue, m_messageHeaderPool,
                                 m_messageDirectory, m_requestMap, m_messageHandlers, m_bufferPool, m_exporterPool,

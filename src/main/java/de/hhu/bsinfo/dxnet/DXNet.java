@@ -157,14 +157,14 @@ public final class DXNet {
 
         if ("Ethernet".equals(m_coreConfig.getDevice())) {
             m_messageCreationCoordinator = new MessageCreationCoordinator(2 * 2 * 1024,
-                    (int) m_nioConfig.getOugoingRingBufferSize().getBytes() * 8,
+                    (int) m_nioConfig.getOutgoingRingBufferSize().getBytes() * 8,
                     m_overprovisioning);
         } else if ("Infiniband".equals(m_coreConfig.getDevice())) {
             m_messageCreationCoordinator = new MessageCreationCoordinator(m_ibConfig.getIbqMaxCapacityBufferCount(),
                     (int) m_ibConfig.getIbqMaxCapacitySize().getBytes(), m_overprovisioning);
         } else {
             m_messageCreationCoordinator = new MessageCreationCoordinator(2 * 2 * 1024,
-                    (int) m_loopbackConfig.getOugoingRingBufferSize().getBytes() * 8,
+                    (int) m_loopbackConfig.getOutgoingRingBufferSize().getBytes() * 8,
                     m_overprovisioning);
         }
 

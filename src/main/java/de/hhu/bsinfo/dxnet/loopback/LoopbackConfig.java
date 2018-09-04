@@ -16,6 +16,9 @@
 
 package de.hhu.bsinfo.dxnet.loopback;
 
+import lombok.Data;
+import lombok.experimental.Accessors;
+
 import com.google.gson.annotations.Expose;
 
 import de.hhu.bsinfo.dxutils.unit.StorageUnit;
@@ -26,65 +29,39 @@ import de.hhu.bsinfo.dxutils.unit.TimeUnit;
  *
  * @author Kevin Beineke, kevin.beineke@hhu.de, 21.09.2017
  */
+@Data
+@Accessors(prefix = "m_")
 public class LoopbackConfig {
-
-    @Expose
-    private TimeUnit m_requestTimeOut = new TimeUnit(333, TimeUnit.MS);
-
-    @Expose
-    private TimeUnit m_connectionTimeOut = new TimeUnit(333, TimeUnit.MS);
-
-    @Expose
-    private StorageUnit m_flowControlWindow = new StorageUnit(80, StorageUnit.MB);
-
-    @Expose
-    private float m_flowControlWindowThreshold = 0.5f;
-
-    @Expose
-    private StorageUnit m_outgoingRingBufferSize = new StorageUnit(4, StorageUnit.MB);
-
-    /**
-     * Default constructor
-     */
-    public LoopbackConfig() {
-
-    }
-
     /**
      * Amount of time to wait until a request that did not receive a response is considered timed out.
      */
-    public TimeUnit getRequestTimeOut() {
-        return m_requestTimeOut;
-    }
+    @Expose
+    private TimeUnit m_requestTimeOut = new TimeUnit(333, TimeUnit.MS);
 
     /**
      * Amount of time to try to establish a connection before giving up
      */
-    public TimeUnit getConnectionTimeOut() {
-        return m_connectionTimeOut;
-    }
+    @Expose
+    private TimeUnit m_connectionTimeOut = new TimeUnit(333, TimeUnit.MS);
 
     /**
      * Number of bytes to receive on a flow control message before flow control is considered delayed
      */
-    public StorageUnit getFlowControlWindow() {
-        return m_flowControlWindow;
-    }
+    @Expose
+    private StorageUnit m_flowControlWindow = new StorageUnit(80, StorageUnit.MB);
 
     /**
      * Get the threshold determining when a flow control message is sent
      * (receivedBytes > m_flowControlWindow * m_flowControlWindowThreshold)
      */
-    public float getFlowControlWindowThreshold() {
-        return m_flowControlWindowThreshold;
-    }
+    @Expose
+    private float m_flowControlWindowThreshold = 0.5f;
 
     /**
      * Size of the ring buffer for outgoing network data (per connection)
      */
-    public StorageUnit getOugoingRingBufferSize() {
-        return m_outgoingRingBufferSize;
-    }
+    @Expose
+    private StorageUnit m_outgoingRingBufferSize = new StorageUnit(4, StorageUnit.MB);
 
     /**
      * Verify the configuration values

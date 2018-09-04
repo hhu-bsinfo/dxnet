@@ -16,6 +16,9 @@
 
 package de.hhu.bsinfo.dxnet;
 
+import lombok.Data;
+import lombok.experimental.Accessors;
+
 import java.io.File;
 import java.util.ArrayList;
 
@@ -36,21 +39,26 @@ import de.hhu.bsinfo.dxutils.unit.TimeUnit;
  *
  * @author Kevin Beineke, kevin.beineke@hhu.de, 21.09.2017
  */
+@Data
+@Accessors(prefix = "m_")
 public class DXNetConfig {
     private static final Logger LOGGER = LogManager.getFormatterLogger(DXNetConfig.class.getSimpleName());
 
     /**
-     * DXNet specific settings
+     * Get the path to the jni folder (e.g. IB jni lib)
      */
     @Expose
     private String m_jniPath = "jni";
 
-    @Expose
-    private String m_perfTimerForceType = "auto";
-
+    /**
+     * Get the interval for the statistics manager to print the current stats to stdout (0 to disable)
+     */
     @Expose
     private TimeUnit m_statisticsManagerPrintInterval = new TimeUnit(0, TimeUnit.SEC);
 
+    /**
+     * Get the nodes list
+     */
     @Expose
     private ArrayList<NodeEntry> m_nodesConfig = new ArrayList<NodeEntry>() {
         {
@@ -60,93 +68,29 @@ public class DXNetConfig {
         }
     };
 
+    /**
+     * Get the core configuration
+     */
     @Expose
     private CoreConfig m_coreConfig = new CoreConfig();
 
+    /**
+     * Get the nio configuration
+     */
     @Expose
     private NIOConfig m_nioConfig = new NIOConfig();
 
+    /**
+     * Get the ib configuration
+     */
     @Expose
     private IBConfig m_ibConfig = new IBConfig();
 
-    @Expose
-    private LoopbackConfig m_loopbackConfig = new LoopbackConfig();
-
-    /**
-     * Constructor
-     */
-    DXNetConfig() {
-
-    }
-
-    /**
-     * Get the path to the jni folder (e.g. IB jni lib)
-     *
-     * @return Path to folder with jni libs
-     */
-    String getJNIPath() {
-        return m_jniPath;
-    }
-
-    /**
-     * Get the type of timer to force (if desired). Valid force types are:
-     * rdtscp, rdtsc, nanotime. Everything else defaults to auto select
-     */
-    String getPerfTimerForceType() {
-        return m_perfTimerForceType;
-    }
-
-    /**
-     * Get the interval for the statistics manager to print the current stats to stdout (0 to disable)
-     */
-    TimeUnit getStatisticsManagerPrintInterval() {
-        return m_statisticsManagerPrintInterval;
-    }
-
-    /**
-     * Get the nodes list
-     *
-     * @return Array with node entries
-     */
-    ArrayList<NodeEntry> getNodeList() {
-        return m_nodesConfig;
-    }
-
-    /**
-     * Get the core configuration
-     *
-     * @return Configuration
-     */
-    CoreConfig getCoreConfig() {
-        return m_coreConfig;
-    }
-
-    /**
-     * Get the nio configuration
-     *
-     * @return Configuration
-     */
-    NIOConfig getNIOConfig() {
-        return m_nioConfig;
-    }
-
-    /**
-     * Get the ib configuration
-     *
-     * @return Configuration
-     */
-    IBConfig getIBConfig() {
-        return m_ibConfig;
-    }
-
     /**
      * Get the loopback configuration
-     *
-     * @return Configuration
      */
-    LoopbackConfig getLoopbackConfig() {
-        return m_loopbackConfig;
-    }
+    @Expose
+    private LoopbackConfig m_loopbackConfig = new LoopbackConfig();
 
     /**
      * Verify the configuration values
@@ -174,12 +118,12 @@ public class DXNetConfig {
             return true;
         }
 
-        if (m_nioConfig.getFlowControlWindow().getBytes() * 2 > m_nioConfig.getOugoingRingBufferSize().getBytes()) {
+        if (m_nioConfig.getFlowControlWindow().getBytes() * 2 > m_nioConfig.getOutgoingRingBufferSize().getBytes()) {
             LOGGER.error("NIO: OS buffer size must be at least twice the size of flow control window size!");
             return false;
         }
 
-        if (m_ibConfig.getIncomingBufferSize().getBytes() > m_ibConfig.getOugoingRingBufferSize().getBytes()) {
+        if (m_ibConfig.getIncomingBufferSize().getBytes() > m_ibConfig.getOutgoingRingBufferSize().getBytes()) {
             LOGGER.error("IB in buffer size must be <= outgoing ring buffer size");
             return false;
         }
@@ -209,7 +153,7 @@ public class DXNetConfig {
             return false;
         }
 
-        if (m_ibConfig.getOugoingRingBufferSize().getGBDouble() > 2.0) {
+        if (m_ibConfig.getOutgoingRingBufferSize().getGBDouble() > 2.0) {
             LOGGER.error("IB: Exceeding max outgoing buffer size of 2GB");
             return false;
         }
@@ -222,6 +166,8 @@ public class DXNetConfig {
      *
      * @author Stefan Nothaas, stefan.nothaas@hhu.de, 29.11.2017
      */
+    @Data
+    @Accessors(prefix = "m_")
     static final class NodeEntry {
 
         /**
@@ -254,29 +200,6 @@ public class DXNetConfig {
         NodeEntry(final short p_nodeId, final IPV4Unit p_address) {
             m_nodeId = p_nodeId;
             m_address = p_address;
-        }
-
-        /**
-         * Get the node id of the node
-         *
-         * @return node id
-         */
-        public short getNodeId() {
-            return m_nodeId;
-        }
-
-        /**
-         * Gets the address of the node
-         *
-         * @return the address of the node
-         */
-        public IPV4Unit getAddress() {
-            return m_address;
-        }
-
-        @Override
-        public String toString() {
-            return "NodeEntry [m_nodeId=" + m_nodeId + "m_address=" + m_address + ']';
         }
     }
 }

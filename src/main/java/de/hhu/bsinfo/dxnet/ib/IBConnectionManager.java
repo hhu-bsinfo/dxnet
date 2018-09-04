@@ -139,7 +139,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         m_messageHeaderPool = p_messageHeaderPool;
         m_messageHandlers = p_messageHandlers;
 
-        if (p_coreConfig.getExporterPoolType()) {
+        if (p_coreConfig.isUseStaticExporterPool()) {
             m_exporterPool = new StaticExporterPool();
         } else {
             m_exporterPool = new DynamicExporterPool();
@@ -156,12 +156,11 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
      */
     public void init() {
         // can't call this in the constructor because it relies on the implemented interfaces for callbacks
-        if (!MsgrcJNIBinding.init(this, m_config.getPinSendRecvThreads(), m_config.getEnableSignalHandler(),
+        if (!MsgrcJNIBinding.init(this, m_config.isPinSendRecvThreads(), m_config.isEnableSignalHandler(),
                 m_config.getStatisticsThreadPrintIntervalMs(), m_coreConfig.getOwnNodeId(),
                 (int) m_config.getConnectionCreationTimeout().getMs(), m_config.getMaxConnections(),
-                m_config.getSendQueueSize(), m_config.getSharedReceiveQueueSize(),
-                m_config.getSharedSendCompletionQueueSize(), m_config.getSharedReceiveCompletionQueueSize(),
-                (int) m_config.getOugoingRingBufferSize().getBytes(),
+                m_config.getSqSize(), m_config.getSrqSize(), m_config.getSharedSCQSize(), m_config.getSharedRCQSize(),
+                (int) m_config.getOutgoingRingBufferSize().getBytes(),
                 m_config.getIncomingBufferPoolTotalSize().getBytes(),
                 (int) m_config.getIncomingBufferSize().getBytes(), m_config.getMaxSGEs())) {
 
@@ -253,7 +252,7 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         LOGGER.debug("Node connected 0x%X, ORB native addr 0x%X", p_destination, sendBufferAddr);
 
         connection = new IBConnection(m_coreConfig.getOwnNodeId(), p_destination, sendBufferAddr,
-                (int) m_config.getOugoingRingBufferSize().getBytes(), (int) m_config.getFlowControlWindow().getBytes(),
+                (int) m_config.getOutgoingRingBufferSize().getBytes(), (int) m_config.getFlowControlWindow().getBytes(),
                 m_config.getFlowControlWindowThreshold(), m_messageHeaderPool, m_messageDirectory, m_requestMap,
                 m_exporterPool, m_messageHandlers, m_writeInterestManager, m_coreConfig.isBenchmarkMode());
 
@@ -597,7 +596,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                 if (relPosBackRel <= relPosFrontRel) {
                     dataAvail = relPosFrontRel - relPosBackRel;
                 } else {
-                    dataAvail = (int) (m_config.getOugoingRingBufferSize().getBytes() - relPosBackRel + relPosFrontRel);
+                    dataAvail =
+                            (int) (m_config.getOutgoingRingBufferSize().getBytes() - relPosBackRel + relPosFrontRel);
                 }
 
                 SOP_SEND_DATA_AVAIL.add(dataAvail);
@@ -1121,7 +1121,8 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
         /**
          * Record a consumed interest or if data is received
          *
-         * @param p_nodeId NodeId of consumed interest or incoming data
+         * @param p_nodeId
+         *         NodeId of consumed interest or incoming data
          */
         void sendRecvCallDebug(final short p_nodeId) {
             long curTime = System.nanoTime();

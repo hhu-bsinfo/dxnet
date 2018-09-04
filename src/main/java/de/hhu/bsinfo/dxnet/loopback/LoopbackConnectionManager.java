@@ -74,8 +74,8 @@ public class LoopbackConnectionManager extends AbstractConnectionManager {
 
         LOGGER.info("Starting LoopbackSendThread...");
 
-        m_bufferPool = new BufferPool((int) m_loopbackConfig.getOugoingRingBufferSize().getBytes());
-        if (m_coreConfig.getExporterPoolType()) {
+        m_bufferPool = new BufferPool((int) m_loopbackConfig.getOutgoingRingBufferSize().getBytes());
+        if (m_coreConfig.isUseStaticExporterPool()) {
             m_exporterPool = new StaticExporterPool();
         } else {
             m_exporterPool = new DynamicExporterPool();
@@ -83,7 +83,7 @@ public class LoopbackConnectionManager extends AbstractConnectionManager {
 
         m_loopbackSendThread =
                 new LoopbackSendThread(this, (int) p_nioConfig.getConnectionTimeOut().getMs(),
-                        (int) m_loopbackConfig.getOugoingRingBufferSize().getBytes(), p_overprovisioning);
+                        (int) m_loopbackConfig.getOutgoingRingBufferSize().getBytes(), p_overprovisioning);
         m_loopbackSendThread.setName("Network-LoopbackSendThread");
         m_loopbackSendThread.start();
     }
@@ -106,7 +106,7 @@ public class LoopbackConnectionManager extends AbstractConnectionManager {
         LoopbackConnection ret;
 
         ret = new LoopbackConnection(m_coreConfig.getOwnNodeId(), p_destination,
-                (int) m_loopbackConfig.getOugoingRingBufferSize().getBytes(),
+                (int) m_loopbackConfig.getOutgoingRingBufferSize().getBytes(),
                 (int) m_loopbackConfig.getFlowControlWindow().getBytes(),
                 m_loopbackConfig.getFlowControlWindowThreshold(), m_incomingBufferQueue, m_messageHeaderPool,
                 m_messageDirectory, m_requestMap, m_messageHandlers, m_bufferPool, m_exporterPool,

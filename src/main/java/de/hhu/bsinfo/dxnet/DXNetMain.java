@@ -536,9 +536,9 @@ public final class DXNetMain implements MessageReceiver {
      * Setup common stuff
      */
     private static void commonSetup() {
-        LOGGER.debug("Loading jni libs: %s", ms_context.getJNIPath());
+        LOGGER.debug("Loading jni libs: %s", ms_context.getJniPath());
 
-        File jniPath = new File(ms_context.getJNIPath());
+        File jniPath = new File(ms_context.getJniPath());
         File[] files = jniPath.listFiles();
 
         if (files != null) {
@@ -562,7 +562,7 @@ public final class DXNetMain implements MessageReceiver {
         // search for own node id mapping
         boolean found = false;
 
-        for (DXNetConfig.NodeEntry entry : ms_context.getNodeList()) {
+        for (DXNetConfig.NodeEntry entry : ms_context.getNodesConfig()) {
             if (entry.getNodeId() == ms_ownNodeId) {
                 found = true;
             }
@@ -581,7 +581,7 @@ public final class DXNetMain implements MessageReceiver {
         for (Short targetNodeId : ms_targetNodeIds) {
 
             // find in node config
-            for (DXNetConfig.NodeEntry entry : ms_context.getNodeList()) {
+            for (DXNetConfig.NodeEntry entry : ms_context.getNodesConfig()) {
                 if (entry.getNodeId() == targetNodeId) {
                     found = true;
                     break;
@@ -661,7 +661,7 @@ public final class DXNetMain implements MessageReceiver {
      * Setup DXNet for the benchmark
      */
     private static void setupDXNet() {
-        ms_dxnet = new DXNet(ms_context.getCoreConfig(), ms_context.getNIOConfig(), ms_context.getIBConfig(),
+        ms_dxnet = new DXNet(ms_context.getCoreConfig(), ms_context.getNioConfig(), ms_context.getIbConfig(),
                 ms_context.getLoopbackConfig(), ms_nodeMap);
 
         // register coordination messages
