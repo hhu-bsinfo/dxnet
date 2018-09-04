@@ -132,7 +132,6 @@ public final class DXNetMain implements MessageReceiver {
         processArgs(p_arguments);
         commonSetup();
         setupNodeMappings();
-        deviceLoadAndCheck();
 
         // first workload, to configure remaining parameters
         Supplier[] workloads = new Supplier[] {WorkloadA::new, WorkloadB::new, WorkloadC::new, WorkloadD::new};
@@ -596,26 +595,6 @@ public final class DXNetMain implements MessageReceiver {
         }
 
         ms_isLoginCoordinator = ms_nodeMap.getOwnNodeID() == 0;
-    }
-
-    /**
-     * Load a selected transport
-     */
-    private static void deviceLoadAndCheck() {
-        // init by network device
-        if ("Ethernet".equals(ms_context.getCoreConfig().getDevice())) {
-            LOGGER.debug("Loading ethernet...");
-
-            ethernetCheckSocketBound();
-        } else if ("Infiniband".equals(ms_context.getCoreConfig().getDevice())) {
-            LOGGER.debug("Loading infiniband...");
-        } else if ("Loopback".equals(ms_context.getCoreConfig().getDevice())) {
-            LOGGER.debug("Loading loopback...");
-        } else {
-            LOGGER.error("Unknown device %s. Valid options: Ethernet, Infiniband or Loopback.",
-                    ms_context.getCoreConfig().getDevice());
-            System.exit(-1);
-        }
     }
 
     /**
