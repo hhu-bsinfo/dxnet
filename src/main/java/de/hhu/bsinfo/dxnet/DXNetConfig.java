@@ -185,7 +185,7 @@ public class DXNetConfig {
         /**
          * Creates an instance of NodeEntry
          */
-        NodeEntry() {
+        public NodeEntry() {
 
         }
 
@@ -197,7 +197,7 @@ public class DXNetConfig {
          * @param p_address
          *         address of the node
          */
-        NodeEntry(final short p_nodeId, final IPV4Unit p_address) {
+        public NodeEntry(final short p_nodeId, final IPV4Unit p_address) {
             m_nodeId = p_nodeId;
             m_address = p_address;
         }
