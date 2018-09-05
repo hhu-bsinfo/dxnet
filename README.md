@@ -1,5 +1,6 @@
 # DXNet: Event-Driven High Performance Message Passing for Java Applications
 
+[![Build Status](https://travis-ci.org/hhu-bsinfo/dxnet.svg?branch=master)](https://travis-ci.org/hhu-bsinfo/dxnet)
 [![Build Status](https://travis-ci.org/hhu-bsinfo/dxnet.svg?branch=development)](https://travis-ci.org/hhu-bsinfo/dxnet)
 
 DXNet is developed by the [operating systems group](http://www.cs.hhu.de/en/research-groups/operating-systems.html)
