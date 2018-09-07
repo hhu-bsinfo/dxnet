@@ -17,6 +17,8 @@
 package de.hhu.bsinfo.dxnet;
 
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Implementation of NodeMap for DXNet usage without DXRAM.
@@ -24,9 +26,9 @@ import java.net.InetSocketAddress;
  * @author Kevin Beineke, kevin.beineke@hhu.de, 21.09.2017
  */
 public class DXNetNodeMap implements NodeMap {
-
     private final short m_nodeID;
     private final InetSocketAddress[] m_nodeMap = new InetSocketAddress[(int) Math.pow(2, 16)];
+    private List<Mapping> m_nodeList = new ArrayList<>();
 
     /**
      * Creates an instance of DXNetNodeMap
@@ -52,6 +54,7 @@ public class DXNetNodeMap implements NodeMap {
      */
     public void addNode(final short p_nodeID, final InetSocketAddress p_address) {
         m_nodeMap[p_nodeID & 0xFFFF] = p_address;
+        m_nodeList.add(new Mapping(p_nodeID, p_address));
     }
 
     @Override
@@ -62,5 +65,15 @@ public class DXNetNodeMap implements NodeMap {
     @Override
     public InetSocketAddress getAddress(final short p_nodeID) {
         return m_nodeMap[p_nodeID & 0xFFFF];
+    }
+
+    @Override
+    public List<Mapping> getAvailableMappings() {
+        return m_nodeList;
+    }
+
+    @Override
+    public void registerListener(final Listener p_listener) {
+        // stub, not used
     }
 }
