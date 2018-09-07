@@ -17,6 +17,7 @@
 package de.hhu.bsinfo.dxnet.ib;
 
 import java.net.InetSocketAddress;
+import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -51,7 +52,8 @@ import de.hhu.bsinfo.dxutils.unit.StorageUnit;
  * @author Stefan Nothaas, stefan.nothaas@hhu.de, 13.06.2017
  */
 @SuppressWarnings("sunapi")
-public class IBConnectionManager extends AbstractConnectionManager implements MsgrcJNIBinding.CallbackHandler {
+public class IBConnectionManager extends AbstractConnectionManager
+        implements MsgrcJNIBinding.CallbackHandler, NodeMap.Listener {
     private static final Logger LOGGER = LogManager.getFormatterLogger(IBConnectionManager.class.getSimpleName());
 
     private static final TimePool SOP_CREATE_CON = new TimePool(IBConnectionManager.class, "CreateCon");
@@ -175,22 +177,23 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
                     "likely that the native library couldn't be loaded because it's not available.");
         }
 
-        // this is an ugly way of figuring out which nodes are available on startup. the ib subsystem needs that kind
-        // of information to contact the nodes using an ethernet connection to exchange ib connection information
-        // if you know a better/faster way of doing this here, be my guest and fix it
-        for (int i = 0; i < NodeID.MAX_ID; i++) {
-            if (i == (m_coreConfig.getOwnNodeId() & 0xFFFF)) {
-                continue;
-            }
+        // register listener first
+        m_nodeMap.registerListener(this);
 
-            InetSocketAddress addr = m_nodeMap.getAddress((short) i);
+        // wait a moment to ensure the list is up to date
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException ignored) {
+        }
 
-            if (!"/255.255.255.255".equals(addr.getAddress().toString())) {
-                byte[] bytes = addr.getAddress().getAddress();
-                int val = (int) (((long) bytes[0] & 0xFF) << 24 | ((long) bytes[1] & 0xFF) << 16 |
-                        ((long) bytes[2] & 0xFF) << 8 | bytes[3] & 0xFF);
-                MsgrcJNIBinding.addNode(val);
-            }
+        // now get all nodes that were reported before we had the listener registered
+        List<NodeMap.Mapping> nodes = m_nodeMap.getAvailableMappings();
+
+        for (NodeMap.Mapping node : nodes) {
+            byte[] bytes = node.getAddress().getAddress().getAddress();
+            int val = (int) (((long) bytes[0] & 0xFF) << 24 | ((long) bytes[1] & 0xFF) << 16 |
+                    ((long) bytes[2] & 0xFF) << 8 | bytes[3] & 0xFF);
+            MsgrcJNIBinding.addNode(val);
         }
 
         // wait a little to allow brief initial node discovery
@@ -448,6 +451,19 @@ public class IBConnectionManager extends AbstractConnectionManager implements Ms
             // print error because we disabled exception handling when executing jni calls
             LOGGER.error("getNextDataToSend unhandled exception", e);
         }
+    }
+
+    @Override
+    public void nodeMappingAdded(final short p_nodeId, final InetSocketAddress p_address) {
+        byte[] bytes = p_address.getAddress().getAddress();
+        int val = (int) (((long) bytes[0] & 0xFF) << 24 | ((long) bytes[1] & 0xFF) << 16 |
+                ((long) bytes[2] & 0xFF) << 8 | bytes[3] & 0xFF);
+        MsgrcJNIBinding.addNode(val);
+    }
+
+    @Override
+    public void nodeMappingRemoved(final short p_nodeId) {
+
     }
 
     /**
