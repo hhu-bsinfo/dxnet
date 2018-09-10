@@ -30,6 +30,7 @@ public final class Messages {
     public static final byte SUBTYPE_BENCHMARK_MESSAGE = 3;
     public static final byte SUBTYPE_BENCHMARK_REQUEST = 4;
     public static final byte SUBTYPE_BENCHMARK_RESPONSE = 5;
+    public static final byte SUBTYPE_DYNAMIC_MESSAGE = 10; /* Reserved for dynamic message which is created at runtime*/
 
     /**
      * Hidden constructor
