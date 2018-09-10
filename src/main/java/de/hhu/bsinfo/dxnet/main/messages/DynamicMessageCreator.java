@@ -315,7 +315,7 @@ public final class DynamicMessageCreator {
      */
     private static String buildClassString(Object... p_parameters) {
         StringBuilder globals = new StringBuilder();
-        StringBuilder params = new StringBuilder("final Short p_destination");
+        StringBuilder params = new StringBuilder("final short p_destination, final Object[] p_array");
         StringBuilder inits = new StringBuilder();
         StringBuilder writes = new StringBuilder();
         StringBuilder reads = new StringBuilder();
@@ -327,87 +327,89 @@ public final class DynamicMessageCreator {
         String writtenType = "";
         String initializer;
         String name = "";
+        String access;
         String comparison = "";
         Object obj;
-        for (int i = 1; i < p_parameters.length; i++) { // exclude the first parameter (destination)
+        for (int i = 0; i < p_parameters.length; i++) {
             obj = p_parameters[i];
+            access = "p_array[" + i + ']';
             initializer = "";
             if (obj instanceof Byte) {
                 type = "Byte";
                 writtenType = type;
                 initializer = " = new Byte((byte) 0)";
                 name = "byte" + counter;
-                comparison = "this." + name + ".equals(" + name + ')';
+                comparison = "this." + name + ".equals((" + type + ") " + access + ')';
                 len += Byte.BYTES;
             } else if (obj instanceof Short) {
                 type = "Short";
                 writtenType = type;
                 initializer = " = new Short((short) 0)";
                 name = "short" + counter;
-                comparison = "this." + name + ".equals(" + name + ')';
+                comparison = "this." + name + ".equals((" + type + ") " + access + ')';
                 len += Short.BYTES;
             } else if (obj instanceof Integer) {
                 type = "Integer";
                 writtenType = "Int";
                 initializer = " = new Integer(0)";
                 name = "int" + counter;
-                comparison = "this." + name + ".equals(" + name + ')';
+                comparison = "this." + name + ".equals((" + type + ") " + access + ')';
                 len += Integer.BYTES;
             } else if (obj instanceof Long) {
                 type = "Long";
                 writtenType = type;
                 initializer = " = new Long(0)";
                 name = "long" + counter;
-                comparison = "this." + name + ".equals(" + name + ')';
+                comparison = "this." + name + ".equals((" + type + ") " + access + ')';
                 len += Long.BYTES;
             } else if (obj instanceof Float) {
                 type = "Float";
                 writtenType = type;
                 initializer = " = new Float(0.0F)";
                 name = "float" + counter;
-                comparison = "this." + name + ".equals(" + name + ')';
+                comparison = "this." + name + ".equals((" + type + ") " + access + ')';
                 len += Float.BYTES;
             } else if (obj instanceof Double) {
                 type = "Double";
                 writtenType = type;
                 initializer = " = new Double(0.0)";
                 name = "double" + counter;
-                comparison = "this." + name + ".equals(" + name + ')';
+                comparison = "this." + name + ".equals((" + type + ") " + access + ')';
                 len += Double.BYTES;
             } else if (obj instanceof String) {
                 type = "String";
                 writtenType = type;
                 name = "str" + counter;
-                comparison = "this." + name + ".equals(" + name + ')';
+                comparison = "this." + name + ".equals((" + type + ") " + access + ')';
                 len += ObjectSizeUtil.sizeofString((String) obj);
             } else if (obj instanceof byte[]) {
                 type = "byte[]";
                 writtenType = "ByteArray";
                 name = "byteArray" + counter;
-                comparison = "Arrays.equals(this." + name + ", " + name + ')';
+                comparison = "Arrays.equals(this." + name + ", (" + type + ") " + access + ')';
                 len += ObjectSizeUtil.sizeofByteArray((byte[]) obj);
             } else if (obj instanceof short[]) {
                 type = "short[]";
                 writtenType = "ShortArray";
                 name = "shortArray" + counter;
-                comparison = "Arrays.equals(this." + name + ", " + name + ')';
+                comparison = "Arrays.equals(this." + name + ", (" + type + ") " + access + ')';
                 len += ObjectSizeUtil.sizeofShortArray((short[]) obj);
             } else if (obj instanceof int[]) {
                 type = "int[]";
                 writtenType = "IntArray";
                 name = "intArray" + counter;
-                comparison = "Arrays.equals(this." + name + ", " + name + ')';
+                comparison = "Arrays.equals(this." + name + ", (" + type + ") " + access + ')';
                 len += ObjectSizeUtil.sizeofIntArray((int[]) obj);
             } else if (obj instanceof long[]) {
                 type = "long[]";
                 writtenType = "LongArray";
                 name = "longArray" + counter;
-                comparison = "Arrays.equals(this." + name + ", " + name + ')';
+                comparison = "Arrays.equals(this." + name + ", (" + type + ") " + access + ')';
                 len += ObjectSizeUtil.sizeofLongArray((long[]) obj);
             }
             globals.append("    private ").append(type).append(' ').append(name).append(initializer).append(";\n");
-            params.append(", final ").append(type).append(' ').append(name);
-            inits.append("        this.").append(name).append(" = ").append(name).append(";\n");
+            inits.append("        this.").append(name).append(" = (").append(type).append(") ").append(access)
+                    .append(";\n");
             writes.append("        p_exporter.write").append(writtenType).append('(').append(name).append(");\n");
             reads.append("        ").append(name).append(" = p_importer.read").append(writtenType).append('(')
                     .append(name).append(");\n");
@@ -430,9 +432,8 @@ public final class DynamicMessageCreator {
         String read =
                 "    @Override\n    protected final void readPayload(final AbstractMessageImporter p_importer) {\n" +
                         reads + "    }\n\n";
-        String validate =
-                "    public final boolean validate(" + params + ") {\n        boolean ret = true;\n" + comparisons +
-                        "\n        return ret;\n" + "    }\n\n";
+        String validate = "    public final boolean validate(" + params.substring(params.indexOf(",") + 2) +
+                ") {\n        boolean ret = true;\n" + comparisons + "\n        return ret;\n" + "    }\n\n";
 
         return HEADER + globals + '\n' + constructors + length + write + read + validate + FOOTER;
     }

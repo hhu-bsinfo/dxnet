@@ -122,7 +122,6 @@ public final class DXNetMain implements MessageReceiver {
     // The following attributes are used in workload e to verify the serialization
     private static Class ms_dynamicMessageClass;
     private static Object[] ms_parameters;
-    private static Class[] ms_paramTypes;
 
     /**
      * Application entry point
@@ -330,8 +329,8 @@ public final class DXNetMain implements MessageReceiver {
             // Workload e: compare message content with generated attributes to test DXNet's serialization
             if (p_message.getSubtype() == Messages.SUBTYPE_DYNAMIC_MESSAGE) {
                 try {
-                    boolean ret = (boolean) p_message.getClass().getDeclaredMethod("validate", ms_paramTypes)
-                            .invoke(p_message, ms_parameters);
+                    boolean ret = (boolean) p_message.getClass().getDeclaredMethod("validate", Object[].class)
+                            .invoke(p_message, new Object[] {ms_parameters});
                     if (!ret) {
                         LOGGER.error("Serialization error: received message differs from generated message.");
                     }
@@ -696,10 +695,6 @@ public final class DXNetMain implements MessageReceiver {
         // Create dynamic message for workload 4/E
         if (ms_workload == 4) {
             ms_parameters = DynamicMessageCreator.createWorkload(ms_targetNodeIds.get(0), ms_size);
-            ms_paramTypes = new Class[ms_parameters.length];
-            for (int i = 0; i < ms_parameters.length; i++) {
-                ms_paramTypes[i] = ms_parameters[i].getClass();
-            }
 
             try {
                 ms_dynamicMessageClass = DynamicMessageCreator.createClass(ms_parameters);
@@ -1113,8 +1108,9 @@ public final class DXNetMain implements MessageReceiver {
             Message[] messages = new Message[destinationList.size()];
             for (int i = 0; i < destinationList.size(); i++) {
                 try {
-                    messages[i] = (Message) ms_dynamicMessageClass.getDeclaredConstructor(ms_paramTypes)
-                            .newInstance(ms_parameters);
+                    messages[i] = (Message) ms_dynamicMessageClass
+                            .getDeclaredConstructor(new Class[] {short.class, Object[].class})
+                            .newInstance(destinationList.get(i), ms_parameters);
                 } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
                     LOGGER.error("Could not create instance for benchmarking: %s", e);
                     System.exit(1);
