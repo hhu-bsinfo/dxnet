@@ -45,7 +45,7 @@ public final class DynamicMessageCreator {
     private static final Logger LOGGER = LogManager.getFormatterLogger(DXNetMain.class.getSimpleName());
 
     private static final long SEED;
-    private static final int MAX_ATTRIBUTES = 127; // This is the method parameter limit from Java
+    private static final int MAX_ATTRIBUTES = 65_535; // This is the attribute limit from Java
     private static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE;
     private static final int MAX_STRING_LENGTH = Integer.MAX_VALUE;
 
@@ -61,7 +61,9 @@ public final class DynamicMessageCreator {
         SEED = System.currentTimeMillis();
 
         ROOT = new File("de/hhu/bsinfo/dxnet/main/messages");
-        ROOT.mkdirs();
+        if (!ROOT.mkdirs()) {
+            LOGGER.error("Root folder could not be created");
+        }
         SOURCE_FILE = new File(ROOT, "DynamicMessage.java");
         PACKAGE = "de.hhu.bsinfo.dxnet.main.messages";
         CLASS_NAME = "DynamicMessage";

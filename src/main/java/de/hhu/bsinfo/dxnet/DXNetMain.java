@@ -30,7 +30,6 @@ import java.net.SocketException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashSet;
@@ -120,7 +119,7 @@ public final class DXNetMain implements MessageReceiver {
     private static AtomicLong ms_reqRespTimeouts = new AtomicLong(0);
 
     // The following attributes are used in workload e to verify the serialization
-    private static Class ms_dynamicMessageClass;
+    private static Class<?> ms_dynamicMessageClass;
     private static Object[] ms_parameters;
 
     /**
@@ -483,7 +482,8 @@ public final class DXNetMain implements MessageReceiver {
         }
 
         System.out.printf("Parameters: print interval ms %d, workload %d, send count %d (per target), recv count %d " +
-                        "(all), size %d (payload size %d), threads %d, own node id 0x%X, targets %s\n", ms_printIntervalMs,
+                        "(all), size %d (payload size %d), threads %d, own node id 0x%X, targets %s\n",
+                ms_printIntervalMs,
                 ms_workload, ms_sendCount, ms_recvCount, ms_size, ms_messagePayloadSize, ms_threads, ms_ownNodeId,
                 targets.toString());
     }
@@ -696,14 +696,24 @@ public final class DXNetMain implements MessageReceiver {
         if (ms_workload == 4) {
             ms_parameters = DynamicMessageCreator.createWorkload(ms_targetNodeIds.get(0), ms_size);
 
+            StringBuilder stringBuilder = new StringBuilder("Created workload:");
+            if (ms_size <= 1024) {
+                for (Object obj : ms_parameters) {
+                    stringBuilder.append(" [").append(obj.getClass().getSimpleName()).append(", ").append(obj)
+                            .append(']');
+                }
+            } else {
+                for (Object obj : ms_parameters) {
+                    stringBuilder.append(" [").append(obj.getClass().getSimpleName()).append(']');
+                }
+            }
+            LOGGER.info(stringBuilder);
+
             try {
                 ms_dynamicMessageClass = DynamicMessageCreator.createClass(ms_parameters);
             } catch (DynamicMessageCreator.ClassCreateException e) {
                 LOGGER.error("Could not create class for benchmarking: %s", e);
             }
-
-            LOGGER.info("Available constructors of created message:\n%s",
-                    Arrays.toString(ms_dynamicMessageClass.getConstructors()));
 
             ms_dxnet.registerMessageType(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_DYNAMIC_MESSAGE,
                     ms_dynamicMessageClass);
@@ -816,18 +826,21 @@ public final class DXNetMain implements MessageReceiver {
 
         System.out
                 .printf("=========================================================================================\n" +
-                                "[RESULTS]\n" +
-                                "[RESULTS PARAMS: Workload=%d, MsgSize=%d, MsgPayloadSize=%d, Threads=%d, MsgHandlers=%d]\n" +
-                                "[RESULTS SEND: Runtime=%.3f sec, Msgs=%d, X=%.3f mb/s, XP=%.3f mb/s, XM=%.6f milmsg/s]\n" +
-                                "[RESULTS RECV: Runtime=%.3f sec, Msgs=%d, X=%.3f mb/s, XP=%.3f mb/s, XM=%.6f milmsg/s]\n" +
+                                "[RESULTS]\n" + "[RESULTS PARAMS: Workload=%d, MsgSize=%d, MsgPayloadSize=%d, " +
+                                "Threads=%d, " + "MsgHandlers=%d]\n" +
+                                "[RESULTS SEND: Runtime=%.3f sec, Msgs=%d, X=%.3f mb/s, XP=%.3f mb/s, XM=%.6f " +
+                                "milmsg/s]\n" +
+                                "[RESULTS RECV: Runtime=%.3f sec, Msgs=%d, X=%.3f mb/s, XP=%.3f mb/s, XM=%.6f " +
+                                "milmsg/s]\n" +
                                 "[RESULTS LATENCY: Msgs=%d, Avg=%.3f us, Min=%.3f us, Max=%.3f us, 95th=%.3f us, " +
                                 "99th=%.3f us, 99.9th=%.3f us]\n" + "[RESULTS ERRORS: ReqRespTimeouts=%d]\n" +
-                                "=========================================================================================\n",
-                        ms_workload, ms_size, ms_messagePayloadSize, ms_threads,
-                        ms_context.getCoreConfig().getNumMessageHandlerThreads(), timeSendSec, p_sendTotalMessages,
-                        sendTp, sendTpPayload, sendTpMMsg, timeRecvSec, p_recvTotalMessages, recvTp, recvTpPayload,
-                        recvTpMMsg, rttCount, rttAvgUs, rttMinUs, rttMaxUs, rtt95Us, rtt99Us, rtt999Us,
-                        ms_reqRespTimeouts.get());
+                                "=============================================" +
+                                "============================================\n", ms_workload, ms_size,
+                        ms_messagePayloadSize,
+                        ms_threads, ms_context.getCoreConfig().getNumMessageHandlerThreads(), timeSendSec,
+                        p_sendTotalMessages, sendTp, sendTpPayload, sendTpMMsg, timeRecvSec, p_recvTotalMessages,
+                        recvTp, recvTpPayload, recvTpMMsg, rttCount, rttAvgUs, rttMinUs, rttMaxUs, rtt95Us, rtt99Us,
+                        rtt999Us, ms_reqRespTimeouts.get());
     }
 
     /**
@@ -1111,7 +1124,7 @@ public final class DXNetMain implements MessageReceiver {
                     messages[i] = (Message) ms_dynamicMessageClass
                             .getDeclaredConstructor(new Class[] {short.class, Object[].class})
                             .newInstance(destinationList.get(i), ms_parameters);
-                } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
+                } catch (ReflectiveOperationException e) {
                     LOGGER.error("Could not create instance for benchmarking: %s", e);
                     System.exit(1);
                 }
