@@ -16,6 +16,8 @@
 
 package de.hhu.bsinfo.dxnet.core;
 
+import java.nio.charset.Charset;
+
 import de.hhu.bsinfo.dxutils.UnsafeMemory;
 import de.hhu.bsinfo.dxutils.serialization.Importable;
 
@@ -50,8 +52,7 @@ public class MessageImporterDefault extends AbstractMessageImporter {
     @Override
     public String toString() {
         return "m_usedCounter " + getUsedCounter() + ", m_bufferAddress 0x" + Long.toHexString(m_bufferAddress) +
-                ", m_currentPosition " + m_currentPosition +
-                ", m_startPosition " + m_startPosition;
+                ", m_currentPosition " + m_currentPosition + ", m_startPosition " + m_startPosition;
     }
 
     @Override
@@ -169,7 +170,7 @@ public class MessageImporterDefault extends AbstractMessageImporter {
 
     @Override
     public String readString(final String p_string) {
-        return new String(readByteArray(null));
+        return new String(readByteArray(null), Charset.forName("US-ASCII"));
     }
 
     @Override

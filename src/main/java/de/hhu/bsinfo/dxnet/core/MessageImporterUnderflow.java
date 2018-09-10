@@ -16,6 +16,7 @@
 
 package de.hhu.bsinfo.dxnet.core;
 
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
 import de.hhu.bsinfo.dxutils.UnsafeMemory;
@@ -300,7 +301,12 @@ class MessageImporterUnderflow extends AbstractMessageImporter {
 
     @Override
     public String readString(final String p_string) {
-        return new String(readByteArray(p_string.getBytes(StandardCharsets.US_ASCII)));
+        if (p_string != null) {
+            return new String(readByteArray(p_string.getBytes(StandardCharsets.US_ASCII)), Charset.forName("US-ASCII"));
+        } else {
+            return new String(readByteArray(null), Charset.forName("US-ASCII"));
+        }
+
     }
 
     @Override

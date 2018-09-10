@@ -16,6 +16,8 @@
 
 package de.hhu.bsinfo.dxnet.core;
 
+import java.nio.charset.Charset;
+
 import de.hhu.bsinfo.dxutils.UnsafeMemory;
 import de.hhu.bsinfo.dxutils.serialization.Importable;
 
@@ -249,7 +251,7 @@ class MessageImporterOverflow extends AbstractMessageImporter {
 
     @Override
     public String readString(final String p_string) {
-        return new String(readByteArray(null));
+        return new String(readByteArray(null), Charset.forName("US-ASCII"));
     }
 
     @Override
