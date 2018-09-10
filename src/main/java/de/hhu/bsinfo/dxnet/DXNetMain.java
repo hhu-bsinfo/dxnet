@@ -120,6 +120,7 @@ public final class DXNetMain implements MessageReceiver {
     private static AtomicLong ms_reqRespTimeouts = new AtomicLong(0);
 
     // The following attributes are used in workload e to verify the serialization
+    private static Class ms_dynamicMessageClass;
     private static Object[] ms_parameters;
     private static Class[] ms_paramTypes;
 
@@ -241,6 +242,10 @@ public final class DXNetMain implements MessageReceiver {
         }
 
         ms_dxnet.close();
+
+        if (ms_workload == 4) {
+            DynamicMessageCreator.cleanup();
+        }
 
         StatisticsManager.get().stopPeriodicPrinting();
         StatisticsManager.get().printStatistics(System.out, true);
@@ -687,6 +692,28 @@ public final class DXNetMain implements MessageReceiver {
         ms_dxnet.register(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_MESSAGE, new DXNetMain());
         ms_dxnet.register(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_REQUEST, new DXNetMain());
         ms_dxnet.register(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_RESPONSE, new DXNetMain());
+
+        // Create dynamic message for workload 4/E
+        if (ms_workload == 4) {
+            ms_parameters = DynamicMessageCreator.createWorkload(ms_targetNodeIds.get(0), ms_size);
+            ms_paramTypes = new Class[ms_parameters.length];
+            for (int i = 0; i < ms_parameters.length; i++) {
+                ms_paramTypes[i] = ms_parameters[i].getClass();
+            }
+
+            try {
+                ms_dynamicMessageClass = DynamicMessageCreator.createClass(ms_parameters);
+            } catch (DynamicMessageCreator.ClassCreateException e) {
+                LOGGER.error("Could not create class for benchmarking: %s", e);
+            }
+
+            LOGGER.info("Available constructors of created message:\n%s",
+                    Arrays.toString(ms_dynamicMessageClass.getConstructors()));
+
+            ms_dxnet.registerMessageType(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_DYNAMIC_MESSAGE,
+                    ms_dynamicMessageClass);
+            ms_dxnet.register(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_DYNAMIC_MESSAGE, new DXNetMain());
+        }
     }
 
     /**
@@ -1083,29 +1110,10 @@ public final class DXNetMain implements MessageReceiver {
                 messageCount += ms_sendCount % ms_threads;
             }
 
-            ms_parameters = DynamicMessageCreator.createWorkload(destinationList.get(0), ms_size);
-            ms_paramTypes = new Class[ms_parameters.length];
-            for (int i = 0; i < ms_parameters.length; i++) {
-                ms_paramTypes[i] = ms_parameters[i].getClass();
-            }
-            Class dynamicMessageClass = null;
-            try {
-                dynamicMessageClass = DynamicMessageCreator.createClass(ms_parameters);
-            } catch (DynamicMessageCreator.ClassCreateException e) {
-                LOGGER.error("Could not create class for benchmarking: %s", e);
-            }
-
-            LOGGER.info("Available constructors of created message:\n%s",
-                    Arrays.toString(dynamicMessageClass.getConstructors()));
-
-            ms_dxnet.registerMessageType(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_DYNAMIC_MESSAGE,
-                    dynamicMessageClass);
-            ms_dxnet.register(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_DYNAMIC_MESSAGE, new DXNetMain());
-
             Message[] messages = new Message[destinationList.size()];
             for (int i = 0; i < destinationList.size(); i++) {
                 try {
-                    messages[i] = (Message) dynamicMessageClass.getDeclaredConstructor(ms_paramTypes)
+                    messages[i] = (Message) ms_dynamicMessageClass.getDeclaredConstructor(ms_paramTypes)
                             .newInstance(ms_parameters);
                 } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
                     LOGGER.error("Could not create instance for benchmarking: %s", e);
@@ -1125,8 +1133,6 @@ public final class DXNetMain implements MessageReceiver {
                     }
                 }
             }
-
-            DynamicMessageCreator.cleanup();
         }
     }
 

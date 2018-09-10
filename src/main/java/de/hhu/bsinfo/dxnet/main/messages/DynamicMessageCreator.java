@@ -30,6 +30,10 @@ import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import de.hhu.bsinfo.dxnet.DXNetMain;
 import de.hhu.bsinfo.dxutils.serialization.ObjectSizeUtil;
 
 /**
@@ -38,11 +42,12 @@ import de.hhu.bsinfo.dxutils.serialization.ObjectSizeUtil;
  * @author Kevin Beineke, kevin.beineke@hhu.de, 06.09.18
  */
 public final class DynamicMessageCreator {
+    private static final Logger LOGGER = LogManager.getFormatterLogger(DXNetMain.class.getSimpleName());
 
     private static final long SEED;
-    private static final int MAX_ATTRIBUTES = 100;
-    private static final int MAX_ARRAY_SIZE = 8;
-    private static final int MAX_STRING_LENGTH = 16;
+    private static final int MAX_ATTRIBUTES = 127; // This is the method parameter limit from Java
+    private static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE;
+    private static final int MAX_STRING_LENGTH = Integer.MAX_VALUE;
 
     private static final File ROOT;
     private static final File SOURCE_FILE;
@@ -121,9 +126,17 @@ public final class DynamicMessageCreator {
         ArrayList<Object> attributes = new ArrayList<>();
         attributes.add(p_destination);
 
+        int i = 0;
         int length = 0;
-        while (length < p_size) {
+        while (length < p_size && i < MAX_ATTRIBUTES) {
             length += generateAttribute(attributes, rand, p_size - length);
+            i++;
+        }
+
+        if (length < p_size) {
+            LOGGER.warn(
+                    "Message is smaller (%d bytes < %d bytes) because number of maximum attributes (%d) was reached.",
+                    length, p_size, MAX_ATTRIBUTES);
         }
 
         return attributes.toArray();
@@ -191,10 +204,17 @@ public final class DynamicMessageCreator {
         byte[] array;
 
         Type[] values = Type.values();
+        Type type;
 
         do {
             ret = 0;
-            switch (values[p_rand.nextInt(values.length)]) {
+            if (p_maxSize > 1024 * 1024) {
+                // Use large types (arrays and Strings) if there is much space left
+                type = values[p_rand.nextInt(values.length - 6) + 6];
+            } else {
+                type = values[p_rand.nextInt(values.length)];
+            }
+            switch (type) {
                 case BYTE:
                     attribute = (byte) p_rand.nextInt();
                     ret = Byte.BYTES;
@@ -220,7 +240,7 @@ public final class DynamicMessageCreator {
                     ret = Double.BYTES;
                     break;
                 case STRING:
-                    array = new byte[p_rand.nextInt(MAX_STRING_LENGTH)];
+                    array = new byte[p_rand.nextInt(Math.min(MAX_STRING_LENGTH, p_maxSize / 2 + 1))];
                     // Fill array with random printable characters from ASCII table (between 33 and 126)
                     for (int i = 0; i < array.length; i++) {
                         array[i] = (byte) (p_rand.nextInt(126 - 33 + 1) + 33);
@@ -229,7 +249,7 @@ public final class DynamicMessageCreator {
                     ret = ObjectSizeUtil.sizeofString((String) attribute);
                     break;
                 case BYTE_ARRAY:
-                    byte[] byteArray = new byte[p_rand.nextInt(MAX_ARRAY_SIZE)];
+                    byte[] byteArray = new byte[p_rand.nextInt(Math.min(MAX_ARRAY_SIZE, p_maxSize / 2 + 1))];
                     for (int i = 0; i < byteArray.length; i++) {
                         byteArray[i] = (byte) p_rand.nextInt();
                     }
@@ -237,7 +257,7 @@ public final class DynamicMessageCreator {
                     ret = ObjectSizeUtil.sizeofByteArray((byte[]) attribute);
                     break;
                 case SHORT_ARRAY:
-                    short[] shortArray = new short[p_rand.nextInt(MAX_ARRAY_SIZE)];
+                    short[] shortArray = new short[p_rand.nextInt(Math.min(MAX_ARRAY_SIZE, p_maxSize / 2 + 1))];
                     for (int i = 0; i < shortArray.length; i++) {
                         shortArray[i] = (short) p_rand.nextInt();
                     }
@@ -245,7 +265,7 @@ public final class DynamicMessageCreator {
                     ret = ObjectSizeUtil.sizeofShortArray((short[]) attribute);
                     break;
                 case INT_ARRAY:
-                    int[] intArray = new int[p_rand.nextInt(MAX_ARRAY_SIZE)];
+                    int[] intArray = new int[p_rand.nextInt(Math.min(MAX_ARRAY_SIZE, p_maxSize / 2 + 1))];
                     for (int i = 0; i < intArray.length; i++) {
                         intArray[i] = p_rand.nextInt();
                     }
@@ -253,7 +273,7 @@ public final class DynamicMessageCreator {
                     ret = ObjectSizeUtil.sizeofIntArray((int[]) attribute);
                     break;
                 case LONG_ARRAY:
-                    long[] longArray = new long[p_rand.nextInt(MAX_ARRAY_SIZE)];
+                    long[] longArray = new long[p_rand.nextInt(Math.min(MAX_ARRAY_SIZE, p_maxSize / 2 + 1))];
                     for (int i = 0; i < longArray.length; i++) {
                         longArray[i] = p_rand.nextLong();
                     }
