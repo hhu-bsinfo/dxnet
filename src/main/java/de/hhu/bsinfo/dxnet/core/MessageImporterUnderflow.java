@@ -306,7 +306,6 @@ class MessageImporterUnderflow extends AbstractMessageImporter {
         } else {
             return new String(readByteArray(null), Charset.forName("US-ASCII"));
         }
-
     }
 
     @Override

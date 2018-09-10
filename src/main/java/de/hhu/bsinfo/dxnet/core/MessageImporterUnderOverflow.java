@@ -428,7 +428,12 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
 
     @Override
     public String readString(final String p_string) {
-        return new String(readByteArray(p_string.getBytes(StandardCharsets.US_ASCII)), Charset.forName("US-ASCII"));
+        if (p_string != null) {
+            return new String(readByteArray(p_string.getBytes(StandardCharsets.US_ASCII)), Charset.forName("US-ASCII"));
+        } else {
+            return new String(readByteArray(null), Charset.forName("US-ASCII"));
+        }
+
     }
 
     @Override
