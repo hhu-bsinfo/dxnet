@@ -695,19 +695,7 @@ public final class DXNetMain implements MessageReceiver {
         // Create dynamic message for workload 4/E
         if (ms_workload == 4) {
             ms_parameters = DynamicMessageCreator.createWorkload(ms_targetNodeIds.get(0), ms_size);
-
-            StringBuilder stringBuilder = new StringBuilder("Created workload:");
-            if (ms_size <= 1024) {
-                for (Object obj : ms_parameters) {
-                    stringBuilder.append(" [").append(obj.getClass().getSimpleName()).append(", ").append(obj)
-                            .append(']');
-                }
-            } else {
-                for (Object obj : ms_parameters) {
-                    stringBuilder.append(" [").append(obj.getClass().getSimpleName()).append(']');
-                }
-            }
-            LOGGER.info(stringBuilder);
+            DynamicMessageCreator.printWorkload(ms_parameters, ms_size <= 1024);
 
             try {
                 ms_dynamicMessageClass = DynamicMessageCreator.createClass(ms_parameters);

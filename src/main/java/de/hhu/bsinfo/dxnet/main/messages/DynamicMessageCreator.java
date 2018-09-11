@@ -1,10 +1,13 @@
 /*
- * Copyright (C) 2017 Heinrich-Heine-Universitaet Duesseldorf, Institute of Computer Science, Department Operating Systems
+ * Copyright (C) 2017 Heinrich-Heine-Universitaet Duesseldorf, Institute of Computer Science, Department Operating
+ * Systems
  *
- * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by
+ * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+ * License as published by
  * the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
@@ -46,8 +49,8 @@ public final class DynamicMessageCreator {
 
     private static final long SEED;
     private static final int MAX_ATTRIBUTES = 65_535; // This is the attribute limit from Java
-    private static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE;
-    private static final int MAX_STRING_LENGTH = Integer.MAX_VALUE;
+    private static final int MAX_ARRAY_SIZE = (int) Math.pow(2, 28); // This is the maximum number for compact numbers
+    private static final int MAX_STRING_LENGTH = (int) Math.pow(2, 28);
 
     private static final File ROOT;
     private static final File SOURCE_FILE;
@@ -61,7 +64,7 @@ public final class DynamicMessageCreator {
         SEED = System.currentTimeMillis();
 
         ROOT = new File("de/hhu/bsinfo/dxnet/main/messages");
-        if (!ROOT.mkdirs()) {
+        if (!ROOT.mkdirs() && !ROOT.exists()) {
             LOGGER.error("Root folder could not be created");
         }
         SOURCE_FILE = new File(ROOT, "DynamicMessage.java");
@@ -92,7 +95,7 @@ public final class DynamicMessageCreator {
 
     /**
      * Generates a set of attributes which will be inserted in the new message class.
-     * The number of attributes and its sizes are random.
+     * The number of attributes and its sizes (max. 1 KB) are random.
      *
      * @param p_destination
      *         the destination
@@ -106,7 +109,7 @@ public final class DynamicMessageCreator {
         attributes.add(p_destination);
 
         for (int i = 0; i < numberOfAttributes; i++) {
-            generateAttribute(attributes, rand);
+            generateAttribute(attributes, rand, 1024);
         }
 
         return attributes.toArray();
@@ -161,6 +164,28 @@ public final class DynamicMessageCreator {
     }
 
     /**
+     * Prints created workload.
+     *
+     * @param p_attributes
+     *         all class attributes (aka. the workload)
+     * @param p_printContent
+     *         whether the content of all attributes shall be printed
+     */
+    public static void printWorkload(final Object[] p_attributes, final boolean p_printContent) {
+        StringBuilder stringBuilder = new StringBuilder("Created workload:");
+        if (p_printContent) {
+            for (Object obj : p_attributes) {
+                stringBuilder.append(" [").append(obj.getClass().getSimpleName()).append(", ").append(obj).append(']');
+            }
+        } else {
+            for (Object obj : p_attributes) {
+                stringBuilder.append(" [").append(obj.getClass().getSimpleName()).append(']');
+            }
+        }
+        LOGGER.info(stringBuilder);
+    }
+
+    /**
      * Creates the message class for given set of attributes.
      *
      * @param p_parameters
@@ -175,18 +200,6 @@ public final class DynamicMessageCreator {
         create(p_parameters);
         compile();
         return load();
-    }
-
-    /**
-     * Creates a single attribute and fills it with random data.
-     *
-     * @param p_list
-     *         the list to store the new attribute in
-     * @param p_rand
-     *         the random number generator
-     */
-    private static void generateAttribute(final ArrayList<Object> p_list, final Random p_rand) {
-        generateAttribute(p_list, p_rand, Integer.MAX_VALUE);
     }
 
     /**
@@ -453,7 +466,8 @@ public final class DynamicMessageCreator {
         List<String> options = new ArrayList<>();
         //options.add("-d");
         //options.add(
-        //        DynamicMessageCreator.class /* we cannot use DynamicMessage.class here as this would load the old class */
+        //        DynamicMessageCreator.class /* we cannot use DynamicMessage.class here as this would load the old
+        // class */
         //                .getProtectionDomain().getCodeSource().getLocation().getPath());
 
         StandardJavaFileManager sfm = compiler.getStandardFileManager(null, null, null);

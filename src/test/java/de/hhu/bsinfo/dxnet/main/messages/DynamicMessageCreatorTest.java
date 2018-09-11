@@ -16,7 +16,7 @@ public class DynamicMessageCreatorTest {
             Assert.assertTrue(DynamicMessageCreator.createWorkload((short) 0, TEST_SIZES[i]).length > 0);
         }
         Assert.assertTrue(DynamicMessageCreator.createWorkload((short) 0, MIN_SIZE, MAX_SIZE).length > 0);
-        
+
         DynamicMessageCreator.cleanup();
     }
 }
