@@ -313,10 +313,11 @@ public final class DXNetDeadlockTest implements MessageReceiver {
 
             if (p_message.getSubtype() == Messages.SUBTYPE_BENCHMARK_REQUEST) {
                 if(ThreadLocalRandom.current().nextDouble() < ms_requestProbability) {
-                    BenchmarkRequest request = new BenchmarkRequest();
+                    BenchmarkRequest request = new BenchmarkRequest(p_message.getSource(), ms_messagePayloadSize);
 
                     try {
                         ms_dxnet.sendSync(request, -1, true);
+                        LOGGER.trace("Answered response with another response to provocate deadlocks.");
                     } catch (NetworkException e) {
                         e.printStackTrace();
                     }
