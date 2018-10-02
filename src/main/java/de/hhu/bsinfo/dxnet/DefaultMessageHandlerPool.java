@@ -16,6 +16,7 @@
 
 package de.hhu.bsinfo.dxnet;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.LockSupport;
 
 import org.apache.logging.log4j.LogManager;
@@ -49,6 +50,8 @@ final class DefaultMessageHandlerPool {
 
     private final MessageHandler[] m_threads;
 
+    private static AtomicInteger m_blockedHandlers;
+
     /**
      * Creates an instance of DefaultMessageHandlerPool
      *
@@ -64,6 +67,8 @@ final class DefaultMessageHandlerPool {
 
         MessageHandler t;
         m_threads = new MessageHandler[p_numMessageHandlerThreads];
+
+        m_blockedHandlers = new AtomicInteger(0);
 
         for (int i = 0; i < m_threads.length; i++) {
             t = new MessageHandler(p_messageReceivers, m_defaultMessageHeaders, p_messageHeaderPool,
@@ -130,5 +135,17 @@ final class DefaultMessageHandlerPool {
         }
 
         SOP_PUSH.stopDebug();
+    }
+
+    void incBlockedHandlers() {
+        int blocked_handlers = m_blockedHandlers.incrementAndGet();
+
+        if(blocked_handlers == m_threads.length) {
+            LOGGER.warn("All Message Handlers are blocked - system might be running into deadlock");
+        }
+    }
+
+    void decBlockedHandlers() {
+        int blocked_handlers = m_blockedHandlers.decrementAndGet();
     }
 }

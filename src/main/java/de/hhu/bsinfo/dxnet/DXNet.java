@@ -460,7 +460,15 @@ public final class DXNet {
             if (p_waitForResponses) {
                 SOP_WAIT_RESPONSE.start();
 
+                if(Thread.currentThread().getName().contains("MessageHandler")) {
+                    m_messageHandlers.getDefaultMessageHandlerPool().incBlockedHandlers();
+                }
+
                 p_request.waitForResponse(timeout);
+
+                if(Thread.currentThread().getName().contains("MessageHandler")) {
+                    m_messageHandlers.getDefaultMessageHandlerPool().decBlockedHandlers();
+                }
 
                 SOP_WAIT_RESPONSE.stop();
             }

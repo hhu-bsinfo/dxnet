@@ -149,4 +149,8 @@ public final class MessageHandlers {
         // Shutdown exclusive message handler
         m_exclusiveMessageHandler.shutdown();
     }
+
+    DefaultMessageHandlerPool getDefaultMessageHandlerPool() {
+        return m_defaultMessageHandlerPool;
+    }
 }
