@@ -134,12 +134,6 @@ public abstract class AbstractConnection<PipeIn extends AbstractPipeIn, PipeOut 
     public abstract void close(final boolean p_force);
 
     /**
-     * "Wake up" the connection. Depending on the transport type (and how it's) implemented, you have to
-     * wake up sleeping threads (refer to available implementations how it's used)
-     */
-    public abstract void wakeup();
-
-    /**
      * Set the closing timestamp of the connection
      */
     protected final void setClosingTimestamp(final long p_time) {
