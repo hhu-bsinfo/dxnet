@@ -153,6 +153,8 @@ public class Request extends Message {
      *
      * @param p_timeoutMs
      *         Max amount of time to wait for response.
+     * @throws NetworkException
+     *         If waiting for the response is interrupted due to timeout or failure
      */
     public final void waitForResponse(final int p_timeoutMs) throws NetworkException {
         long cur = System.nanoTime();

@@ -143,7 +143,7 @@ public class NIOConnectionManager extends AbstractConnectionManager {
      * @param p_destination
      *         the destination
      * @param p_existingConnection
-     *         whether the connection exists already (with opened PipeIn) -> create PipeOut, only.
+     *         whether the connection exists already (with opened PipeIn), otherwise create PipeOut, only.
      * @return a new connection
      * @throws NetworkException
      *         if the connection could not be created

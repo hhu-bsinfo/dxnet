@@ -47,6 +47,8 @@ public abstract class AbstractConnection<PipeIn extends AbstractPipeIn, PipeOut 
 
     /**
      * Get the current instance's node id
+     *
+     * @return Node id
      */
     protected short getOwnNodeID() {
         return m_ownNodeID;
@@ -54,6 +56,8 @@ public abstract class AbstractConnection<PipeIn extends AbstractPipeIn, PipeOut 
 
     /**
      * Get the node id of the destination this connection is connected to
+     *
+     * @return Node id
      */
     public final short getDestinationNodeID() {
         return m_pipeIn.getDestinationNodeID();
@@ -73,6 +77,8 @@ public abstract class AbstractConnection<PipeIn extends AbstractPipeIn, PipeOut 
 
     /**
      * Get the PipeIn endpoint of the connection
+     *
+     * @return PipeIn
      */
     public final PipeIn getPipeIn() {
         return m_pipeIn;
@@ -80,6 +86,8 @@ public abstract class AbstractConnection<PipeIn extends AbstractPipeIn, PipeOut 
 
     /**
      * Get the PipeOut endpoint of the connection
+     *
+     * @return PipeOut
      */
     public final PipeOut getPipeOut() {
         return m_pipeOut;
@@ -87,6 +95,8 @@ public abstract class AbstractConnection<PipeIn extends AbstractPipeIn, PipeOut 
 
     /**
      * Check if the PipeOut endpoint it open
+     *
+     * @return True if open, false otherwise
      */
     public boolean isPipeOutOpen() {
         return m_pipeOut.isOpen();
@@ -94,6 +104,8 @@ public abstract class AbstractConnection<PipeIn extends AbstractPipeIn, PipeOut 
 
     /**
      * Check if the PipeIn endpoint is open
+     *
+     * @return True if open, false otherwise
      */
     public boolean isPipeInOpen() {
         return m_pipeIn.isOpen();
@@ -101,6 +113,9 @@ public abstract class AbstractConnection<PipeIn extends AbstractPipeIn, PipeOut 
 
     /**
      * Marks the outgoing pipe as (not) connected
+     *
+     * @param p_connected
+     *         True to set it to connected, false to disconnected
      */
     public final void setPipeOutConnected(final boolean p_connected) {
         m_pipeOut.setConnected(p_connected);
@@ -108,6 +123,9 @@ public abstract class AbstractConnection<PipeIn extends AbstractPipeIn, PipeOut 
 
     /**
      * Marks the incoming pipe as (not) connected
+     *
+     * @param p_connected
+     *         True to set it to connected, false to disconnected
      */
     public final void setPipeInConnected(final boolean p_connected) {
         m_pipeIn.setConnected(p_connected);
@@ -115,6 +133,8 @@ public abstract class AbstractConnection<PipeIn extends AbstractPipeIn, PipeOut 
 
     /**
      * Get the timestamp when the connection was closed
+     *
+     * @return Timestamp
      */
     public long getClosingTimestamp() {
         return m_closingTimestamp;
@@ -135,6 +155,8 @@ public abstract class AbstractConnection<PipeIn extends AbstractPipeIn, PipeOut 
 
     /**
      * Set the closing timestamp of the connection
+     *
+     * @param p_time Timestamp to set
      */
     protected final void setClosingTimestamp(final long p_time) {
         m_closingTimestamp = p_time;

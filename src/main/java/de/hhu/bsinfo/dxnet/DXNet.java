@@ -103,6 +103,8 @@ public final class DXNet {
      *         Configuration parameters for NIO
      * @param p_ibConfig
      *         Configuration parameters for InfiniBand
+     * @param p_loopbackConfig
+     *         Configuration parameters for Loopback
      * @param p_nodeMap
      *         NodeMap implementation to lookup node ids
      */
@@ -234,6 +236,8 @@ public final class DXNet {
 
     /**
      * Get the status of the network system (debug string)
+     *
+     * @return Status as string
      */
     public String getStatus() {
         String str = "";
@@ -255,6 +259,9 @@ public final class DXNet {
 
     /**
      * Set the ConnectionManager listener
+     *
+     * @param p_listener
+     *         Listener to set
      */
     public void setConnectionManagerListener(final ConnectionManagerListener p_listener) {
         m_connectionManager.setListener(p_listener);

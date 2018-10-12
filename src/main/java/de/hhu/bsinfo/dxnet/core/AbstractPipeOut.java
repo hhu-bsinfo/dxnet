@@ -66,6 +66,8 @@ public abstract class AbstractPipeOut {
 
     /**
      * Get the node id of the destination receiving sent data
+     *
+     * @return Node id
      */
     public short getDestinationNodeID() {
         return m_destinationNodeID;
@@ -73,6 +75,8 @@ public abstract class AbstractPipeOut {
 
     /**
      * Check if the pipe is connected to the remote
+     *
+     * @return True if connected
      */
     public boolean isConnected() {
         return m_isConnected;
@@ -80,6 +84,9 @@ public abstract class AbstractPipeOut {
 
     /**
      * Set the pipe connected to the remote
+     *
+     * @param p_connected
+     *         True for connected, false disconnected
      */
     public void setConnected(final boolean p_connected) {
         m_isConnected = p_connected;
@@ -89,6 +96,8 @@ public abstract class AbstractPipeOut {
 
     /**
      * Get the FlowControl instance connected to the pipe
+     *
+     * @return FlowControl
      */
     protected AbstractFlowControl getFlowControl() {
         return m_flowControl;
@@ -151,6 +160,8 @@ public abstract class AbstractPipeOut {
 
     /**
      * Check if the pipe is opened
+     *
+     * @return True if open
      */
     protected abstract boolean isOpen();
 
@@ -165,6 +176,8 @@ public abstract class AbstractPipeOut {
 
     /**
      * Get the OutgoingRingBuffer of this pipe/connection
+     *
+     * @return OutgoingRingBuffer
      */
     protected OutgoingRingBuffer getOutgoingQueue() {
         return m_outgoing;

@@ -296,9 +296,9 @@ public class Message {
      * m_size = p_importer.readInt(m_size);
      * if (m_arrayList == null) {
      * // Do not overwrite array list after overflow
-     * m_arrayList = new ArrayList<>(m_size);
+     * m_arrayList = new ArrayList&lt;&gt;(m_size);
      * }
-     * for (int i = 0; i < m_size; i++) {
+     * for (int i = 0; i &lt; m_size; i++) {
      * long l = p_importer.readLong(0);
      * if (m_arrayList.size() == i) {
      * m_arrayList.add(l);

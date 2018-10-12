@@ -83,6 +83,8 @@ public abstract class AbstractPipeIn {
      *         Node id of the current instance (receiver)
      * @param p_destinationNodeId
      *         Node id of the destination to receive data from
+     * @param p_messageHeaderPool
+     *         Message header pool
      * @param p_flowControl
      *         FlowControl instance of the connection
      * @param p_messageDirectory
@@ -134,6 +136,8 @@ public abstract class AbstractPipeIn {
 
     /**
      * Get the node id of the destination to receive data from
+     *
+     * @return Node Id
      */
     public short getDestinationNodeID() {
         return m_destinationNodeID;
@@ -141,6 +145,8 @@ public abstract class AbstractPipeIn {
 
     /**
      * Check if the pipe is connected to the remote
+     *
+     * @return True if connected, false otherwise
      */
     public boolean isConnected() {
         return m_isConnected;
@@ -148,6 +154,9 @@ public abstract class AbstractPipeIn {
 
     /**
      * Set the pipe connected
+     *
+     * @param p_connected
+     *         True to set connected, false for disconnected
      */
     public void setConnected(final boolean p_connected) {
         m_isConnected = p_connected;
@@ -172,11 +181,15 @@ public abstract class AbstractPipeIn {
 
     /**
      * Check if the pipe is opened
+     *
+     * @return True if open, false otherwise
      */
     public abstract boolean isOpen();
 
     /**
      * Get the FlowControl instance connected to the pipe
+     *
+     * @return FlowControl object
      */
     protected AbstractFlowControl getFlowControl() {
         return m_flowControl;
@@ -184,6 +197,8 @@ public abstract class AbstractPipeIn {
 
     /**
      * Get the node id of the current instance
+     *
+     * @return Node Id
      */
     short getOwnNodeID() {
         return m_ownNodeID;
