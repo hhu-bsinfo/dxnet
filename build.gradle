@@ -16,7 +16,7 @@ buildscript {
     }
 
     dependencies {
-        classpath "de.hhu.bsinfo:dxbuild:0.2.0-SNAPSHOT"
+        classpath "de.hhu.bsinfo:dxbuild:0.2.0" + (Boolean.valueOf(System.getProperty("snapshot")) ? "-SNAPSHOT" : "")
     }
 }
 
@@ -85,8 +85,8 @@ dependencies {
 
     compileOnly 'org.projectlombok:lombok:1.18.2'
 
-    implementation 'de.hhu.bsinfo:dxmon:0.2.0-SNAPSHOT'
-    implementation 'de.hhu.bsinfo:dxutils:0.5.0-SNAPSHOT'
+    implementation "de.hhu.bsinfo:dxmon:0.2.0" + (Boolean.valueOf(System.getProperty("snapshot")) ? "-SNAPSHOT" : "")
+    implementation "de.hhu.bsinfo:dxutils:0.5.0" + (Boolean.valueOf(System.getProperty("snapshot")) ? "-SNAPSHOT" : "")
 
     extTestImplementation 'junit:junit:4.12'
 }
