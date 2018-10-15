@@ -53,6 +53,18 @@ public class MessageHeader implements Importable {
     MessageHeader() {
     }
 
+    /**
+     * Creates an instance of MessageHeader
+     */
+    MessageHeader(final int p_messageId, final byte p_messageTypeExc, final byte p_type, final byte p_subtype,
+            final int p_payloadSize) {
+        m_messageID = p_messageId;
+        m_messageTypeExc = p_messageTypeExc;
+        m_type = p_type;
+        m_subtype = p_subtype;
+        m_payloadSize = p_payloadSize;
+    }
+
     @Override
     public String toString() {
         return "m_messageID " + m_messageID + ", m_messageTypeExc " + m_messageTypeExc + ", m_type " + m_type +
