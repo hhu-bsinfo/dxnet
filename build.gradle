@@ -85,8 +85,10 @@ dependencies {
 
     compileOnly 'org.projectlombok:lombok:1.18.2'
 
-    implementation "de.hhu.bsinfo:dxmon:0.3.0" + (Boolean.valueOf(System.getProperty('release')) ? '' : '-SNAPSHOT')
-    implementation "de.hhu.bsinfo:dxutils:0.6.0" + (Boolean.valueOf(System.getProperty('release')) ? '' : '-SNAPSHOT')
+    api "de.hhu.bsinfo:dxmon:0.3.0" + (Boolean.valueOf(System.getProperty('release')) ? '' : '-SNAPSHOT')
+    api "de.hhu.bsinfo:dxutils:0.6.0" + (Boolean.valueOf(System.getProperty('release')) ? '' : '-SNAPSHOT')
+
+    testImplementation 'junit:junit:4.12'
 
     extTestImplementation 'junit:junit:4.12'
 }
