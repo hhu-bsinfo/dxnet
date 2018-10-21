@@ -50,7 +50,9 @@ final class DefaultMessageHandlerPool {
 
     private final MessageHandler[] m_threads;
 
-    private static AtomicInteger m_blockedHandlers;
+    private static AtomicInteger m_blockedMessageHandlers;
+
+    private static AtomicInteger m_numMessageHandlers;
 
     /**
      * Creates an instance of DefaultMessageHandlerPool
@@ -68,7 +70,8 @@ final class DefaultMessageHandlerPool {
         MessageHandler t;
         m_threads = new MessageHandler[p_numMessageHandlerThreads];
 
-        m_blockedHandlers = new AtomicInteger(0);
+        m_blockedMessageHandlers = new AtomicInteger(0);
+        m_numMessageHandlers = new AtomicInteger(m_threads.length);
 
         for (int i = 0; i < m_threads.length; i++) {
             t = new MessageHandler(p_messageReceivers, m_defaultMessageHeaders, p_messageHeaderPool,
@@ -137,15 +140,17 @@ final class DefaultMessageHandlerPool {
         SOP_PUSH.stopDebug();
     }
 
-    void incBlockedHandlers() {
-        int blocked_handlers = m_blockedHandlers.incrementAndGet();
+    void incBlockedMessageHandlers() {
+        int blockedMessageHandlers = m_blockedMessageHandlers.incrementAndGet();
 
-        if(blocked_handlers == m_threads.length) {
+        LOGGER.debug("Current number of blocked MessageHandlers: " + blockedMessageHandlers);
+
+        if(blockedMessageHandlers == m_numMessageHandlers.get()) {
             LOGGER.warn("All Message Handlers are blocked - system might be running into deadlock");
         }
     }
 
-    void decBlockedHandlers() {
-        int blocked_handlers = m_blockedHandlers.decrementAndGet();
+    void decBlockedMessageHandlers() {
+        m_blockedMessageHandlers.decrementAndGet();
     }
 }

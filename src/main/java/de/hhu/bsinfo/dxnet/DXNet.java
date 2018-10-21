@@ -463,40 +463,44 @@ public final class DXNet {
 
         int timeout = p_timeout != -1 ? p_timeout : m_timeOut;
 
-        try {
-            if (p_waitForResponses) {
+        Thread.currentThread().
+
+        if (p_waitForResponses) {
+             try {
                 SOP_WAIT_RESPONSE.start();
 
                 if(Thread.currentThread().getName().contains("MessageHandler")) {
-                    m_messageHandlers.getDefaultMessageHandlerPool().incBlockedHandlers();
+                    LOGGER.debug(Thread.currentThread().getName() + " is blocked.");
+                    m_messageHandlers.incBlockedMessageHandlers();
                 }
 
                 p_request.waitForResponse(timeout);
 
-                if(Thread.currentThread().getName().contains("MessageHandler")) {
-                    m_messageHandlers.getDefaultMessageHandlerPool().decBlockedHandlers();
-                }
-
                 SOP_WAIT_RESPONSE.stop();
-            }
-        } catch (final NetworkResponseDelayedException e) {
-            SOP_WAIT_RESPONSE.stop();
+            } catch (final NetworkResponseDelayedException e) {
+                SOP_WAIT_RESPONSE.stop();
 
-            SOP_SEND_SYNC.stopDebug();
+                SOP_SEND_SYNC.stopDebug();
 
-            LOGGER.warn("Sending sync, waiting for responses to %s failed, timeout: %d ms", p_request, timeout);
+                LOGGER.warn("Sending sync, waiting for responses to %s failed, timeout: %d ms", p_request, timeout);
 
-            m_requestMap.remove(p_request.getRequestID());
+                m_requestMap.remove(p_request.getRequestID());
 
-            throw e;
-        } catch (final NetworkResponseCancelledException e) {
-            SOP_WAIT_RESPONSE.stop();
+                throw e;
+            } catch (final NetworkResponseCancelledException e) {
+                SOP_WAIT_RESPONSE.stop();
 
-            SOP_SEND_SYNC.stopDebug();
+                SOP_SEND_SYNC.stopDebug();
 
-            LOGGER.warn("Sending sync, waiting for responses to %s failed, cancelled: %d ms", p_request, timeout);
+                LOGGER.warn("Sending sync, waiting for responses to %s failed, cancelled: %d ms", p_request, timeout);
 
-            throw e;
+                throw e;
+            } finally {
+                 if(Thread.currentThread().getName().contains("MessageHandler")) {
+                     m_messageHandlers.devBlockedMessageHandlers();
+                     LOGGER.debug(Thread.currentThread().getName() + " is deblocked.");
+                 }
+             }
         }
 
         SOP_SEND_SYNC.stopDebug();

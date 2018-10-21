@@ -151,7 +151,11 @@ public final class MessageHandlers {
         m_exclusiveMessageHandler.shutdown();
     }
 
-    DefaultMessageHandlerPool getDefaultMessageHandlerPool() {
-        return m_defaultMessageHandlerPool;
+    void incBlockedMessageHandlers() {
+        m_defaultMessageHandlerPool.incBlockedMessageHandlers();
+    }
+
+    void devBlockedMessageHandlers() {
+        m_defaultMessageHandlerPool.decBlockedMessageHandlers();
     }
 }
