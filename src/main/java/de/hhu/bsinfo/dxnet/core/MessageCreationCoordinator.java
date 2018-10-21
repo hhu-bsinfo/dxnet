@@ -55,6 +55,8 @@ public class MessageCreationCoordinator extends Thread {
      *         the max capacity of buffers (count) for the incoming queue
      * @param p_incomingQueueMaxCapacitySize
      *         the max capacity of all buffers aggregated sizes for the incoming queue
+     * @param p_overprovisioning
+     *         True to enable overprivisioning
      */
     public MessageCreationCoordinator(final int p_incomingQueueMaxCapacityBufferCount,
             final int p_incomingQueueMaxCapacitySize,

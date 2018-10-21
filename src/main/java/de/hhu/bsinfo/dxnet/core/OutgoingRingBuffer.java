@@ -492,7 +492,7 @@ public class OutgoingRingBuffer {
 
     /**
      * Get area in ring buffer to send, split in start and end address within ring buffer.
-     * This always returns pointers with back < front => if a wrap around is currently available
+     * This always returns pointers with back &lt; front =&gt; if a wrap around is currently available
      * on the buffer, this must be called twice: first call handles front up to end of buffer,
      * second call buffer start up to back
      *

@@ -53,6 +53,18 @@ public class MessageHeader implements Importable {
     MessageHeader() {
     }
 
+    /**
+     * Creates an instance of MessageHeader
+     */
+    MessageHeader(final int p_messageId, final byte p_messageTypeExc, final byte p_type, final byte p_subtype,
+            final int p_payloadSize) {
+        m_messageID = p_messageId;
+        m_messageTypeExc = p_messageTypeExc;
+        m_type = p_type;
+        m_subtype = p_subtype;
+        m_payloadSize = p_payloadSize;
+    }
+
     @Override
     public String toString() {
         return "m_messageID " + m_messageID + ", m_messageTypeExc " + m_messageTypeExc + ", m_type " + m_type +
@@ -68,6 +80,8 @@ public class MessageHeader implements Importable {
 
     /**
      * Message type
+     *
+     * @return Type
      */
     public byte getType() {
         return m_type;
@@ -75,6 +89,8 @@ public class MessageHeader implements Importable {
 
     /**
      * Message subtype
+     *
+     * @return Subtype
      */
     public byte getSubtype() {
         return m_subtype;
@@ -91,6 +107,8 @@ public class MessageHeader implements Importable {
 
     /**
      * Type of message (normal message or request)
+     *
+     * @return Message type
      */
     byte getMessageType() {
         return (byte) (m_messageTypeExc >> 4);
@@ -98,6 +116,8 @@ public class MessageHeader implements Importable {
 
     /**
      * Check if message is exclusive
+     *
+     * @return True if exclusive
      */
     public boolean isExclusive() {
         return (m_messageTypeExc & 0xF) == 1;
@@ -201,6 +221,8 @@ public class MessageHeader implements Importable {
      *
      * @param p_importerCollection
      *         the importer collection
+     * @param p_messageHeaderPool
+     *         Message handler pool
      * @return the completed message
      * @throws NetworkException
      *         it the message type/subtype is invalid

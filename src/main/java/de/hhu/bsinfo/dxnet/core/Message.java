@@ -296,9 +296,9 @@ public class Message {
      * m_size = p_importer.readInt(m_size);
      * if (m_arrayList == null) {
      * // Do not overwrite array list after overflow
-     * m_arrayList = new ArrayList<>(m_size);
+     * m_arrayList = new ArrayList&lt;&gt;(m_size);
      * }
-     * for (int i = 0; i < m_size; i++) {
+     * for (int i = 0; i &lt; m_size; i++) {
      * long l = p_importer.readLong(0);
      * if (m_arrayList.size() == i) {
      * m_arrayList.add(l);
@@ -395,7 +395,7 @@ public class Message {
      * @throws NetworkException
      *         If writing the message failed
      */
-    private void writeMessage(final AbstractMessageExporter p_exporter, final int p_payloadSize)
+    void writeMessage(final AbstractMessageExporter p_exporter, final int p_payloadSize)
             throws NetworkException {
         try {
             // Message reused (probably pooled)
@@ -410,7 +410,7 @@ public class Message {
 
             p_exporter.writeByte(m_type);
             p_exporter.writeByte(m_subtype);
-            p_exporter.writeByte((byte) ((m_messageType << 4) + (m_exclusivity ? 1 : 0)));
+            p_exporter.writeByte(getCombinedFieldTypeAndExclusivity());
             p_exporter.writeInt(p_payloadSize);
 
             writePayload(p_exporter);
@@ -432,4 +432,12 @@ public class Message {
         m_oldMessageID = m_messageID;
     }
 
+    /**
+     * Combine the message type and exclusivity fields to save space
+     *
+     * @return Combined fields as byte
+     */
+    byte getCombinedFieldTypeAndExclusivity() {
+        return (byte) ((m_messageType << 4) + (m_exclusivity ? 1 : 0));
+    }
 }

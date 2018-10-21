@@ -32,6 +32,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import de.hhu.bsinfo.dxutils.NodeID;
+import de.hhu.bsinfo.dxutils.stats.StatisticsManager;
+import de.hhu.bsinfo.dxutils.stats.Time;
 
 /**
  * Manages the whole communication over socket channels like selecting channels, reading and writing data to/from
@@ -40,8 +42,15 @@ import de.hhu.bsinfo.dxutils.NodeID;
  * @author Kevin Beineke, kevin.beineke@hhu.de, 18.03.2017
  */
 class NIOSelector extends Thread {
-
     private static final Logger LOGGER = LogManager.getFormatterLogger(NIOSelector.class.getSimpleName());
+
+    private static final Time SOP_ACTION = new Time(NIOSelector.class, "Action");
+    private static final Time SOP_SLEEP = new Time(NIOSelector.class, "Sleep");
+
+    static {
+        StatisticsManager.get().registerOperation(NIOSelector.class, SOP_ACTION);
+        StatisticsManager.get().registerOperation(NIOSelector.class, SOP_SLEEP);
+    }
 
     // Attributes
     private ServerSocketChannel m_serverChannel;
@@ -192,8 +201,16 @@ class NIOSelector extends Thread {
             m_interestQueue.processInterests(m_selector, m_connectionManager, m_connectionTimeout);
 
             try {
+                SOP_SLEEP.startDebug();
+
+                int actionsAvail = m_selector.select();
+
+                SOP_SLEEP.stopDebug();
+
                 // Wait for network action
-                if (m_selector.select() > 0 && m_selector.isOpen()) {
+                if (actionsAvail > 0 && m_selector.isOpen()) {
+                    SOP_ACTION.startDebug();
+
                     selected = m_selector.selectedKeys();
                     iterator = selected.iterator();
 
@@ -210,6 +227,8 @@ class NIOSelector extends Thread {
                             LOGGER.warn("Selected key is invalid: %s", key);
                         }
                     }
+
+                    SOP_ACTION.stopDebug();
                 }
             } catch (final ClosedSelectorException e) {
                 // Ignore

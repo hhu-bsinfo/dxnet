@@ -111,6 +111,8 @@ public class IncomingBufferQueue {
 
     /**
      * Returns whether the ring-buffer is full or not.
+     *
+     * @return True if full
      */
     public boolean isFull() {
         return m_currentBytes.get() >= m_maxCapacitySize ||

@@ -42,6 +42,8 @@ public class BenchmarkMessage extends Message {
      *
      * @param p_destination
      *         the destination nodeID
+     * @param p_size
+     *         Size of the message
      */
     public BenchmarkMessage(final short p_destination, final int p_size) {
         super(p_destination, Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_MESSAGE);
@@ -54,6 +56,8 @@ public class BenchmarkMessage extends Message {
      *
      * @param p_destination
      *         the destination nodeID
+     * @param p_data
+     *         Data to use for message
      */
     public BenchmarkMessage(final short p_destination, final byte[] p_data) {
         super(p_destination, Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_MESSAGE);

@@ -110,9 +110,4 @@ class IBConnection extends AbstractConnection<IBPipeIn, IBPipeOut> {
         // flush any remaining interests
         m_interestManager.nodeDisconnected(getOwnNodeID());
     }
-
-    @Override
-    public void wakeup() {
-        // nothing to do here
-    }
 }
