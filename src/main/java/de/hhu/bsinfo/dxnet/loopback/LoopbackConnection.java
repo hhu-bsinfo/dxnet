@@ -63,10 +63,4 @@ public class LoopbackConnection extends AbstractConnection<LoopbackPipeIn, Loopb
     public void close(boolean p_force) {
         setClosingTimestamp(System.currentTimeMillis());
     }
-
-    @Override
-    public void wakeup() {
-        m_loopbackSendThread.trigger(this);
-    }
-
 }

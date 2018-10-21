@@ -53,6 +53,8 @@ public abstract class AbstractConnectionManager {
      *
      * @param p_maxConnections
      *         Max number of connections to keep active simultaneously
+     * @param p_overprovisioning
+     *         True if overprovisioning is enabled
      */
     protected AbstractConnectionManager(final int p_maxConnections, final boolean p_overprovisioning) {
         m_maxConnections = p_maxConnections;
@@ -66,6 +68,9 @@ public abstract class AbstractConnectionManager {
 
     /**
      * Set connection manager listener to receive callbacks when a node connected or disconnected
+     *
+     * @param p_listener
+     *         Listener to set
      */
     public void setListener(final ConnectionManagerListener p_listener) {
         m_listener = p_listener;

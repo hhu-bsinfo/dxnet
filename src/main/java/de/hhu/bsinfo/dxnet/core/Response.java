@@ -82,6 +82,11 @@ public class Response extends Message {
 
     /**
      * Reset/Initialize all state and assign new message ID.
+     *
+     * @param p_request
+     *         Request to reset
+     * @param p_subtype
+     *         Subtype
      */
     public void reuse(final Request p_request, final byte p_subtype) {
         set(p_request.getMessageID(), p_request.getSource(), p_request.getType(), p_subtype);

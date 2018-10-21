@@ -223,11 +223,6 @@ public class NIOConnection extends AbstractConnection<NIOPipeIn, NIOPipeOut> {
         m_nioSelector.closeConnectionAsync(this);
     }
 
-    @Override
-    public void wakeup() {
-        m_nioSelector.getSelector().wakeup();
-    }
-
     /**
      * Register connect interest
      */

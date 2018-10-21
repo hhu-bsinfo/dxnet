@@ -93,6 +93,7 @@ public final class MessageHandlers {
      *
      * @param p_header
      *         the message header
+     * @return True if new header was created, false otherwise
      */
     public boolean newHeader(final de.hhu.bsinfo.dxnet.core.MessageHeader p_header) {
 

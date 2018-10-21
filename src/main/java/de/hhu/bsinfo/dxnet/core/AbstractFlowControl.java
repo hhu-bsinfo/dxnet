@@ -98,6 +98,8 @@ public abstract class AbstractFlowControl {
 
     /**
      * Get the destination node id the flow control is connected to
+     *
+     * @return Node id
      */
     protected short getDestinationNodeId() {
         return m_destinationNodeID;

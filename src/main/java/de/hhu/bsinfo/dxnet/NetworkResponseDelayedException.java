@@ -42,6 +42,8 @@ public class NetworkResponseDelayedException extends NetworkException {
 
     /**
      * Get the node id of the destination node
+     *
+     * @return Node Id
      */
     public short getDesinationNodeId() {
         return m_nodeId;

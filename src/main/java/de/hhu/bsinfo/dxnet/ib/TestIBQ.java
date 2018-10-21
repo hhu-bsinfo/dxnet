@@ -137,6 +137,8 @@ public class TestIBQ {
 
     /**
      * Returns whether the ring-buffer is full or not.
+     *
+     * @return True if full, false otherwise
      */
     public boolean isFull() {
         return m_currentBytes.get() >= m_maxCapacitySize ||
@@ -145,6 +147,8 @@ public class TestIBQ {
 
     /**
      * Removes one buffer from queue.
+     *
+     * @return Pointer to buffer removed
      */
     long popBuffer() {
         UnsafeHandler.getInstance().getUnsafe().loadFence();
