@@ -463,8 +463,6 @@ public final class DXNet {
 
         int timeout = p_timeout != -1 ? p_timeout : m_timeOut;
 
-        Thread.currentThread().
-
         if (p_waitForResponses) {
              try {
                 SOP_WAIT_RESPONSE.start();
