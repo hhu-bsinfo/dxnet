@@ -315,6 +315,7 @@ public final class DXNetDeadlockTest implements MessageReceiver {
             if (p_message.getSubtype() == Messages.SUBTYPE_BENCHMARK_REQUEST) {
                 if(ThreadLocalRandom.current().nextDouble() < ms_requestProbability) {
                     BenchmarkRequest request = new BenchmarkRequest(p_message.getSource(), ms_messagePayloadSize);
+                    request.setIgnoreTimeout(true);
 
                     try {
                         ms_dxnet.sendSync(request, -1, true);

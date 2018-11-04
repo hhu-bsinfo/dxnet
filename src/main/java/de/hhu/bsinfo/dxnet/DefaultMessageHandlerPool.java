@@ -16,6 +16,7 @@
 
 package de.hhu.bsinfo.dxnet;
 
+import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.LockSupport;
 
@@ -48,11 +49,18 @@ final class DefaultMessageHandlerPool {
 
     private final MessageHeaderStore m_defaultMessageHeaders;
 
-    private final MessageHandler[] m_threads;
+    private final ArrayList<MessageHandler> m_threads;
 
     private static AtomicInteger m_blockedMessageHandlers;
 
     private static AtomicInteger m_numMessageHandlers;
+
+    private  static MessageReceiverStore m_messageReceivers;
+
+    private static MessageHeaderPool m_messageHeaderPool;
+
+    private static boolean m_overprovisioning;
+
 
     /**
      * Creates an instance of DefaultMessageHandlerPool
@@ -68,16 +76,20 @@ final class DefaultMessageHandlerPool {
         LOGGER.info("Network: DefaultMessageHandlerPool: Initialising %d threads", p_numMessageHandlerThreads);
 
         MessageHandler t;
-        m_threads = new MessageHandler[p_numMessageHandlerThreads];
+        m_threads = new ArrayList<>();
 
         m_blockedMessageHandlers = new AtomicInteger(0);
-        m_numMessageHandlers = new AtomicInteger(m_threads.length);
+        m_numMessageHandlers = new AtomicInteger(p_numMessageHandlerThreads);
 
-        for (int i = 0; i < m_threads.length; i++) {
+        m_messageReceivers = p_messageReceivers;
+        m_messageHeaderPool = p_messageHeaderPool;
+        m_overprovisioning = p_overprovisioning;
+
+        for (int i = 0; i < p_numMessageHandlerThreads; i++) {
             t = new MessageHandler(p_messageReceivers, m_defaultMessageHeaders, p_messageHeaderPool,
                     p_overprovisioning);
             t.setName("Network: MessageHandler " + (i + 1));
-            m_threads[i] = t;
+            m_threads.add(t);
             t.start();
         }
     }
@@ -86,17 +98,14 @@ final class DefaultMessageHandlerPool {
      * Closes all default message handler
      */
     void shutdown() {
-        MessageHandler t;
-
-        for (int i = 0; i < m_threads.length; i++) {
-            t = m_threads[i];
+        for (MessageHandler t : m_threads) {
             t.shutdown();
             LockSupport.unpark(t);
             t.interrupt();
 
             try {
                 t.join();
-                LOGGER.info("Shutdown of MessageHandler %d successful", i + 1);
+                LOGGER.info("Shutdown of " + t.getName() + " successful");
             } catch (final InterruptedException e) {
                 LOGGER.warn("Could not wait for default message handler to finish. Interrupted");
             }
@@ -107,8 +116,8 @@ final class DefaultMessageHandlerPool {
      * Activate parking strategy for all default message handlers.
      */
     void activateParking() {
-        for (int i = 0; i < m_threads.length; i++) {
-            m_threads[i].activateParking();
+        for (MessageHandler t : m_threads) {
+            t.activateParking();
         }
     }
 
@@ -142,15 +151,42 @@ final class DefaultMessageHandlerPool {
 
     void incBlockedMessageHandlers() {
         int blockedMessageHandlers = m_blockedMessageHandlers.incrementAndGet();
+        int numMessageHandlers = m_numMessageHandlers.get();
 
-        LOGGER.debug("Current number of blocked MessageHandlers: " + blockedMessageHandlers);
+        LOGGER.debug("Current number of blocked MessageHandlers increased: " + blockedMessageHandlers + " of " + numMessageHandlers);
 
-        if(blockedMessageHandlers == m_numMessageHandlers.get()) {
+        if(blockedMessageHandlers == numMessageHandlers) {
+            int numOfMessageHandlers = m_numMessageHandlers.incrementAndGet();
             LOGGER.warn("All Message Handlers are blocked - system might be running into deadlock");
+
+            MessageHandler t = new MessageHandler(m_messageReceivers, m_defaultMessageHeaders, m_messageHeaderPool,
+                    m_overprovisioning);
+            t.setName("Network: MessageHandler " + numOfMessageHandlers);
+            m_threads.add(t);
+            t.start();
+
+            LOGGER.debug("Added MessageHandler - Number of threads is now set to " + numOfMessageHandlers);
+
         }
     }
 
     void decBlockedMessageHandlers() {
-        m_blockedMessageHandlers.decrementAndGet();
+
+        int blockedMessageHandlers = m_blockedMessageHandlers.decrementAndGet();
+        int numMessageHandlers = m_numMessageHandlers.get();
+
+        LOGGER.debug("Current number of blocked MessageHandlers decreased: " + blockedMessageHandlers + " of " + numMessageHandlers);
+
+        if(numMessageHandlers > blockedMessageHandlers + 1) {
+            numMessageHandlers = m_numMessageHandlers.decrementAndGet();
+            MessageHandler t = m_threads.remove(m_threads.size() - 1);
+            t.shutdown();
+            LockSupport.unpark(t);
+            t.interrupt();
+
+            LOGGER.debug("Removed MessageHandler - Number of threads is now set to " + numMessageHandlers);
+        }
+
+
     }
 }
