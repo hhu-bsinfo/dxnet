@@ -27,7 +27,7 @@ import org.apache.logging.log4j.Logger;
  * @author Stefan Nothaas, stefan.nothaas@hhu.de, 12.06.2017
  */
 class MessageReceiverStore {
-    private static final Logger LOGGER = LogManager.getFormatterLogger(MessageHandlers.class.getSimpleName());
+    private static final Logger LOGGER = LogManager.getFormatterLogger(MessageReceiverStore.class.getSimpleName());
 
     private MessageReceiver[][] m_receivers;
     private final ReentrantLock m_receiversLock;
