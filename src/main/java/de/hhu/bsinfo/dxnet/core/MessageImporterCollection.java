@@ -48,7 +48,9 @@ public class MessageImporterCollection {
         return "m_importer [" + m_importer + "]\nm_importerOverflow [" + m_importerOverflow +
                 "]\nm_importerUnderflow [" + m_importerUnderflow + "]\nm_importerUnderOverflow [" +
                 m_importerUnderOverflow + "]\nCurrent used (" + m_currentUsed.getClass().getSimpleName() + ") [" +
-                m_currentUsed + "]\nPrev used (" + m_prevUsed.getClass().getSimpleName() + ") [" + m_prevUsed + ']';
+                m_currentUsed + "]\nPrev used (" +
+                (m_prevUsed != null ? m_prevUsed.getClass().getSimpleName() : "none") + ") [" +
+                (m_prevUsed != null ? m_prevUsed : "none") + ']';
     }
 
     /**

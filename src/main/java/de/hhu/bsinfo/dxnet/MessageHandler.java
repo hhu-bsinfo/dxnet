@@ -170,7 +170,8 @@ class MessageHandler extends Thread {
 
                         SOP_EXECUTE.stopDebug();
                     } else {
-                        LOGGER.warn("No message receiver was registered for %d, %d!", type, subtype);
+                        LOGGER.error("No message receiver was registered for %d, %d! Dropping received messages...",
+                                type, subtype);
                     }
                     continue;
                 } else {
@@ -199,7 +200,8 @@ class MessageHandler extends Thread {
 
                     SOP_EXECUTE.stopDebug();
                 } else {
-                    LOGGER.warn("No message receiver was registered for %d, %d!", type, subtype);
+                    LOGGER.error("No message receiver was registered for %d, %d! Dropping received messages...",
+                            type, subtype);
                 }
             }
         }
