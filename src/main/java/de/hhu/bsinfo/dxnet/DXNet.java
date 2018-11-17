@@ -235,6 +235,15 @@ public final class DXNet {
     }
 
     /**
+     * The configured timeout in ms for requests
+     *
+     * @return Timeout in ms
+     */
+    public int getRequestTimeoutMs() {
+        return m_timeOut;
+    }
+
+    /**
      * Get the status of the network system (debug string)
      *
      * @return Status as string
@@ -505,4 +514,13 @@ public final class DXNet {
         m_requestMap.removeAll(p_nodeId);
     }
 
+    /**
+     * Cancel a pending request. This deletes the request from the request map to ensure
+     * that any delayed incoming responses are automatically dropped
+     *
+     * @param p_request Request to cancel
+     */
+    public void cancelRequest(final Request p_request) {
+        m_requestMap.remove(p_request.getRequestID());
+    }
 }
