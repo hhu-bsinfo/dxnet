@@ -16,6 +16,7 @@
 
 package de.hhu.bsinfo.dxnet;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
 import org.apache.logging.log4j.LogManager;
@@ -57,6 +58,8 @@ class MessageHandler extends Thread {
     private byte m_specialReceiveType = -1;
     private byte m_specialReceiveSubtype = -1;
 
+    private AtomicBoolean m_markedForParking;
+
     private volatile boolean m_overprovisioning;
     private volatile boolean m_shutdown;
 
@@ -76,6 +79,8 @@ class MessageHandler extends Thread {
         m_messageHeaderPool = new LocalMessageHeaderPool(p_messageHeaderPool);
 
         m_overprovisioning = p_overprovisioning;
+
+        m_markedForParking = new AtomicBoolean(false);
     }
 
     /**
@@ -90,6 +95,14 @@ class MessageHandler extends Thread {
      */
     void activateParking() {
         m_overprovisioning = true;
+    }
+
+    void markForParking() {
+        m_markedForParking.set(true);
+    }
+
+    void unmarkForParking() {
+        m_markedForParking.set(false);
     }
 
     /**
@@ -122,86 +135,90 @@ class MessageHandler extends Thread {
         boolean pollWait = true;
 
         while (!m_shutdown) {
-            header = m_messages.popMessageHeader();
+            if(m_markedForParking.get() == true) {
+                LockSupport.parkNanos(10000);
+            } else {
+                header = m_messages.popMessageHeader();
 
-            if (header == null) {
-                if (m_overprovisioning) {
-                    LockSupport.parkNanos(1);
-                } else {
-                    if (pollWait) {
-                        if (++counter >= THRESHOLD_TIME_CHECK) {
-                            if (System.currentTimeMillis() - lastSuccessfulPop >
-                                    100) { // No message header for over a second -> sleep
-                                pollWait = false;
+                if (header == null) {
+                    if (m_overprovisioning) {
+                        LockSupport.parkNanos(1);
+                    } else {
+                        if (pollWait) {
+                            if (++counter >= THRESHOLD_TIME_CHECK) {
+                                if (System.currentTimeMillis() - lastSuccessfulPop >
+                                        100) { // No message header for over a second -> sleep
+                                    pollWait = false;
+                                }
                             }
+                        }
+
+                        if (!pollWait) {
+                            LockSupport.parkNanos(1000);
                         }
                     }
 
-                    if (!pollWait) {
-                        LockSupport.parkNanos(1000);
+                    continue;
+                }
+
+                pollWait = true;
+
+                lastSuccessfulPop = System.currentTimeMillis();
+                counter = 0;
+
+                SOP_CREATE.startDebug();
+
+                type = header.getType();
+                subtype = header.getSubtype();
+
+                if (type == m_specialReceiveType && subtype == m_specialReceiveSubtype) {
+
+                    // This is a special case for DXRAM's logging to deserialize the message's chunks directly into the write buffer.
+                    // Do not use this method without considering all other possibilities!
+                    if (!header.isIncomplete()) {
+                        messageReceiver = m_messageReceivers.getReceiver(type, subtype);
+
+                        if (messageReceiver != null) {
+                            SOP_EXECUTE.startDebug();
+
+                            ((SpecialMessageReceiver) messageReceiver).onIncomingHeader(header);
+                            header.finishHeader(m_messageHeaderPool);
+
+                            SOP_EXECUTE.stopDebug();
+                        } else {
+                            LOGGER.error("No message receiver was registered for %d, %d! Dropping received messages...",
+                                    type, subtype);
+                        }
+                        continue;
+                    } else {
+                        // If header is incomplete, the deserialization was already started and a message object
+                        // created by the MessageCreationCoordinator. In this case use the default way by continuing
+                        // the deserialization and finishing the message object.
                     }
                 }
 
-                continue;
-            }
+                try {
+                    message = header.createAndImportMessage(m_importers, m_messageHeaderPool);
+                } catch (NetworkException e) {
+                    e.printStackTrace();
+                    continue;
+                }
 
-            pollWait = true;
+                SOP_CREATE.stopDebug();
 
-            lastSuccessfulPop = System.currentTimeMillis();
-            counter = 0;
-
-            SOP_CREATE.startDebug();
-
-            type = header.getType();
-            subtype = header.getSubtype();
-
-            if (type == m_specialReceiveType && subtype == m_specialReceiveSubtype) {
-
-                // This is a special case for DXRAM's logging to deserialize the message's chunks directly into the write buffer.
-                // Do not use this method without considering all other possibilities!
-                if (!header.isIncomplete()) {
+                if (message != null) {
                     messageReceiver = m_messageReceivers.getReceiver(type, subtype);
 
                     if (messageReceiver != null) {
                         SOP_EXECUTE.startDebug();
 
-                        ((SpecialMessageReceiver) messageReceiver).onIncomingHeader(header);
-                        header.finishHeader(m_messageHeaderPool);
+                        messageReceiver.onIncomingMessage(message);
 
                         SOP_EXECUTE.stopDebug();
                     } else {
                         LOGGER.error("No message receiver was registered for %d, %d! Dropping received messages...",
                                 type, subtype);
                     }
-                    continue;
-                } else {
-                    // If header is incomplete, the deserialization was already started and a message object
-                    // created by the MessageCreationCoordinator. In this case use the default way by continuing
-                    // the deserialization and finishing the message object.
-                }
-            }
-
-            try {
-                message = header.createAndImportMessage(m_importers, m_messageHeaderPool);
-            } catch (NetworkException e) {
-                e.printStackTrace();
-                continue;
-            }
-
-            SOP_CREATE.stopDebug();
-
-            if (message != null) {
-                messageReceiver = m_messageReceivers.getReceiver(type, subtype);
-
-                if (messageReceiver != null) {
-                    SOP_EXECUTE.startDebug();
-
-                    messageReceiver.onIncomingMessage(message);
-
-                    SOP_EXECUTE.stopDebug();
-                } else {
-                    LOGGER.error("No message receiver was registered for %d, %d! Dropping received messages...",
-                            type, subtype);
                 }
             }
         }

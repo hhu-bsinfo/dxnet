@@ -319,7 +319,7 @@ public final class DXNetDeadlockTest implements MessageReceiver {
 
                     try {
                         ms_dxnet.sendSync(request, -1, true);
-                        LOGGER.trace("Answered response with another response to provocate deadlocks.");
+                        LOGGER.trace("Answered request with another request to provocate deadlocks.");
                     } catch (NetworkException e) {
                         e.printStackTrace();
                     }
