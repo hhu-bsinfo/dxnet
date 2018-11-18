@@ -190,11 +190,14 @@ final class DefaultMessageHandlerPool {
         int blockedMessageHandlers = (int) blockedAndNumMessageHandlers;
         int numMessageHandlers = (int) (blockedAndNumMessageHandlers >> 32);
 
+        if(blockedMessageHandlers > numMessageHandlers) {
+            LOGGER.error("There are more blocked handlers than handlers available!!!!");
+        }
+
 
         LOGGER.debug("Current number of blocked MessageHandlers increased: " + blockedMessageHandlers + " of " + numMessageHandlers);
 
         if(blockedMessageHandlers == numMessageHandlers) {
-            numMessageHandlers = (int) (m_blockedAndNumMessageHandlers.addAndGet((long) 1 << 32) >> 32);
             LOGGER.warn("All Message Handlers are blocked - system might be running into deadlock");
 
             MessageHandler t = m_parkedThreads.poll();
@@ -204,14 +207,20 @@ final class DefaultMessageHandlerPool {
                         m_overprovisioning);
                 t.setName("Network: MessageHandler " + m_globalMessageHandlerID.incrementAndGet());
                 m_threads.add(t);
+                numMessageHandlers = (int) (m_blockedAndNumMessageHandlers.addAndGet((long) 1 << 32) >> 32);
                 t.start();
+                LOGGER.debug("Added new " + t.getName() + " - Number of active threads is now set to " + numMessageHandlers);
             } else {
-                m_threads.add(t);
                 t.unmarkForParking();
+                numMessageHandlers = (int) (m_blockedAndNumMessageHandlers.addAndGet((long) 1 << 32) >> 32);
                 LockSupport.unpark(t);
+                m_threads.add(t);
+                LOGGER.debug("Reactivated " + t.getName() + " - Number of active threads is now set to " + numMessageHandlers);
             }
 
-            LOGGER.debug("Added MessageHandler - Number of active threads is now set to " + numMessageHandlers);
+
+
+
         }
     }
 
@@ -224,13 +233,13 @@ final class DefaultMessageHandlerPool {
 
         LOGGER.debug("Current number of blocked MessageHandlers decreased: " + blockedMessageHandlers + " of " + numMessageHandlers);
 
-        if(numMessageHandlers >= blockedMessageHandlers + 1 && numMessageHandlers > 2) {
+        if(numMessageHandlers >= blockedMessageHandlers + 2 && numMessageHandlers > 2) {
             numMessageHandlers = (int) (m_blockedAndNumMessageHandlers.addAndGet((~((long) 1 << 32)) + 1) >> 32);
             MessageHandler t = m_threads.poll();
             t.markForParking();
             m_parkedThreads.add(t);
 
-            LOGGER.debug("Parked MessageHandler - Number of active threads is now set to " + numMessageHandlers);
+            LOGGER.debug("Parked " + t.getName() + " - Number of active threads is now set to " + numMessageHandlers);
         }
 
 

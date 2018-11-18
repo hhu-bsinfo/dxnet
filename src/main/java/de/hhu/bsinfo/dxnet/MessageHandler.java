@@ -136,7 +136,7 @@ class MessageHandler extends Thread {
 
         while (!m_shutdown) {
             if(m_markedForParking.get() == true) {
-                LockSupport.parkNanos(10000);
+                LockSupport.park();
             } else {
                 header = m_messages.popMessageHeader();
 

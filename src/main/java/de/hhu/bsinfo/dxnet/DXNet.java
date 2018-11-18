@@ -504,7 +504,7 @@ public final class DXNet {
                 throw e;
             } finally {
                  if(Thread.currentThread().getName().contains("MessageHandler")) {
-                     m_messageHandlers.devBlockedMessageHandlers();
+                     m_messageHandlers.decBlockedMessageHandlers();
                      LOGGER.debug(Thread.currentThread().getName() + " is deblocked.");
                  }
              }

@@ -155,7 +155,7 @@ public final class MessageHandlers {
         m_defaultMessageHandlerPool.incBlockedMessageHandlers();
     }
 
-    void devBlockedMessageHandlers() {
+    void decBlockedMessageHandlers() {
         m_defaultMessageHandlerPool.decBlockedMessageHandlers();
     }
 }

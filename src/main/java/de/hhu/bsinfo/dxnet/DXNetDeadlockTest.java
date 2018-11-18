@@ -318,8 +318,8 @@ public final class DXNetDeadlockTest implements MessageReceiver {
                     request.setIgnoreTimeout(true);
 
                     try {
+                        LOGGER.debug("Answer request with another request to provocate deadlocks.");
                         ms_dxnet.sendSync(request, -1, true);
-                        LOGGER.trace("Answered request with another request to provocate deadlocks.");
                     } catch (NetworkException e) {
                         e.printStackTrace();
                     }
