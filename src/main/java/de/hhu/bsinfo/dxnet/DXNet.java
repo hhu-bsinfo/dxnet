@@ -507,7 +507,7 @@ public final class DXNet {
                      m_messageHandlers.decBlockedMessageHandlers();
                      LOGGER.debug(Thread.currentThread().getName() + " is deblocked.");
                  }
-             }
+            }
         }
 
         SOP_SEND_SYNC.stopDebug();
