@@ -471,10 +471,12 @@ public abstract class AbstractPipeIn {
             return message;
         }
 
-        if (message.getPayloadLength() != p_header.getPayloadSize()) {
+        int payloadLength = message.getPayloadLength();
+
+        if (payloadLength != p_header.getPayloadSize()) {
             throw new NetworkException("Read message size in header differs from calculated size. Size in header " +
                     (p_header.getPayloadSize() + Message.HEADER_SIZE) + " bytes, expected " +
-                    (message.getPayloadLength() + Message.HEADER_SIZE) +
+                    (payloadLength + Message.HEADER_SIZE) +
                     " bytes (including header). Check getPayloadLength method of message type " +
                     message.getClass().getSimpleName());
         }
