@@ -476,7 +476,7 @@ public final class DXNet {
              try {
                 SOP_WAIT_RESPONSE.start();
 
-                if(Thread.currentThread().getName().contains("MessageHandler")) {
+                if(m_messageHandlers.isDefaultMessageHandler(Thread.currentThread().getId())) {
                     LOGGER.debug(Thread.currentThread().getName() + " is blocked.");
                     m_messageHandlers.incBlockedMessageHandlers();
                 }
@@ -503,7 +503,7 @@ public final class DXNet {
 
                 throw e;
             } finally {
-                 if(Thread.currentThread().getName().contains("MessageHandler")) {
+                 if(m_messageHandlers.isDefaultMessageHandler(Thread.currentThread().getId())) {
                      m_messageHandlers.decBlockedMessageHandlers();
                      LOGGER.debug(Thread.currentThread().getName() + " is deblocked.");
                  }

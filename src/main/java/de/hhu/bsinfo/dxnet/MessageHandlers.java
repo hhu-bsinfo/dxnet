@@ -158,4 +158,8 @@ public final class MessageHandlers {
     void decBlockedMessageHandlers() {
         m_defaultMessageHandlerPool.decBlockedMessageHandlers();
     }
+
+    boolean isDefaultMessageHandler(long p_threadId) {
+        return m_defaultMessageHandlerPool.isDefaultMessageHandler(p_threadId);
+    }
 }

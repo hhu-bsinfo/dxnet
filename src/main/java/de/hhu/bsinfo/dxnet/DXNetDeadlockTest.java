@@ -917,6 +917,7 @@ public final class DXNetDeadlockTest implements MessageReceiver {
                 for (int j = 0; j < destinationList.size(); j++) {
                     try {
                         BenchmarkRequest request = new BenchmarkRequest(destinationList.get(j), ms_messagePayloadSize);
+                        request.setIgnoreTimeout(true);
 
                         ms_dxnet.sendSync(request, -1, true);
 

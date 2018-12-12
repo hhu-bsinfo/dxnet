@@ -16,14 +16,12 @@
 
 package de.hhu.bsinfo.dxnet;
 
-import java.util.ArrayList;
+import java.lang.management.ThreadInfo;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.LockSupport;
 
-import de.hhu.bsinfo.dxnet.core.Message;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -53,9 +51,9 @@ final class DefaultMessageHandlerPool {
 
     private final MessageHeaderStore m_defaultMessageHeaders;
 
-    private final ConcurrentLinkedQueue<MessageHandler> m_threads;
+    private final ConcurrentLinkedQueue<MessageHandler> m_activeHandlers;
 
-    private final ConcurrentLinkedQueue<MessageHandler> m_parkedThreads;
+    private final ConcurrentLinkedQueue<MessageHandler> m_parkedHandlers;
 
     // Left 32 bits: Num of Message Handlers, Right 32 bits: Num blocked Message Handlers
     private static AtomicLong m_blockedAndNumMessageHandlers;
@@ -67,6 +65,10 @@ final class DefaultMessageHandlerPool {
     private static MessageHeaderPool m_messageHeaderPool;
 
     private static boolean m_overprovisioning;
+
+    private static int m_initialMessageHandlerCount;
+
+    private static long[] m_messageHandlerMap;
 
 
     /**
@@ -83,36 +85,22 @@ final class DefaultMessageHandlerPool {
         LOGGER.info("Network: DefaultMessageHandlerPool: Initialising %d threads", p_numMessageHandlerThreads);
 
         MessageHandler t;
-        m_threads = new ConcurrentLinkedQueue<>();
-        m_parkedThreads = new ConcurrentLinkedQueue<>();
+        m_activeHandlers = new ConcurrentLinkedQueue<>();
+        m_parkedHandlers = new ConcurrentLinkedQueue<>();
+
+        m_messageHandlerMap = new long[4096];
 
         m_blockedAndNumMessageHandlers = new AtomicLong(0);
-        m_blockedAndNumMessageHandlers.addAndGet(((long) p_numMessageHandlerThreads << 32));
+        m_globalMessageHandlerID = new AtomicInteger(0);
 
-        // only for debugging reasons
-
-        long blockedAndNumMessageHandlers = m_blockedAndNumMessageHandlers.get();
-
-        int blockedMessageHandlers = (int) blockedAndNumMessageHandlers;
-        int numMessageHandlers = (int) (blockedAndNumMessageHandlers >> 32);
-
-        m_globalMessageHandlerID = new AtomicInteger(p_numMessageHandlerThreads);
-
-        LOGGER.debug("Message Handlers Long " + m_blockedAndNumMessageHandlers.get());
-        LOGGER.debug("Message Handlers Num " + numMessageHandlers + ", Message Handlers blocked: " + blockedMessageHandlers);
-
-        // debugging end
+        m_initialMessageHandlerCount = p_numMessageHandlerThreads;
 
         m_messageReceivers = p_messageReceivers;
         m_messageHeaderPool = p_messageHeaderPool;
         m_overprovisioning = p_overprovisioning;
 
         for (int i = 0; i < p_numMessageHandlerThreads; i++) {
-            t = new MessageHandler(p_messageReceivers, m_defaultMessageHeaders, p_messageHeaderPool,
-                    p_overprovisioning);
-            t.setName("Network: MessageHandler " + (i + 1));
-            m_threads.add(t);
-            t.start();
+            addNewMessageHandler();
         }
     }
 
@@ -120,8 +108,9 @@ final class DefaultMessageHandlerPool {
      * Closes all default message handler
      */
     void shutdown() {
-        for (MessageHandler t : m_threads) {
+        for (MessageHandler t : m_activeHandlers) {
             t.shutdown();
+            t.unmarkForParking();
             LockSupport.unpark(t);
             t.interrupt();
 
@@ -133,8 +122,9 @@ final class DefaultMessageHandlerPool {
             }
         }
 
-        for (MessageHandler t : m_parkedThreads) {
+        for (MessageHandler t : m_parkedHandlers) {
             t.shutdown();
+            t.unmarkForParking();
             LockSupport.unpark(t);
             t.interrupt();
 
@@ -145,13 +135,15 @@ final class DefaultMessageHandlerPool {
                 LOGGER.warn("Could not wait for default message handler to finish. Interrupted");
             }
         }
+
+        Thread.currentThread().getClass();
     }
 
     /**
      * Activate parking strategy for all default message handlers.
      */
     void activateParking() {
-        for (MessageHandler t : m_threads) {
+        for (MessageHandler t : m_activeHandlers) {
             t.activateParking();
         }
     }
@@ -184,6 +176,58 @@ final class DefaultMessageHandlerPool {
         SOP_PUSH.stopDebug();
     }
 
+    MessageHandler addNewMessageHandler() {
+        MessageHandler mh = new MessageHandler(m_messageReceivers, m_defaultMessageHeaders, m_messageHeaderPool,
+                m_overprovisioning);
+        mh.setName("Network: MessageHandler " + m_globalMessageHandlerID.incrementAndGet());
+        m_activeHandlers.add(mh);
+        int numMessageHandlers = (int) (m_blockedAndNumMessageHandlers.addAndGet((long) 1 << 32) >> 32);
+
+        long threadId = mh.getId();
+        int idx = (int) (threadId / 64);
+        long pos = (int) (threadId % 64);
+
+        synchronized (this) {
+            m_messageHandlerMap[idx] |= (1 << pos);
+        }
+
+        mh.start();
+
+        LOGGER.debug("Added new " + mh.getName() + " - Number of active threads is now set to " + numMessageHandlers);
+
+        return mh;
+    }
+
+    void deleteMessageHandler() {
+    }
+
+    MessageHandler activateMessageHandler() {
+        MessageHandler mh = m_parkedHandlers.poll();
+
+        if(mh != null){
+            mh.unmarkForParking();
+            int numMessageHandlers = (int) (m_blockedAndNumMessageHandlers.addAndGet((long) 1 << 32) >> 32);
+            LockSupport.unpark(mh);
+            m_activeHandlers.add(mh);
+            LOGGER.debug("Reactivated " + mh.getName() + " - Number of active threads is now set to " + numMessageHandlers);
+        }
+
+        return mh;
+
+    }
+
+    void parkMessageHandler() {
+        int numMessageHandlers = (int) (m_blockedAndNumMessageHandlers.addAndGet((~((long) 1 << 32)) + 1) >> 32);
+        MessageHandler mh = m_activeHandlers.poll();
+        if(mh != null) {
+            mh.markForParking();
+            m_parkedHandlers.add(mh);
+
+            LOGGER.debug("Parked " + mh.getName() + " - Number of active threads is now set to " + numMessageHandlers);
+        }
+
+    }
+
     void incBlockedMessageHandlers() {
         long blockedAndNumMessageHandlers = m_blockedAndNumMessageHandlers.incrementAndGet();
 
@@ -200,27 +244,9 @@ final class DefaultMessageHandlerPool {
         if(blockedMessageHandlers == numMessageHandlers) {
             LOGGER.warn("All Message Handlers are blocked - system might be running into deadlock");
 
-            MessageHandler t = m_parkedThreads.poll();
-
-            if(t == null) {
-                t = new MessageHandler(m_messageReceivers, m_defaultMessageHeaders, m_messageHeaderPool,
-                        m_overprovisioning);
-                t.setName("Network: MessageHandler " + m_globalMessageHandlerID.incrementAndGet());
-                m_threads.add(t);
-                numMessageHandlers = (int) (m_blockedAndNumMessageHandlers.addAndGet((long) 1 << 32) >> 32);
-                t.start();
-                LOGGER.debug("Added new " + t.getName() + " - Number of active threads is now set to " + numMessageHandlers);
-            } else {
-                t.unmarkForParking();
-                numMessageHandlers = (int) (m_blockedAndNumMessageHandlers.addAndGet((long) 1 << 32) >> 32);
-                LockSupport.unpark(t);
-                m_threads.add(t);
-                LOGGER.debug("Reactivated " + t.getName() + " - Number of active threads is now set to " + numMessageHandlers);
+            if(activateMessageHandler() == null) {
+                addNewMessageHandler();
             }
-
-
-
-
         }
     }
 
@@ -233,15 +259,22 @@ final class DefaultMessageHandlerPool {
 
         LOGGER.debug("Current number of blocked MessageHandlers decreased: " + blockedMessageHandlers + " of " + numMessageHandlers);
 
-        if(numMessageHandlers >= blockedMessageHandlers + 2 && numMessageHandlers > 2) {
-            numMessageHandlers = (int) (m_blockedAndNumMessageHandlers.addAndGet((~((long) 1 << 32)) + 1) >> 32);
-            MessageHandler t = m_threads.poll();
-            t.markForParking();
-            m_parkedThreads.add(t);
+        if(numMessageHandlers >= blockedMessageHandlers + m_initialMessageHandlerCount &&  numMessageHandlers > m_initialMessageHandlerCount) {
+            parkMessageHandler();
+        }
+    }
 
-            LOGGER.debug("Parked " + t.getName() + " - Number of active threads is now set to " + numMessageHandlers);
+    boolean isDefaultMessageHandler(long p_threadId) {
+        int idx = (int) (p_threadId / 64);
+        long pos = (int) (p_threadId % 64);
+
+        long tmp = m_messageHandlerMap[idx];
+        int res = (int) ((tmp >>> pos) & 0x1);
+
+        if(res > 0) {
+            return true;
         }
 
-
+        return false;
     }
 }
