@@ -93,4 +93,9 @@ public class Response extends Message {
 
         m_correspondingRequest = p_request;
     }
+
+    @Override
+    public String toString() {
+        return super.toString() + '\n' + "Corresponding request:\n" + m_correspondingRequest;
+    }
 }
