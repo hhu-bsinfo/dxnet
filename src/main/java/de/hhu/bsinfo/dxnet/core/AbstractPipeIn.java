@@ -478,7 +478,7 @@ public abstract class AbstractPipeIn {
                     (p_header.getPayloadSize() + Message.HEADER_SIZE) + " bytes, expected " +
                     (payloadLength + Message.HEADER_SIZE) +
                     " bytes (including header). Check getPayloadLength method of message type " +
-                    message.getClass().getSimpleName());
+                    message.getClass().getSimpleName() + ": message object toString: " + message);
         }
 
         finishHeader(p_header, p_slot, p_messageHeaderPool);

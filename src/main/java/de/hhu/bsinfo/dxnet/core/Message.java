@@ -240,7 +240,7 @@ public class Message {
     }
 
     @Override
-    public final String toString() {
+    public String toString() {
         if (m_source != -1) {
             return getClass().getSimpleName() + '[' + m_messageID + ", " + NodeID.toHexString(m_source) + ", " +
                     NodeID.toHexString(m_destination) + ']';
