@@ -227,6 +227,16 @@ class MessageExporterOverflow extends AbstractMessageExporter {
     }
 
     @Override
+    public int writeFloats(final float[] p_array) {
+        return writeFloats(p_array, 0, p_array.length);
+    }
+
+    @Override
+    public int writeDoubles(final double[] p_array) {
+        return writeDoubles(p_array, 0, p_array.length);
+    }
+
+    @Override
     public int writeBytes(final byte[] p_array, final int p_offset, final int p_length) {
         if (m_currentPosition + p_length <= m_bufferSize) {
             int ret = UnsafeMemory.writeBytes(m_bufferAddress + m_currentPosition, p_array, p_offset, p_length);
@@ -279,6 +289,24 @@ class MessageExporterOverflow extends AbstractMessageExporter {
     }
 
     @Override
+    public int writeFloats(final float[] p_array, final int p_offset, final int p_length) {
+        for (int i = 0; i < p_length; i++) {
+            writeFloat(p_array[p_offset + i]);
+        }
+
+        return p_length;
+    }
+
+    @Override
+    public int writeDoubles(final double[] p_array, final int p_offset, final int p_length) {
+        for (int i = 0; i < p_length; i++) {
+            writeDouble(p_array[p_offset + i]);
+        }
+
+        return p_length;
+    }
+
+    @Override
     public void writeByteArray(final byte[] p_array) {
         writeCompactNumber(p_array.length);
         writeBytes(p_array);
@@ -306,5 +334,17 @@ class MessageExporterOverflow extends AbstractMessageExporter {
     public void writeLongArray(final long[] p_array) {
         writeCompactNumber(p_array.length);
         writeLongs(p_array);
+    }
+
+    @Override
+    public void writeFloatArray(final float[] p_array) {
+        writeCompactNumber(p_array.length);
+        writeFloats(p_array);
+    }
+
+    @Override
+    public void writeDoubleArray(final double[] p_array) {
+        writeCompactNumber(p_array.length);
+        writeDoubles(p_array);
     }
 }

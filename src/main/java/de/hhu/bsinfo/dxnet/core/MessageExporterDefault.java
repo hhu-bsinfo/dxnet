@@ -145,7 +145,7 @@ class MessageExporterDefault extends AbstractMessageExporter {
     }
 
     @Override
-    public int writeChars(char[] p_array) {
+    public int writeChars(final char[] p_array) {
         return writeChars(p_array, 0, p_array.length);
     }
 
@@ -157,6 +157,16 @@ class MessageExporterDefault extends AbstractMessageExporter {
     @Override
     public int writeLongs(final long[] p_array) {
         return writeLongs(p_array, 0, p_array.length);
+    }
+
+    @Override
+    public int writeFloats(final float[] p_array) {
+        return writeFloats(p_array, 0, p_array.length);
+    }
+
+    @Override
+    public int writeDoubles(final double[] p_array) {
+        return writeDoubles(p_array, 0, p_array.length);
     }
 
     @Override
@@ -200,6 +210,22 @@ class MessageExporterDefault extends AbstractMessageExporter {
     }
 
     @Override
+    public int writeFloats(final float[] p_array, final int p_offset, final int p_length) {
+        int ret = UnsafeMemory.writeFloats(m_bufferAddress + m_currentPosition, p_array, p_offset, p_length);
+        m_currentPosition += Float.BYTES * ret;
+
+        return ret;
+    }
+
+    @Override
+    public int writeDoubles(final double[] p_array, final int p_offset, final int p_length) {
+        int ret = UnsafeMemory.writeDoubles(m_bufferAddress + m_currentPosition, p_array, p_offset, p_length);
+        m_currentPosition += Double.BYTES * ret;
+
+        return ret;
+    }
+
+    @Override
     public void writeByteArray(final byte[] p_array) {
         writeCompactNumber(p_array.length);
         writeBytes(p_array);
@@ -212,7 +238,7 @@ class MessageExporterDefault extends AbstractMessageExporter {
     }
 
     @Override
-    public void writeCharArray(char[] p_array) {
+    public void writeCharArray(final char[] p_array) {
         writeCompactNumber(p_array.length);
         writeChars(p_array);
     }
@@ -227,6 +253,18 @@ class MessageExporterDefault extends AbstractMessageExporter {
     public void writeLongArray(final long[] p_array) {
         writeCompactNumber(p_array.length);
         writeLongs(p_array);
+    }
+
+    @Override
+    public void writeFloatArray(final float[] p_array) {
+        writeCompactNumber(p_array.length);
+        writeFloats(p_array);
+    }
+
+    @Override
+    public void writeDoubleArray(final double[] p_array) {
+        writeCompactNumber(p_array.length);
+        writeDoubles(p_array);
     }
 
 }

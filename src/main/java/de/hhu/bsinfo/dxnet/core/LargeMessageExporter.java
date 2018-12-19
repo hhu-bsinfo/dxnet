@@ -516,6 +516,16 @@ class LargeMessageExporter extends AbstractMessageExporter {
     }
 
     @Override
+    public int writeFloats(final float[] p_array) {
+        return writeFloats(p_array, 0, p_array.length);
+    }
+
+    @Override
+    public int writeDoubles(final double[] p_array) {
+        return writeDoubles(p_array, 0, p_array.length);
+    }
+
+    @Override
     public int writeBytes(final byte[] p_array, final int p_offset, final int p_length) {
         if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
             // Byte array was read before
@@ -650,6 +660,36 @@ class LargeMessageExporter extends AbstractMessageExporter {
     }
 
     @Override
+    public int writeFloats(final float[] p_array, final int p_offset, final int p_length) {
+        int floatsToSkip = 0;
+        if (m_skippedBytes < m_skipBytes) {
+            floatsToSkip = (m_skipBytes - m_skippedBytes) / Float.BYTES;
+            m_skippedBytes = m_skipBytes - (m_skipBytes - m_skippedBytes) % Float.BYTES;
+        }
+
+        for (int i = floatsToSkip; i < p_length; i++) {
+            writeFloat(p_array[p_offset + i]);
+        }
+
+        return p_length;
+    }
+
+    @Override
+    public int writeDoubles(final double[] p_array, final int p_offset, final int p_length) {
+        int doublesToSkip = 0;
+        if (m_skippedBytes < m_skipBytes) {
+            doublesToSkip = (m_skipBytes - m_skippedBytes) / Double.BYTES;
+            m_skippedBytes = m_skipBytes - (m_skipBytes - m_skippedBytes) % Double.BYTES;
+        }
+
+        for (int i = doublesToSkip; i < p_length; i++) {
+            writeDouble(p_array[p_offset + i]);
+        }
+
+        return p_length;
+    }
+
+    @Override
     public void writeByteArray(final byte[] p_array) {
         if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
             // Array length and array were written before
@@ -731,6 +771,42 @@ class LargeMessageExporter extends AbstractMessageExporter {
             writeCompactNumber(p_array.length);
             try {
                 writeLongs(p_array);
+            } catch (final ArrayIndexOutOfBoundsException e) {
+                // Not enough space in buffer currently -> abort
+                m_unfinishedOperation.setIndex(startPosition);
+                throw e;
+            }
+        }
+    }
+
+    @Override
+    public void writeFloatArray(final float[] p_array) {
+        if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
+            // Array length and array were written before
+            m_skippedBytes += ObjectSizeUtil.sizeofCompactedNumber(p_array.length) + p_array.length * Float.BYTES;
+        } else {
+            int startPosition = getNumberOfWrittenBytes();
+            writeCompactNumber(p_array.length);
+            try {
+                writeFloats(p_array);
+            } catch (final ArrayIndexOutOfBoundsException e) {
+                // Not enough space in buffer currently -> abort
+                m_unfinishedOperation.setIndex(startPosition);
+                throw e;
+            }
+        }
+    }
+
+    @Override
+    public void writeDoubleArray(final double[] p_array) {
+        if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
+            // Array length and array were written before
+            m_skippedBytes += ObjectSizeUtil.sizeofCompactedNumber(p_array.length) + p_array.length * Double.BYTES;
+        } else {
+            int startPosition = getNumberOfWrittenBytes();
+            writeCompactNumber(p_array.length);
+            try {
+                writeDoubles(p_array);
             } catch (final ArrayIndexOutOfBoundsException e) {
                 // Not enough space in buffer currently -> abort
                 m_unfinishedOperation.setIndex(startPosition);
