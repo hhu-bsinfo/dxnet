@@ -311,6 +311,30 @@ class MessageImporterOverflow extends AbstractMessageImporter {
     }
 
     @Override
+    public int readFloats(final float[] p_array) {
+        if (m_currentPosition == m_bufferSize) {
+            m_unfinishedOperation.setIndex(m_currentPosition - m_startPosition);
+            throw m_exception;
+        }
+
+        // Exception might be thrown in readLongs
+        // Do not store unfinished operation as partly de-serialized array will be passed anyway
+        return readFloats(p_array, 0, p_array.length);
+    }
+
+    @Override
+    public int readDoubles(final double[] p_array) {
+        if (m_currentPosition == m_bufferSize) {
+            m_unfinishedOperation.setIndex(m_currentPosition - m_startPosition);
+            throw m_exception;
+        }
+
+        // Exception might be thrown in readLongs
+        // Do not store unfinished operation as partly de-serialized array will be passed anyway
+        return readDoubles(p_array, 0, p_array.length);
+    }
+
+    @Override
     public int readBytes(final byte[] p_array, final int p_offset, final int p_length) {
         if (m_currentPosition == m_bufferSize) {
             m_unfinishedOperation.setIndex(m_currentPosition - m_startPosition);
@@ -423,6 +447,38 @@ class MessageImporterOverflow extends AbstractMessageImporter {
     }
 
     @Override
+    public int readFloats(final float[] p_array, final int p_offset, final int p_length) {
+        if (m_currentPosition == m_bufferSize) {
+            m_unfinishedOperation.setIndex(m_currentPosition - m_startPosition);
+            throw m_exception;
+        }
+
+        for (int i = 0; i < p_length; i++) {
+            // Exception might be thrown in readFloat
+            // Do not store unfinished operation as partly de-serialized array will be passed anyway
+            p_array[p_offset + i] = readFloat(0);
+        }
+
+        return p_length;
+    }
+
+    @Override
+    public int readDoubles(final double[] p_array, final int p_offset, final int p_length) {
+        if (m_currentPosition == m_bufferSize) {
+            m_unfinishedOperation.setIndex(m_currentPosition - m_startPosition);
+            throw m_exception;
+        }
+
+        for (int i = 0; i < p_length; i++) {
+            // Exception might be thrown in readDouble
+            // Do not store unfinished operation as partly de-serialized array will be passed anyway
+            p_array[p_offset + i] = readDouble(0);
+        }
+
+        return p_length;
+    }
+
+    @Override
     public byte[] readByteArray(final byte[] p_array) {
         if (m_currentPosition == m_bufferSize) {
             m_unfinishedOperation.setIndex(m_currentPosition - m_startPosition);
@@ -516,6 +572,48 @@ class MessageImporterOverflow extends AbstractMessageImporter {
         long[] arr = new long[readCompactNumber(0)];
         try {
             readLongs(arr);
+        } catch (final ArrayIndexOutOfBoundsException e) {
+            // Store partly de-serialized array to be finished later
+            m_unfinishedOperation.setIndex(startPosition - m_startPosition);
+            m_unfinishedOperation.setObject(arr);
+            throw e;
+        }
+
+        return arr;
+    }
+
+    @Override
+    public float[] readFloatArray(final float[] p_array) {
+        if (m_currentPosition == m_bufferSize) {
+            m_unfinishedOperation.setIndex(m_currentPosition - m_startPosition);
+            throw m_exception;
+        }
+
+        int startPosition = m_currentPosition;
+        float[] arr = new float[readCompactNumber(0)];
+        try {
+            readFloats(arr);
+        } catch (final ArrayIndexOutOfBoundsException e) {
+            // Store partly de-serialized array to be finished later
+            m_unfinishedOperation.setIndex(startPosition - m_startPosition);
+            m_unfinishedOperation.setObject(arr);
+            throw e;
+        }
+
+        return arr;
+    }
+
+    @Override
+    public double[] readDoubleArray(final double[] p_array) {
+        if (m_currentPosition == m_bufferSize) {
+            m_unfinishedOperation.setIndex(m_currentPosition - m_startPosition);
+            throw m_exception;
+        }
+
+        int startPosition = m_currentPosition;
+        double[] arr = new double[readCompactNumber(0)];
+        try {
+            readDoubles(arr);
         } catch (final ArrayIndexOutOfBoundsException e) {
             // Store partly de-serialized array to be finished later
             m_unfinishedOperation.setIndex(startPosition - m_startPosition);

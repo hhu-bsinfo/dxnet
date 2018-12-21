@@ -88,7 +88,7 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
     }
 
     @Override
-    public void setNumberOfReadBytes(int p_numberOfReadBytes) {
+    public void setNumberOfReadBytes(final int p_numberOfReadBytes) {
         m_skipBytes = p_numberOfReadBytes;
         m_skippedBytes = 0;
     }
@@ -367,7 +367,7 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
     }
 
     @Override
-    public int readCompactNumber(int p_int) {
+    public int readCompactNumber(final int p_int) {
         if (m_currentPosition == m_bufferSize) {
             // Overflow
             m_unfinishedOperation.setIndex(m_skippedBytes + m_currentPosition);
@@ -437,12 +437,12 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
     }
 
     @Override
-    public int readBytes(byte[] p_array) {
+    public int readBytes(final byte[] p_array) {
         return readBytes(p_array, 0, p_array.length);
     }
 
     @Override
-    public int readShorts(short[] p_array) {
+    public int readShorts(final short[] p_array) {
         return readShorts(p_array, 0, p_array.length);
     }
 
@@ -452,13 +452,23 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
     }
 
     @Override
-    public int readInts(int[] p_array) {
+    public int readInts(final int[] p_array) {
         return readInts(p_array, 0, p_array.length);
     }
 
     @Override
-    public int readLongs(long[] p_array) {
+    public int readLongs(final long[] p_array) {
         return readLongs(p_array, 0, p_array.length);
+    }
+
+    @Override
+    public int readFloats(final float[] p_array) {
+        return readFloats(p_array, 0, p_array.length);
+    }
+
+    @Override
+    public int readDoubles(final double[] p_array) {
+        return readDoubles(p_array, 0, p_array.length);
     }
 
     @Override
@@ -563,7 +573,7 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
     }
 
     @Override
-    public int readShorts(short[] p_array, int p_offset, int p_length) {
+    public int readShorts(final short[] p_array, final int p_offset, final int p_length) {
         if (m_currentPosition == m_bufferSize) {
             // Overflow
             m_unfinishedOperation.setIndex(m_skippedBytes + m_currentPosition);
@@ -605,7 +615,7 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
     }
 
     @Override
-    public int readInts(int[] p_array, int p_offset, int p_length) {
+    public int readInts(final int[] p_array, final int p_offset, final int p_length) {
         if (m_currentPosition == m_bufferSize) {
             // Overflow
             m_unfinishedOperation.setIndex(m_skippedBytes + m_currentPosition);
@@ -626,7 +636,7 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
     }
 
     @Override
-    public int readLongs(long[] p_array, int p_offset, int p_length) {
+    public int readLongs(final long[] p_array, final int p_offset, final int p_length) {
         if (m_currentPosition == m_bufferSize) {
             // Overflow
             m_unfinishedOperation.setIndex(m_skippedBytes + m_currentPosition);
@@ -641,6 +651,48 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
 
         for (int i = longsToSkip; i < p_length; i++) {
             p_array[p_offset + i] = readLong(p_array[p_offset + i]);
+        }
+
+        return p_length;
+    }
+
+    @Override
+    public int readFloats(final float[] p_array, final int p_offset, final int p_length) {
+        if (m_currentPosition == m_bufferSize) {
+            // Overflow
+            m_unfinishedOperation.setIndex(m_skippedBytes + m_currentPosition);
+            throw m_exception;
+        }
+
+        int floatsToSkip = 0;
+        if (m_skippedBytes < m_skipBytes) {
+            floatsToSkip = (m_skipBytes - m_skippedBytes) / Float.BYTES;
+            m_skippedBytes = m_skipBytes - (m_skipBytes - m_skippedBytes) % Float.BYTES;
+        }
+
+        for (int i = floatsToSkip; i < p_length; i++) {
+            p_array[p_offset + i] = readFloat(p_array[p_offset + i]);
+        }
+
+        return p_length;
+    }
+
+    @Override
+    public int readDoubles(final double[] p_array, final int p_offset, final int p_length) {
+        if (m_currentPosition == m_bufferSize) {
+            // Overflow
+            m_unfinishedOperation.setIndex(m_skippedBytes + m_currentPosition);
+            throw m_exception;
+        }
+
+        int doublesToSkip = 0;
+        if (m_skippedBytes < m_skipBytes) {
+            doublesToSkip = (m_skipBytes - m_skippedBytes) / Double.BYTES;
+            m_skippedBytes = m_skipBytes - (m_skipBytes - m_skippedBytes) % Double.BYTES;
+        }
+
+        for (int i = doublesToSkip; i < p_length; i++) {
+            p_array[p_offset + i] = readDouble(p_array[p_offset + i]);
         }
 
         return p_length;
@@ -747,7 +799,7 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
     }
 
     @Override
-    public char[] readCharArray(char[] p_array) {
+    public char[] readCharArray(final char[] p_array) {
         if (m_currentPosition == m_bufferSize) {
             // Overflow
             m_unfinishedOperation.setIndex(m_skippedBytes + m_currentPosition);
@@ -886,6 +938,106 @@ class MessageImporterUnderOverflow extends AbstractMessageImporter {
             long[] arr = new long[readCompactNumber(0)];
             try {
                 readLongs(arr);
+            } catch (final ArrayIndexOutOfBoundsException e) {
+                // Store partly de-serialized array to be finished later
+                m_unfinishedOperation.setIndex(startPosition);
+                m_unfinishedOperation.setObject(arr);
+                throw e;
+            }
+            return arr;
+        }
+    }
+
+    @Override
+    public float[] readFloatArray(final float[] p_array) {
+        if (m_currentPosition == m_bufferSize) {
+            // Overflow
+            m_unfinishedOperation.setIndex(m_skippedBytes + m_currentPosition);
+            throw m_exception;
+        }
+
+        int startPosition = m_skippedBytes + m_currentPosition;
+        if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
+            // Array length and array were read before, return passed array
+            m_skippedBytes += ObjectSizeUtil.sizeofCompactedNumber(p_array.length) + p_array.length * Float.BYTES;
+            return p_array;
+        } else if (m_skippedBytes < m_skipBytes) {
+            // Float array was partly de-serialized -> continue
+            float[] arr;
+            if (m_unfinishedOperation.getObject() == null) {
+                // Array length has not been read completely
+                arr = new float[readCompactNumber(0)];
+            } else {
+                // Array was created before but is incomplete
+                arr = (float[]) m_unfinishedOperation.getObject();
+                m_skippedBytes += ObjectSizeUtil.sizeofCompactedNumber(arr.length);
+            }
+            try {
+                readFloats(arr);
+            } catch (final ArrayIndexOutOfBoundsException e) {
+                // Store partly de-serialized array to be finished later
+                m_unfinishedOperation.setIndex(startPosition);
+                m_unfinishedOperation.setObject(arr);
+                throw e;
+            }
+            m_unfinishedOperation.setObject(null);
+
+            return arr;
+        } else {
+            // Read floats normally as all previously read bytes have been skipped already
+            float[] arr = new float[readCompactNumber(0)];
+            try {
+                readFloats(arr);
+            } catch (final ArrayIndexOutOfBoundsException e) {
+                // Store partly de-serialized array to be finished later
+                m_unfinishedOperation.setIndex(startPosition);
+                m_unfinishedOperation.setObject(arr);
+                throw e;
+            }
+            return arr;
+        }
+    }
+
+    @Override
+    public double[] readDoubleArray(final double[] p_array) {
+        if (m_currentPosition == m_bufferSize) {
+            // Overflow
+            m_unfinishedOperation.setIndex(m_skippedBytes + m_currentPosition);
+            throw m_exception;
+        }
+
+        int startPosition = m_skippedBytes + m_currentPosition;
+        if (m_skippedBytes < m_unfinishedOperation.getIndex()) {
+            // Array length and array were read before, return passed array
+            m_skippedBytes += ObjectSizeUtil.sizeofCompactedNumber(p_array.length) + p_array.length * Double.BYTES;
+            return p_array;
+        } else if (m_skippedBytes < m_skipBytes) {
+            // Double array was partly de-serialized -> continue
+            double[] arr;
+            if (m_unfinishedOperation.getObject() == null) {
+                // Array length has not been read completely
+                arr = new double[readCompactNumber(0)];
+            } else {
+                // Array was created before but is incomplete
+                arr = (double[]) m_unfinishedOperation.getObject();
+                m_skippedBytes += ObjectSizeUtil.sizeofCompactedNumber(arr.length);
+            }
+            try {
+                readDoubles(arr);
+            } catch (final ArrayIndexOutOfBoundsException e) {
+                // Store partly de-serialized array to be finished later
+                m_unfinishedOperation.setIndex(startPosition);
+                m_unfinishedOperation.setObject(arr);
+                throw e;
+            }
+            m_unfinishedOperation.setObject(null);
+
+            return arr;
+        } else {
+            // Read doubles normally as all previously read bytes have been skipped already
+            double[] arr = new double[readCompactNumber(0)];
+            try {
+                readDoubles(arr);
             } catch (final ArrayIndexOutOfBoundsException e) {
                 // Store partly de-serialized array to be finished later
                 m_unfinishedOperation.setIndex(startPosition);
