@@ -199,6 +199,16 @@ public class MessageImporterDefault extends AbstractMessageImporter {
     }
 
     @Override
+    public int readFloats(final float[] p_array) {
+        return readFloats(p_array, 0, p_array.length);
+    }
+
+    @Override
+    public int readDoubles(final double[] p_array) {
+        return readDoubles(p_array, 0, p_array.length);
+    }
+
+    @Override
     public int readBytes(final byte[] p_array, final int p_offset, final int p_length) {
         int ret = UnsafeMemory.readBytes(m_bufferAddress + m_currentPosition, p_array, p_offset, p_length);
         m_currentPosition += ret;
@@ -247,6 +257,22 @@ public class MessageImporterDefault extends AbstractMessageImporter {
     }
 
     @Override
+    public int readFloats(final float[] p_array, final int p_offset, final int p_length) {
+        int ret = UnsafeMemory.readFloats(m_bufferAddress + m_currentPosition, p_array, p_offset, p_length);
+        m_currentPosition += ret * Float.BYTES;
+
+        return ret;
+    }
+
+    @Override
+    public int readDoubles(final double[] p_array, final int p_offset, final int p_length) {
+        int ret = UnsafeMemory.readDoubles(m_bufferAddress + m_currentPosition, p_array, p_offset, p_length);
+        m_currentPosition += ret * Double.BYTES;
+
+        return ret;
+    }
+
+    @Override
     public byte[] readByteArray(final byte[] p_array) {
         byte[] arr = new byte[readCompactNumber(0)];
         readBytes(arr);
@@ -278,6 +304,20 @@ public class MessageImporterDefault extends AbstractMessageImporter {
     public long[] readLongArray(final long[] p_array) {
         long[] arr = new long[readCompactNumber(0)];
         readLongs(arr);
+        return arr;
+    }
+
+    @Override
+    public float[] readFloatArray(final float[] p_array) {
+        float[] arr = new float[readCompactNumber(0)];
+        readFloats(arr);
+        return arr;
+    }
+
+    @Override
+    public double[] readDoubleArray(final double[] p_array) {
+        double[] arr = new double[readCompactNumber(0)];
+        readDoubles(arr);
         return arr;
     }
 }
