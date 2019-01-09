@@ -42,7 +42,7 @@ import de.hhu.bsinfo.dxutils.stats.Time;
  *
  * @author Kevin Beineke, kevin.beineke@hhu.de, 18.03.2017
  */
-class NIOPipeIn extends AbstractPipeIn {
+public class NIOPipeIn extends AbstractPipeIn {
     private static final Logger LOGGER = LogManager.getFormatterLogger(NIOPipeIn.class.getSimpleName());
 
     private static final Time SOP_READ = new Time(NIOPipeIn.class, "Read");
