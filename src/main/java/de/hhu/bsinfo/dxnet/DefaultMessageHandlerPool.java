@@ -84,7 +84,6 @@ final class DefaultMessageHandlerPool {
 
         LOGGER.info("Network: DefaultMessageHandlerPool: Initialising %d threads", p_numMessageHandlerThreads);
 
-        MessageHandler t;
         m_activeHandlers = new ConcurrentLinkedQueue<>();
         m_parkedHandlers = new ConcurrentLinkedQueue<>();
 
@@ -146,6 +145,10 @@ final class DefaultMessageHandlerPool {
         for (MessageHandler t : m_activeHandlers) {
             t.activateParking();
         }
+
+        for (MessageHandler t : m_parkedHandlers) {
+            t.activateParking();
+        }
     }
 
     /**
@@ -197,9 +200,7 @@ final class DefaultMessageHandlerPool {
 
         return mh;
     }
-
-    void deleteMessageHandler() {
-    }
+    
 
     MessageHandler activateMessageHandler() {
         MessageHandler mh = m_parkedHandlers.poll();
