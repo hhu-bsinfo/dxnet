@@ -59,6 +59,8 @@ class MessageHandler extends Thread {
     private byte m_specialReceiveSubtype = -1;
 
     private AtomicBoolean m_markedForParking;
+    private Boolean m_parked;
+    private Long m_parkNanos = 1000000l;
 
     private volatile boolean m_overprovisioning;
     private volatile boolean m_shutdown;
@@ -67,12 +69,12 @@ class MessageHandler extends Thread {
 
     /**
      * Creates an instance of MessageHandler
-     *
-     * @param p_queue
+     *  @param p_queue
      *         the message queue
+     *
      */
     MessageHandler(final MessageReceiverStore p_messageReceivers, final MessageHeaderStore p_queue,
-            final MessageHeaderPool p_messageHeaderPool, final boolean p_overprovisioning) {
+                   final MessageHeaderPool p_messageHeaderPool, final boolean p_overprovisioning) {
         m_messageReceivers = p_messageReceivers;
         m_messages = p_queue;
         m_importers = new MessageImporterCollection();
@@ -81,6 +83,7 @@ class MessageHandler extends Thread {
         m_overprovisioning = p_overprovisioning;
 
         m_markedForParking = new AtomicBoolean(false);
+        m_parked = false;
     }
 
     /**
@@ -135,9 +138,13 @@ class MessageHandler extends Thread {
         boolean pollWait = true;
 
         while (!m_shutdown) {
-            if(m_markedForParking.get() == true) {
-                LockSupport.park();
+            if (!m_parked && m_markedForParking.get()) {
+                m_parked = true;
+                LockSupport.parkNanos(m_parkNanos);
+            } else if (m_parked  && m_markedForParking.get()) {
+                LockSupport.parkNanos(m_parkNanos);
             } else {
+                m_parked = false;
                 header = m_messages.popMessageHeader();
 
                 if (header == null) {

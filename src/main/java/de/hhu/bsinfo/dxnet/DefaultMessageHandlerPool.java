@@ -16,7 +16,6 @@
 
 package de.hhu.bsinfo.dxnet;
 
-import java.lang.management.ThreadInfo;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -134,8 +133,6 @@ final class DefaultMessageHandlerPool {
                 LOGGER.warn("Could not wait for default message handler to finish. Interrupted");
             }
         }
-
-        Thread.currentThread().getClass();
     }
 
     /**
@@ -183,8 +180,6 @@ final class DefaultMessageHandlerPool {
         MessageHandler mh = new MessageHandler(m_messageReceivers, m_defaultMessageHeaders, m_messageHeaderPool,
                 m_overprovisioning);
         mh.setName("Network: MessageHandler " + m_globalMessageHandlerID.incrementAndGet());
-        m_activeHandlers.add(mh);
-        int numMessageHandlers = (int) (m_blockedAndNumMessageHandlers.addAndGet((long) 1 << 32) >> 32);
 
         long threadId = mh.getId();
         int idx = (int) (threadId / 64);
@@ -194,22 +189,26 @@ final class DefaultMessageHandlerPool {
             m_messageHandlerMap[idx] |= (1 << pos);
         }
 
+        m_activeHandlers.add(mh);
+
+        int numMessageHandlers = (int) (m_blockedAndNumMessageHandlers.addAndGet((long) 1 << 32) >> 32);
+
         mh.start();
 
         LOGGER.debug("Added new " + mh.getName() + " - Number of active threads is now set to " + numMessageHandlers);
 
         return mh;
     }
-    
+
 
     MessageHandler activateMessageHandler() {
         MessageHandler mh = m_parkedHandlers.poll();
 
         if(mh != null){
             mh.unmarkForParking();
-            int numMessageHandlers = (int) (m_blockedAndNumMessageHandlers.addAndGet((long) 1 << 32) >> 32);
             LockSupport.unpark(mh);
             m_activeHandlers.add(mh);
+            int numMessageHandlers = (int) (m_blockedAndNumMessageHandlers.addAndGet((long) 1 << 32) >> 32);
             LOGGER.debug("Reactivated " + mh.getName() + " - Number of active threads is now set to " + numMessageHandlers);
         }
 
@@ -217,14 +216,13 @@ final class DefaultMessageHandlerPool {
 
     }
 
-    void parkMessageHandler() {
-        int numMessageHandlers = (int) (m_blockedAndNumMessageHandlers.addAndGet((~((long) 1 << 32)) + 1) >> 32);
+    void prepareParkMessageHandler() {
         MessageHandler mh = m_activeHandlers.poll();
+        int numMessageHandlers = (int) (m_blockedAndNumMessageHandlers.addAndGet((~((long) 1 << 32)) + 1) >> 32);
         if(mh != null) {
             mh.markForParking();
             m_parkedHandlers.add(mh);
-
-            LOGGER.debug("Parked " + mh.getName() + " - Number of active threads is now set to " + numMessageHandlers);
+            LOGGER.debug("Marked " + mh.getName() + " for parking - Number of active threads is now set to " + numMessageHandlers);
         }
 
     }
@@ -235,15 +233,10 @@ final class DefaultMessageHandlerPool {
         int blockedMessageHandlers = (int) blockedAndNumMessageHandlers;
         int numMessageHandlers = (int) (blockedAndNumMessageHandlers >> 32);
 
-        if(blockedMessageHandlers > numMessageHandlers) {
-            LOGGER.error("There are more blocked handlers than handlers available!!!!");
-        }
-
-
         LOGGER.debug("Current number of blocked MessageHandlers increased: " + blockedMessageHandlers + " of " + numMessageHandlers);
 
-        if(blockedMessageHandlers == numMessageHandlers) {
-            LOGGER.warn("All Message Handlers are blocked - system might be running into deadlock");
+        if(blockedMessageHandlers >= numMessageHandlers) {
+            LOGGER.warn("All Message Handlers are blocked - add or reactivate MessageHandler");
 
             if(activateMessageHandler() == null) {
                 addNewMessageHandler();
@@ -260,8 +253,8 @@ final class DefaultMessageHandlerPool {
 
         LOGGER.debug("Current number of blocked MessageHandlers decreased: " + blockedMessageHandlers + " of " + numMessageHandlers);
 
-        if(numMessageHandlers >= blockedMessageHandlers + m_initialMessageHandlerCount &&  numMessageHandlers > m_initialMessageHandlerCount) {
-            parkMessageHandler();
+        if(numMessageHandlers > blockedMessageHandlers + 2 &&  numMessageHandlers > m_initialMessageHandlerCount) {
+            prepareParkMessageHandler();
         }
     }
 
