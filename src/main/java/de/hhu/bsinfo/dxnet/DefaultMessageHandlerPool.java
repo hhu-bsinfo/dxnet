@@ -176,7 +176,7 @@ final class DefaultMessageHandlerPool {
         SOP_PUSH.stopDebug();
     }
 
-    MessageHandler addNewMessageHandler() {
+    private void addNewMessageHandler() {
         MessageHandler mh = new MessageHandler(m_messageReceivers, m_defaultMessageHeaders, m_messageHeaderPool,
                 m_overprovisioning);
         mh.setName("Network: MessageHandler " + m_globalMessageHandlerID.incrementAndGet());
@@ -186,7 +186,7 @@ final class DefaultMessageHandlerPool {
         long pos = (int) (threadId % 64);
 
         synchronized (this) {
-            m_messageHandlerMap[idx] |= (1 << pos);
+            m_messageHandlerMap[idx] |= (1L << pos);
         }
 
         m_activeHandlers.add(mh);
@@ -196,12 +196,10 @@ final class DefaultMessageHandlerPool {
         mh.start();
 
         LOGGER.debug("Added new " + mh.getName() + " - Number of active threads is now set to " + numMessageHandlers);
-
-        return mh;
     }
 
 
-    MessageHandler activateMessageHandler() {
+    private MessageHandler activateMessageHandler() {
         MessageHandler mh = m_parkedHandlers.poll();
 
         if(mh != null){
@@ -216,7 +214,7 @@ final class DefaultMessageHandlerPool {
 
     }
 
-    void prepareParkMessageHandler() {
+    private void prepareParkMessageHandler() {
         MessageHandler mh = m_activeHandlers.poll();
         int numMessageHandlers = (int) (m_blockedAndNumMessageHandlers.addAndGet((~((long) 1 << 32)) + 1) >> 32);
         if(mh != null) {
@@ -235,6 +233,8 @@ final class DefaultMessageHandlerPool {
 
         LOGGER.debug("Current number of blocked MessageHandlers increased: " + blockedMessageHandlers + " of " + numMessageHandlers);
 
+        // note: There can be more blocked handlers than activated handlers because a handler can be marked for parking
+        // but is finishing his current operation (which can be sending a request, of course)
         if(blockedMessageHandlers >= numMessageHandlers) {
             LOGGER.warn("All Message Handlers are blocked - add or reactivate MessageHandler");
 
@@ -263,12 +263,8 @@ final class DefaultMessageHandlerPool {
         long pos = (int) (p_threadId % 64);
 
         long tmp = m_messageHandlerMap[idx];
-        int res = (int) ((tmp >>> pos) & 0x1);
+        int res = (int) ((tmp >>> pos) & 1L);
 
-        if(res > 0) {
-            return true;
-        }
-
-        return false;
+        return (res > 0);
     }
 }
