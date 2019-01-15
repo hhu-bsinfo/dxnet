@@ -313,12 +313,15 @@ public final class DXNetDeadlockTest implements MessageReceiver {
             }
 
             if (p_message.getSubtype() == Messages.SUBTYPE_BENCHMARK_REQUEST) {
+                // answer with another request with probability to provocate deadlocks
+                // if all MessageHandlers are blocked by requests
                 if(ThreadLocalRandom.current().nextDouble() < ms_requestProbability) {
                     BenchmarkRequest request = new BenchmarkRequest(p_message.getSource(), ms_messagePayloadSize);
                     request.setIgnoreTimeout(true);
 
                     try {
-                        LOGGER.debug("Answer request with another request to provocate deadlocks.");
+                        LOGGER.info("Answer request with another request to provocate deadlocks.");
+
                         ms_dxnet.sendSync(request, -1, true);
                     } catch (NetworkException e) {
                         e.printStackTrace();

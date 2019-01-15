@@ -35,6 +35,7 @@ import de.hhu.bsinfo.dxutils.stats.TimePool;
  * Executes incoming default messages
  *
  * @author Kevin Beineke, kevin.beineke@hhu.de, 19.07.2016
+ * @author Christian Gesse, christian.gesse@hhu.de, 15.01.2019
  */
 class MessageHandler extends Thread {
     private static final Logger LOGGER = LogManager.getFormatterLogger(MessageHandler.class.getSimpleName());
@@ -58,8 +59,11 @@ class MessageHandler extends Thread {
     private byte m_specialReceiveType = -1;
     private byte m_specialReceiveSubtype = -1;
 
+    // is thread marked for parking by dynamic scaling?
     private AtomicBoolean m_markedForParking;
+    // is thread parked by dynamic scaling?
     private Boolean m_parked;
+    // amount of nanoseconds the thread is parked when deactivated
     private Long m_parkNanos = 1000000l;
 
     private volatile boolean m_overprovisioning;
@@ -100,10 +104,18 @@ class MessageHandler extends Thread {
         m_overprovisioning = true;
     }
 
+    /**
+     * Marks this thread for parking by dynamic scaling.
+     * When it has finished ists current task, it will use LockSupport
+     * to park itself.
+     */
     void markForParking() {
         m_markedForParking.set(true);
     }
 
+    /**
+     * Unmark this thread for parking by dynamic scaling.
+     */
     void unmarkForParking() {
         m_markedForParking.set(false);
     }
@@ -137,14 +149,22 @@ class MessageHandler extends Thread {
         byte subtype;
         boolean pollWait = true;
 
+        // run main-loop until shutdown
         while (!m_shutdown) {
+            // check if thread is marked for parking but not parked yet
             if (!m_parked && m_markedForParking.get()) {
+                // set state
                 m_parked = true;
+                // park for some time
                 LockSupport.parkNanos(m_parkNanos);
+
             } else if (m_parked  && m_markedForParking.get()) {
+                // if thread is parked and still marked for parking, continue parking
                 LockSupport.parkNanos(m_parkNanos);
             } else {
+                // if we enter here, the thread is not parked anymore
                 m_parked = false;
+
                 header = m_messages.popMessageHeader();
 
                 if (header == null) {

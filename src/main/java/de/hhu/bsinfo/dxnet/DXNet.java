@@ -476,8 +476,9 @@ public final class DXNet {
              try {
                 SOP_WAIT_RESPONSE.start();
 
+                // If a MessageHandler sends the request, we have to check if all MessageHandlers are blocked
                 if(m_messageHandlers.isDefaultMessageHandler(Thread.currentThread().getId())) {
-                    LOGGER.debug(Thread.currentThread().getName() + " is blocked.");
+                    LOGGER.info(Thread.currentThread().getName() + " is blocked.");
                     m_messageHandlers.incBlockedMessageHandlers();
                 }
 
@@ -503,9 +504,10 @@ public final class DXNet {
 
                 throw e;
             } finally {
+                 // In case of a MessageHandler activate dynamic scaling
                  if(m_messageHandlers.isDefaultMessageHandler(Thread.currentThread().getId())) {
                      m_messageHandlers.decBlockedMessageHandlers();
-                     LOGGER.debug(Thread.currentThread().getName() + " is deblocked.");
+                     LOGGER.info(Thread.currentThread().getName() + " is deblocked.");
                  }
             }
         }

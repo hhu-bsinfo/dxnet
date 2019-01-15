@@ -151,14 +151,26 @@ public final class MessageHandlers {
         m_exclusiveMessageHandler.shutdown();
     }
 
+    /**
+     * Increases the count of blocked MessageHandler threads for dynamic scaling.
+     */
     void incBlockedMessageHandlers() {
         m_defaultMessageHandlerPool.incBlockedMessageHandlers();
     }
 
+    /**
+     * Decreases the count of blocked MessageHandler threads for dynamic scaling.
+     */
     void decBlockedMessageHandlers() {
         m_defaultMessageHandlerPool.decBlockedMessageHandlers();
     }
 
+    /**
+     * Check if thread-ID belongs to a MessageHandler.
+     * @param p_threadId
+     *         Thread-ID
+     * @return Boolean if MessageHandler or not
+     */
     boolean isDefaultMessageHandler(long p_threadId) {
         return m_defaultMessageHandlerPool.isDefaultMessageHandler(p_threadId);
     }
