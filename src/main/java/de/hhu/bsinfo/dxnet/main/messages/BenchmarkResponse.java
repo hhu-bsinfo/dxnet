@@ -41,4 +41,14 @@ public class BenchmarkResponse extends Response {
     public BenchmarkResponse(final BenchmarkRequest p_request) {
         super(p_request, Messages.SUBTYPE_BENCHMARK_RESPONSE);
     }
+
+    /**
+     * Creates an instance of BenchmarkResponse
+     *
+     * @param p_request
+     *         the BenchmarkRequest
+     */
+    public BenchmarkResponse(final BenchmarkDeadlockRequest p_request) {
+        super(p_request, Messages.SUBTYPE_BENCHMARK_RESPONSE);
+    }
 }

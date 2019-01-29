@@ -46,6 +46,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 
 import de.hhu.bsinfo.dxnet.core.Request;
+import de.hhu.bsinfo.dxnet.main.messages.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -57,14 +58,6 @@ import de.hhu.bsinfo.dxnet.core.AbstractPipeIn;
 import de.hhu.bsinfo.dxnet.core.Message;
 import de.hhu.bsinfo.dxnet.core.NetworkException;
 import de.hhu.bsinfo.dxnet.generated.BuildConfig;
-import de.hhu.bsinfo.dxnet.main.messages.BenchmarkMessage;
-import de.hhu.bsinfo.dxnet.main.messages.BenchmarkRequest;
-import de.hhu.bsinfo.dxnet.main.messages.BenchmarkResponse;
-import de.hhu.bsinfo.dxnet.main.messages.DynamicMessageCreator;
-import de.hhu.bsinfo.dxnet.main.messages.LoginRequest;
-import de.hhu.bsinfo.dxnet.main.messages.LoginResponse;
-import de.hhu.bsinfo.dxnet.main.messages.Messages;
-import de.hhu.bsinfo.dxnet.main.messages.StartMessage;
 import de.hhu.bsinfo.dxutils.RandomUtils;
 import de.hhu.bsinfo.dxutils.StorageUnitGsonSerializer;
 import de.hhu.bsinfo.dxutils.TimeUnitGsonSerializer;
@@ -121,6 +114,8 @@ public final class DXNetDeadlockTest implements MessageReceiver {
     private static volatile long ms_timeEndReceiver;
     private static AtomicLong ms_messagesReceived = new AtomicLong(0);
     private static AtomicLong ms_messagesSent = new AtomicLong(0);
+    private static AtomicLong ms_deadlockRequestsSend = new AtomicLong(0);
+    private static AtomicLong ms_deadlockRequestsAnwered = new AtomicLong(0);
     private static AtomicLong ms_reqRespTimeouts = new AtomicLong(0);
 
     // The following attributes are used in workload e to verify the serialization
@@ -306,26 +301,31 @@ public final class DXNetDeadlockTest implements MessageReceiver {
             System.out.println("Starting benchmark (start signal)");
             ms_startBenchmark = true;
         } else {
-            long count = ms_messagesReceived.incrementAndGet();
 
-            if (count == 1) {
-                ms_timeStartRecv = System.nanoTime();
-            }
-
+            // This was a benchmark-request, so send a response or antoher request to provocate deadlocks
             if (p_message.getSubtype() == Messages.SUBTYPE_BENCHMARK_REQUEST) {
+                long count = ms_messagesReceived.incrementAndGet();
+
+                if (count == 1) {
+                    ms_timeStartRecv = System.nanoTime();
+                }
+
                 // answer with another request with probability to provocate deadlocks
                 // if all MessageHandlers are blocked by requests
                 if(ThreadLocalRandom.current().nextDouble() < ms_requestProbability) {
-                    BenchmarkRequest request = new BenchmarkRequest(p_message.getSource(), ms_messagePayloadSize);
+                    BenchmarkDeadlockRequest request = new BenchmarkDeadlockRequest(p_message.getSource(), ms_messagePayloadSize);
                     request.setIgnoreTimeout(true);
 
                     try {
                         LOGGER.info("Answer request with another request to provocate deadlocks.");
 
                         ms_dxnet.sendSync(request, -1, true);
+
+                        ms_deadlockRequestsSend.incrementAndGet();
                     } catch (NetworkException e) {
                         e.printStackTrace();
                     }
+
                 }
 
                 BenchmarkResponse response;
@@ -343,24 +343,32 @@ public final class DXNetDeadlockTest implements MessageReceiver {
                 } catch (NetworkException e) {
                     e.printStackTrace();
                 }
-            }
 
-            // Workload e: compare message content with generated attributes to test DXNet's serialization
-            if (p_message.getSubtype() == Messages.SUBTYPE_DYNAMIC_MESSAGE) {
-                try {
-                    boolean ret = (boolean) p_message.getClass().getDeclaredMethod("validate", Object[].class)
-                            .invoke(p_message, new Object[] {ms_parameters});
-                    if (!ret) {
-                        LOGGER.error("Serialization error: received message differs from generated message.");
-                    }
-                } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-                    LOGGER.error("Serialization error: validate method could not be executed. %s", e);
+                if (count == ms_recvCount) {
+                    ms_timeEndReceiver = System.nanoTime();
+                    ms_remoteFinished = true;
                 }
-            }
 
-            if (count == ms_recvCount) {
-                ms_timeEndReceiver = System.nanoTime();
-                ms_remoteFinished = true;
+            // This is a request as an answer to another request already - only send the response in this case
+            } else if (p_message.getSubtype() == Messages.SUBTYPE_BENCHMARK_DEADLOCK_REQUEST) {
+
+                BenchmarkResponse response;
+
+                if (ms_objectPooling) {
+                    response = ms_responses[Integer.parseInt(Thread.currentThread().getName().substring(24)) - 1];
+                    response.reuse((BenchmarkDeadlockRequest) p_message, Messages.SUBTYPE_BENCHMARK_RESPONSE);
+                    response.setDestination(p_message.getSource());
+                } else {
+                    response = new BenchmarkResponse((BenchmarkDeadlockRequest) p_message);
+                }
+
+                try {
+                    ms_dxnet.sendMessage(response);
+                } catch (NetworkException e) {
+                    e.printStackTrace();
+                }
+
+                ms_deadlockRequestsAnwered.incrementAndGet();
             }
         }
     }
@@ -703,9 +711,12 @@ public final class DXNetDeadlockTest implements MessageReceiver {
                 BenchmarkRequest.class);
         ms_dxnet.registerMessageType(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_RESPONSE,
                 BenchmarkResponse.class);
+        ms_dxnet.registerMessageType(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_DEADLOCK_REQUEST,
+                BenchmarkDeadlockRequest.class);
         ms_dxnet.register(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_MESSAGE, new DXNetDeadlockTest());
         ms_dxnet.register(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_REQUEST, new DXNetDeadlockTest());
         ms_dxnet.register(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_RESPONSE, new DXNetDeadlockTest());
+        ms_dxnet.register(Messages.DXNETMAIN_MESSAGES_TYPE, Messages.SUBTYPE_BENCHMARK_DEADLOCK_REQUEST, new DXNetDeadlockTest());
     }
 
     /**
@@ -998,6 +1009,8 @@ public final class DXNetDeadlockTest implements MessageReceiver {
 
                 long totalMessagesSent = ms_messagesSent.get();
                 long totalMessagesRecv = ms_messagesReceived.get();
+                long totalDeadlockRequestsSend = ms_deadlockRequestsSend.get();
+                long totalDeadlockRequestsAnswered = ms_deadlockRequestsAnwered.get();
                 long time = System.nanoTime();
 
                 long messagesSentDelta = totalMessagesSent - m_prevSent;
@@ -1012,12 +1025,12 @@ public final class DXNetDeadlockTest implements MessageReceiver {
                 StringBuilder builder = new StringBuilder();
 
                 builder.append(
-                        String.format("[PROGRESS] %d sec [TOTAL: TXM %d%% (%d), RXM %d%% (%d), TXM-RXM-DELTA %d]",
+                        String.format("[PROGRESS] %d sec [TOTAL: TXM %d%% (%d), RXM %d%% (%d), TXM-RXM-DELTA %d, DEADL_SEND %d, DEADL_ANSW %d]",
                                 timeDiffSend / 1000 / 1000 / 1000, ms_sendCount != 0 ?
                                         (int) ((float) totalMessagesSent / ms_sendCount / ms_targetNodeIds.size() *
                                                 100) : 0, totalMessagesSent,
                                 ms_recvCount != 0 ? (int) ((float) totalMessagesRecv / ms_recvCount * 100) : 0,
-                                totalMessagesRecv, totalMessagesSent - totalMessagesRecv));
+                                totalMessagesRecv, totalMessagesSent - totalMessagesRecv, totalDeadlockRequestsSend, totalDeadlockRequestsAnswered));
 
                 builder.append(String.format("[AVG: TX=%f, RX=%f, TXP=%f, RXP=%f, TXM=%f, RXM=%f]",
                         (double) totalMessagesSent * ms_size / 1024 / 1024 /
