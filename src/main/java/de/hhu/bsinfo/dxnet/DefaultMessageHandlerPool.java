@@ -294,22 +294,24 @@ final class DefaultMessageHandlerPool {
      * Increases the count of blocked MessageHandler and applies dynamic scaling.
      */
     void incBlockedMessageHandlers() {
-        // increase number of blocked handlers
-        long blockedAndNumMessageHandlers = m_blockedAndNumMessageHandlers.incrementAndGet();
+        synchronized (this) {
+            // increase number of blocked handlers
+            long blockedAndNumMessageHandlers = m_blockedAndNumMessageHandlers.incrementAndGet();
 
-        int blockedMessageHandlers = (int) blockedAndNumMessageHandlers;
-        int numMessageHandlers = (int) (blockedAndNumMessageHandlers >> 32);
+            int blockedMessageHandlers = (int) blockedAndNumMessageHandlers;
+            int numMessageHandlers = (int) (blockedAndNumMessageHandlers >> 32);
 
-        LOGGER.info("Current number of blocked MessageHandlers increased: " + blockedMessageHandlers + " of " + numMessageHandlers);
+            LOGGER.info("Current number of blocked MessageHandlers increased: " + blockedMessageHandlers + " of " + numMessageHandlers);
 
-        // note: There can be more blocked handlers than activated handlers because a handler can be marked for parking
-        // but is finishing his current operation (which can be sending a request, of course)
-        if(blockedMessageHandlers >= numMessageHandlers) {
-            LOGGER.warn("All Message Handlers are blocked - add or reactivate MessageHandler");
+            // note: There can be more blocked handlers than activated handlers because a handler can be marked for parking
+            // but is finishing his current operation (which can be sending a request, of course)
+            if(blockedMessageHandlers >= numMessageHandlers) {
+                LOGGER.warn("All Message Handlers are blocked - add or reactivate MessageHandler");
 
-            // activate parked handler or create new one
-            if(activateMessageHandler() == null) {
-                addNewMessageHandler();
+                // activate parked handler or create new one
+                if(activateMessageHandler() == null) {
+                    addNewMessageHandler();
+                }
             }
         }
     }
@@ -318,17 +320,19 @@ final class DefaultMessageHandlerPool {
      * Decreases the count of blocked MessageHandler threads and applies dynamic scaling.
      */
     void decBlockedMessageHandlers() {
-        // decrement number of blocked handlers
-        long blockedAndNumMessageHandlers = m_blockedAndNumMessageHandlers.decrementAndGet();
+        synchronized (this) {
+            // decrement number of blocked handlers
+            long blockedAndNumMessageHandlers = m_blockedAndNumMessageHandlers.decrementAndGet();
 
-        int blockedMessageHandlers = (int) blockedAndNumMessageHandlers;
-        int numMessageHandlers = (int) (blockedAndNumMessageHandlers >> 32);
+            int blockedMessageHandlers = (int) blockedAndNumMessageHandlers;
+            int numMessageHandlers = (int) (blockedAndNumMessageHandlers >> 32);
 
-        LOGGER.info("Current number of blocked MessageHandlers decreased: " + blockedMessageHandlers + " of " + numMessageHandlers);
+            LOGGER.info("Current number of blocked MessageHandlers decreased: " + blockedMessageHandlers + " of " + numMessageHandlers);
 
-        // if there are enough unblocked handlers park an active one
-        if(numMessageHandlers > blockedMessageHandlers + 2 &&  numMessageHandlers > m_initialMessageHandlerCount) {
-            prepareParkMessageHandler();
+            // if there are enough unblocked handlers park an active one
+            if(numMessageHandlers > blockedMessageHandlers + 2 &&  numMessageHandlers > m_initialMessageHandlerCount) {
+                prepareParkMessageHandler();
+            }
         }
     }
 
