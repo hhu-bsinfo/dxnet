@@ -311,7 +311,7 @@ public final class DXNetDeadlockTest implements MessageReceiver {
                 }
 
                 // answer with another request with probability to provocate deadlocks
-                // if all MessageHandlers are blocked by requests
+                // if all MessageHandlers are blocked by requests, the dynamic scaling of threads should kick in
                 if(ThreadLocalRandom.current().nextDouble() < ms_requestProbability) {
                     BenchmarkDeadlockRequest request = new BenchmarkDeadlockRequest(p_message.getSource(), ms_messagePayloadSize);
                     request.setIgnoreTimeout(true);
