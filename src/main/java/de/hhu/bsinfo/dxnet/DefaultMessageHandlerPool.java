@@ -197,10 +197,8 @@ final class DefaultMessageHandlerPool {
         long threadId = mh.getId();
         int idx = (int) (threadId / 64);
         long pos = (int) (threadId % 64);
-        // this has to be done synchronized
-        synchronized (this) {
-            m_messageHandlerMap[idx] |= (1L << pos);
-        }
+        m_messageHandlerMap[idx] |= (1L << pos);
+
 
         m_activeHandlers.add(mh);
 
