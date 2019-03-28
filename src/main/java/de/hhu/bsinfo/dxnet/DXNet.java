@@ -472,32 +472,44 @@ public final class DXNet {
 
         int timeout = p_timeout != -1 ? p_timeout : m_timeOut;
 
-        try {
-            if (p_waitForResponses) {
+        if (p_waitForResponses) {
+             try {
                 SOP_WAIT_RESPONSE.start();
+
+                // If a MessageHandler sends the request, we have to check if all MessageHandlers are blocked
+                if(m_messageHandlers.isDefaultMessageHandler(Thread.currentThread().getId())) {
+                    LOGGER.info(Thread.currentThread().getName() + " is blocked.");
+                    m_messageHandlers.incBlockedMessageHandlers();
+                }
 
                 p_request.waitForResponse(timeout);
 
                 SOP_WAIT_RESPONSE.stop();
+            } catch (final NetworkResponseDelayedException e) {
+                SOP_WAIT_RESPONSE.stop();
+
+                SOP_SEND_SYNC.stopDebug();
+
+                LOGGER.warn("Sending sync, waiting for responses to %s failed, timeout: %d ms", p_request, timeout);
+
+                m_requestMap.remove(p_request.getRequestID());
+
+                throw e;
+            } catch (final NetworkResponseCancelledException e) {
+                SOP_WAIT_RESPONSE.stop();
+
+                SOP_SEND_SYNC.stopDebug();
+
+                LOGGER.warn("Sending sync, waiting for responses to %s failed, cancelled: %d ms", p_request, timeout);
+
+                throw e;
+            } finally {
+                 // In case of a MessageHandler activate dynamic scaling
+                 if(m_messageHandlers.isDefaultMessageHandler(Thread.currentThread().getId())) {
+                     m_messageHandlers.decBlockedMessageHandlers();
+                     LOGGER.info(Thread.currentThread().getName() + " is deblocked.");
+                 }
             }
-        } catch (final NetworkResponseDelayedException e) {
-            SOP_WAIT_RESPONSE.stop();
-
-            SOP_SEND_SYNC.stopDebug();
-
-            LOGGER.warn("Sending sync, waiting for responses to %s failed, timeout: %d ms", p_request, timeout);
-
-            m_requestMap.remove(p_request.getRequestID());
-
-            throw e;
-        } catch (final NetworkResponseCancelledException e) {
-            SOP_WAIT_RESPONSE.stop();
-
-            SOP_SEND_SYNC.stopDebug();
-
-            LOGGER.warn("Sending sync, waiting for responses to %s failed, cancelled: %d ms", p_request, timeout);
-
-            throw e;
         }
 
         SOP_SEND_SYNC.stopDebug();

@@ -16,6 +16,10 @@
 
 package de.hhu.bsinfo.dxnet;
 
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 
 import org.apache.logging.log4j.LogManager;
@@ -27,9 +31,11 @@ import de.hhu.bsinfo.dxutils.stats.StatisticsManager;
 import de.hhu.bsinfo.dxutils.stats.Time;
 
 /**
+ * Manages default MessageHandler thread and dynamic scaling.
  * Distributes incoming default messages
  *
  * @author Kevin Beineke, kevin.beineke@hhu.de, 19.07.2016
+ * @author Christian Gesse, christian.gesse@hhu.de, 15.01.2019
  */
 final class DefaultMessageHandlerPool {
     private static final Logger LOGGER = LogManager.getFormatterLogger(DefaultMessageHandlerPool.class.getSimpleName());
@@ -47,7 +53,30 @@ final class DefaultMessageHandlerPool {
 
     private final MessageHeaderStore m_defaultMessageHeaders;
 
-    private final MessageHandler[] m_threads;
+    // List of active MessageHandlers
+    private final LinkedBlockingQueue<MessageHandler> m_activeHandlers;
+
+    // List of blocked (by synchronous calls) MessageHandlers
+    private final LinkedBlockingQueue<MessageHandler> m_blockedHandlers;
+
+    // List of parked (currently deactivated) MessageHandlers
+    private final LinkedBlockingQueue<MessageHandler> m_parkedHandlers;
+
+    // Global count for unique naming of MessageHandlers
+    private static int m_globalMessageHandlerID = 0;
+
+    private  static MessageReceiverStore m_messageReceivers;
+
+    private static MessageHeaderPool m_messageHeaderPool;
+
+    private static boolean m_overprovisioning;
+
+    // amount of started MessageHandlers during initialization
+    private static int m_initialMessageHandlerCount;
+
+    // bitmap for thread-IDs of MessageHandlers
+    private static long[] m_messageHandlerMap;
+
 
     /**
      * Creates an instance of DefaultMessageHandlerPool
@@ -62,15 +91,23 @@ final class DefaultMessageHandlerPool {
 
         LOGGER.info("Network: DefaultMessageHandlerPool: Initialising %d threads", p_numMessageHandlerThreads);
 
-        MessageHandler t;
-        m_threads = new MessageHandler[p_numMessageHandlerThreads];
+        // init Message Handler lists
+        m_activeHandlers = new LinkedBlockingQueue<>();
+        m_blockedHandlers = new LinkedBlockingQueue<>();
+        m_parkedHandlers = new LinkedBlockingQueue<>();
 
-        for (int i = 0; i < m_threads.length; i++) {
-            t = new MessageHandler(p_messageReceivers, m_defaultMessageHeaders, p_messageHeaderPool,
-                    p_overprovisioning);
-            t.setName("Network: MessageHandler " + (i + 1));
-            m_threads[i] = t;
-            t.start();
+        m_messageHandlerMap = new long[4096];
+
+
+        m_initialMessageHandlerCount = p_numMessageHandlerThreads;
+
+        m_messageReceivers = p_messageReceivers;
+        m_messageHeaderPool = p_messageHeaderPool;
+        m_overprovisioning = p_overprovisioning;
+
+        // initialize first MessageHandlers
+        for (int i = 0; i < p_numMessageHandlerThreads; i++) {
+            addNewMessageHandler();
         }
     }
 
@@ -78,17 +115,44 @@ final class DefaultMessageHandlerPool {
      * Closes all default message handler
      */
     void shutdown() {
-        MessageHandler t;
-
-        for (int i = 0; i < m_threads.length; i++) {
-            t = m_threads[i];
+        // shutdown active MessageHandlers
+        for (MessageHandler t : m_activeHandlers) {
             t.shutdown();
+            t.unmarkForParking();
             LockSupport.unpark(t);
             t.interrupt();
 
             try {
                 t.join();
-                LOGGER.info("Shutdown of MessageHandler %d successful", i + 1);
+                LOGGER.info("Shutdown of " + t.getName() + " successful");
+            } catch (final InterruptedException e) {
+                LOGGER.warn("Could not wait for default message handler to finish. Interrupted");
+            }
+        }
+        // shutdown parked MessageHandlers
+        for (MessageHandler t : m_parkedHandlers) {
+            t.shutdown();
+            t.unmarkForParking();
+            LockSupport.unpark(t);
+            t.interrupt();
+
+            try {
+                t.join();
+                LOGGER.info("Shutdown of " + t.getName() + " successful");
+            } catch (final InterruptedException e) {
+                LOGGER.warn("Could not wait for default message handler to finish. Interrupted");
+            }
+        }
+        // shutdown blocked Message Handlers
+        for (MessageHandler t : m_blockedHandlers) {
+            t.shutdown();
+            t.unmarkForParking();
+            LockSupport.unpark(t);
+            t.interrupt();
+
+            try {
+                t.join();
+                LOGGER.info("Shutdown of " + t.getName() + " successful");
             } catch (final InterruptedException e) {
                 LOGGER.warn("Could not wait for default message handler to finish. Interrupted");
             }
@@ -99,8 +163,16 @@ final class DefaultMessageHandlerPool {
      * Activate parking strategy for all default message handlers.
      */
     void activateParking() {
-        for (int i = 0; i < m_threads.length; i++) {
-            m_threads[i].activateParking();
+        for (MessageHandler t : m_activeHandlers) {
+            t.activateParking();
+        }
+
+        for (MessageHandler t : m_parkedHandlers) {
+            t.activateParking();
+        }
+
+        for (MessageHandler t : m_blockedHandlers) {
+            t.activateParking();
         }
     }
 
@@ -130,5 +202,178 @@ final class DefaultMessageHandlerPool {
         }
 
         SOP_PUSH.stopDebug();
+    }
+
+    /**
+     * Creates a new MessageHandler-Thread and adds it to list of active MessageHandlers
+     */
+    private synchronized void addNewMessageHandler() {
+        // create new Message Handler
+        MessageHandler mh = new MessageHandler(m_messageReceivers, m_defaultMessageHeaders, m_messageHeaderPool,
+                m_overprovisioning);
+        mh.setName("Network: MessageHandler " + (m_globalMessageHandlerID++));
+
+        // set entry for thread-ID in bitmap
+        long threadId = mh.getId();
+        int idx = (int) (threadId / 64);
+        long pos = (int) (threadId % 64);
+        m_messageHandlerMap[idx] |= (1L << pos);
+
+        // add new Message Handler
+        m_activeHandlers.add(mh);
+        // start thread
+        mh.start();
+
+        LOGGER.info("Added new " + mh.getName() + " - current numbers: [Active " + m_activeHandlers.size() +
+                "][Blocked " + m_blockedHandlers.size() + "][Parked " + m_parkedHandlers.size() + "]");
+    }
+
+    /**
+     * Activates a parked MessageHandler and puts it back into active-queue.
+     *
+     * @return MessageHandler or null if no parked MessageHandler available
+     */
+    private synchronized MessageHandler activateMessageHandler() {
+        // get parked MessageHandler from queue
+        MessageHandler mh = m_parkedHandlers.poll();
+
+        if(mh != null){
+            // add to list of active handlers
+            m_activeHandlers.add(mh);
+            // first, unmark from parking so that thread does not park itself when scheduled
+            mh.unmarkForParking();
+
+            // wake up thread from parking
+            LockSupport.unpark(mh);
+
+            LOGGER.info("Reactivated " + mh.getName() + " - current numbers: [Active " + m_activeHandlers.size() +
+                    "][Blocked " + m_blockedHandlers.size() + "][Parked " + m_parkedHandlers.size() + "]");
+        }
+
+        return mh;
+
+    }
+
+    /**
+     * Prepares (or marks) a MessageHandler for parking. The handler will park itself next time it is scheduled
+     * and has finished its current tasks.
+     */
+    private synchronized void prepareParkMessageHandler() {
+        // get an active handler
+        MessageHandler mh = m_activeHandlers.poll();
+
+        if(mh != null) {
+            // mark handler for parking
+            mh.markForParking();
+            // put into list
+            m_parkedHandlers.add(mh);
+
+            LOGGER.info("Marked " + mh.getName() + " for parking - current numbers: [Active " + m_activeHandlers.size() +
+                    "][Blocked " + m_blockedHandlers.size() + "][Parked " + m_parkedHandlers.size() + "]");
+        }
+
+    }
+
+    /**
+     * Deletes a MessageHandler from system.
+     *
+     * @return The deleted MessageHandler
+     */
+    private synchronized MessageHandler deleteMessageHandler() {
+        MessageHandler mh;
+
+        // try to get from parked handlers first, then from active
+        if((mh = m_parkedHandlers.poll()) == null) {
+            mh = m_activeHandlers.poll();
+        }
+
+        if (mh != null) {
+            mh.shutdown();
+            mh.unmarkForParking();
+            LockSupport.unpark(mh);
+            mh.interrupt();
+
+            try {
+                mh.join();
+                LOGGER.info("Shutdown of " + mh.getName() + " successful");
+            } catch (final InterruptedException e) {
+                LOGGER.warn("Could not wait for default message handler to finish. Interrupted");
+            }
+        }
+
+        return mh;
+    }
+
+    /**
+     * Increases the count of blocked MessageHandler and applies dynamic scaling.
+     */
+    public synchronized void incBlockedMessageHandlers() {
+        // remove current Message handler from queue - two cases possible
+        // First: Handler is already parked, so it has to be removed from parked queue
+        if(m_parkedHandlers.contains(Thread.currentThread())) {
+            m_parkedHandlers.remove(Thread.currentThread());
+            ((MessageHandler) Thread.currentThread()).unmarkForParking();
+        // second: Handler is active and has to be removed from corresponding queue
+        } else {
+            m_activeHandlers.remove(Thread.currentThread());
+        }
+        // add to blocked handlers
+        m_blockedHandlers.add((MessageHandler) Thread.currentThread());
+
+        LOGGER.info("Increased blocked Message Handlers - current numbers: [Active " + m_activeHandlers.size() +
+                "][Blocked " + m_blockedHandlers.size() + "][Parked " + m_parkedHandlers.size() + "]");
+
+        // check if remaining active handlers are available
+        if(m_activeHandlers.size() == 0) {
+            LOGGER.warn("All Message Handlers are blocked - add or reactivate MessageHandler");
+
+            // activate parked handler or create new one
+            if(activateMessageHandler() == null) {
+                addNewMessageHandler();
+            }
+        }
+
+        LOGGER.info("Leave Increase Block - current numbers: [Active " + m_activeHandlers.size() +
+                "][Blocked " + m_blockedHandlers.size() + "][Parked " + m_parkedHandlers.size() + "]");
+
+    }
+
+    /**
+     * Decreases the count of blocked MessageHandler threads and applies dynamic scaling.
+     */
+    public  synchronized void decBlockedMessageHandlers() {
+        // remove current Message Handler from blocked queue
+        m_blockedHandlers.remove(Thread.currentThread());
+
+        // add current handler to active handler queue
+        m_activeHandlers.add((MessageHandler) Thread.currentThread());
+
+        LOGGER.info("Decreased blocked Message Handlers - current numbers: [Active " + m_activeHandlers.size() +
+                "][Blocked " + m_blockedHandlers.size() + "][Parked " + m_parkedHandlers.size() + "]");
+
+        // if there are enough unblocked handlers park an active one
+        if(m_activeHandlers.size() > 1 &&  m_activeHandlers.size() > m_initialMessageHandlerCount) {
+            prepareParkMessageHandler();
+        }
+        LOGGER.info("Leave Decrease Block: Blocked - current numbers: [Active " + m_activeHandlers.size() +
+                "][Blocked " + m_blockedHandlers.size() + "][Parked " + m_parkedHandlers.size() + "]");
+
+    }
+
+    /**
+     * Check if thread-ID belongs to a MessageHandler.
+     * @param p_threadId
+     *         Thread-ID
+     * @return Boolean if MessageHandler or not
+     */
+    boolean isDefaultMessageHandler(long p_threadId) {
+        // get index and offset into long-array
+        int idx = (int) (p_threadId / 64);
+        long pos = (int) (p_threadId % 64);
+
+        long tmp = m_messageHandlerMap[idx];
+        int res = (int) ((tmp >>> pos) & 1L);
+
+        return (res > 0);
     }
 }

@@ -33,7 +33,7 @@ version = '0.8.0' + (Boolean.valueOf(System.getProperty('release')) ? '' : '-SNA
 sourceCompatibility = '1.8'
 targetCompatibility = '1.8'
 
-mainClassName = 'de.hhu.bsinfo.dxnet.DXNetMain'
+mainClassName = 'de.hhu.bsinfo.dxnet.DXNetDeadlockTest'
 
 // add log4j2 config path to default arguments of start script
 applicationDefaultJvmArgs = [
