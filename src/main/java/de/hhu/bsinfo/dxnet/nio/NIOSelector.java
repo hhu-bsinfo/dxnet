@@ -302,14 +302,14 @@ class NIOSelector extends Thread {
 
                 m_connectionManager.closeConnection(p_connection, true);
             }
-        } else {
+        } /*else {
             // Read flow control from incoming stream of PipeOut
             try {
                 p_connection.getPipeOut().readFlowControlBytes();
             } catch (final IOException e) {
                 LOGGER.warn("Failed to read flow control data!");
             }
-        }
+        }*/
     }
 
     /**
@@ -350,7 +350,7 @@ class NIOSelector extends Thread {
             } catch (final CancelledKeyException ignore) {
                 // Ignore
             }
-        } else {
+        } /*else {
             // Write flow control update to outgoing stream of PipeIn
             try {
                 p_connection.getPipeIn().writeFlowControlBytes();
@@ -363,7 +363,7 @@ class NIOSelector extends Thread {
             } catch (final CancelledKeyException ignore) {
                 // Ignores
             }
-        }
+        }*/
     }
 
     /**
